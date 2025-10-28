@@ -1,0 +1,298 @@
+[
+  {
+    "id": "req_001",
+    "seeker_name": "Trần Văn A",
+    "care_level": 3,
+    "health_status": "weak",
+    "required_years_experience": 3,
+    "personality": [
+      "thân thiện",
+      "kiên nhẫn"
+    ],
+    "attitude": [
+      "tích cực",
+      "chăm chỉ"
+    ],
+    "overall_rating_range": [
+      3.5,
+      5.0
+    ],
+    "skills": {
+      "required_skills": [
+        "tiêm insulin",
+        "đo đường huyết",
+        "đái tháo đường",
+        "quản lý thuốc"
+      ],
+      "priority_skills": [
+        "chăm sóc vết thương",
+        "đo dấu hiệu sinh tồn",
+        "nấu ăn"
+      ]
+    },
+    "time_slots": [
+      {
+        "day": "monday",
+        "start": "08:00",
+        "end": "12:00"
+      },
+      {
+        "day": "wednesday",
+        "start": "08:00",
+        "end": "12:00"
+      },
+      {
+        "day": "friday",
+        "start": "08:00",
+        "end": "12:00"
+      }
+    ],
+    "elderly_age": 78,
+    "caregiver_age_range": [
+      30,
+      55
+    ],
+    "location": {
+      "lat": 10.735,
+      "lon": 106.72,
+      "address": "Quận 7, TP.HCM"
+    },
+    "budget_per_hour": 90000,
+    "gender_preference": null
+  },
+  {
+    "id": "req_002",
+    "seeker_name": "Nguyễn Văn C",
+    "care_level": 4,
+    "elderly_age": 85,
+    "health_status": "weak",
+    "required_years_experience": 5,
+    "personality": [
+      "kiên nhẫn",
+      "tận tâm"
+    ],
+    "attitude": [
+      "chuyên nghiệp",
+      "cẩn thận"
+    ],
+    "overall_rating_range": [
+      4.0,
+      5.0
+    ],
+    "skills": {
+      "required_skills": [
+        "đột quỵ phục hồi",
+        "vật lý trị liệu",
+        "hỗ trợ đi lại",
+        "đo dấu hiệu sinh tồn",
+        "quản lý thuốc"
+      ],
+      "priority_skills": [
+        "chăm sóc catheter",
+        "cho ăn qua ống",
+        "chăm sóc vết thương",
+        "phòng ngừa loét"
+      ]
+    },
+    "location": {
+      "lat": 10.73,
+      "lon": 106.71,
+      "address": "Quận 7, TP.HCM"
+    },
+    "time_slots": [
+      {
+        "day": "monday",
+        "start": "08:00",
+        "end": "18:00"
+      },
+      {
+        "day": "wednesday",
+        "start": "08:00",
+        "end": "18:00"
+      },
+      {
+        "day": "friday",
+        "start": "08:00",
+        "end": "18:00"
+      }
+    ],
+    "budget_per_hour": 110000,
+    "gender_preference": null
+  },
+  {
+    "id": "req_003",
+    "seeker_name": "Phạm Thị D",
+    "care_level": 1,
+    "elderly_age": 68,
+    "caregiver_age_range": [
+      25,
+      45
+    ],
+    "health_status": "good",
+    "required_years_experience": null,
+    "personality": [
+      "vui vẻ",
+      "nhiệt tình"
+    ],
+    "attitude": [
+      "thân thiện",
+      "hòa đồng"
+    ],
+    "overall_rating_range": null,
+    "skills": {
+      "required_skills": [
+        "hỗ trợ vệ sinh",
+        "nấu ăn",
+        "đồng hành"
+      ],
+      "priority_skills": [
+        "hỗ trợ đi lại",
+        "vận động nhẹ nhàng",
+        "giám sát an toàn"
+      ]
+    },
+    "location": {
+      "lat": 10.738,
+      "lon": 106.721,
+      "address": "Quận 7, TP.HCM"
+    },
+    "time_slots": [
+      {
+        "day": "monday",
+        "start": "08:00",
+        "end": "12:00"
+      },
+      {
+        "day": "wednesday",
+        "start": "08:00",
+        "end": "12:00"
+      },
+      {
+        "day": "friday",
+        "start": "08:00",
+        "end": "12:00"
+      }
+    ],
+    "budget_per_hour": 70000,
+    "gender_preference": null
+  },
+  {
+    "id": "req_004",
+    "seeker_name": "Lê Văn E",
+    "care_level": 2,
+    "elderly_age": 72,
+    "health_status": "moderate",
+    "required_years_experience": 2,
+    "personality": [
+      "cẩn thận",
+      "tỉ mỉ"
+    ],
+    "attitude": [
+      "chăm chỉ",
+      "trách nhiệm"
+    ],
+    "overall_rating_range": [
+      3.0,
+      4.5
+    ],
+    "skills": {
+      "required_skills": [
+        "đo huyết áp",
+        "cao huyết áp",
+        "nhắc nhở uống thuốc",
+        "theo dõi sức khỏe"
+      ],
+      "priority_skills": [
+        "nấu ăn",
+        "hỗ trợ vệ sinh",
+        "đồng hành"
+      ]
+    },
+    "location": {
+      "lat": 10.745,
+      "lon": 106.725,
+      "address": "Bình Thạnh, TP.HCM"
+    },
+    "time_slots": [
+      {
+        "day": "tuesday",
+        "start": "09:00",
+        "end": "15:00"
+      },
+      {
+        "day": "thursday",
+        "start": "09:00",
+        "end": "15:00"
+      },
+      {
+        "day": "saturday",
+        "start": "08:00",
+        "end": "12:00"
+      }
+    ],
+    "budget_per_hour": 75000,
+    "gender_preference": "female"
+  },
+  {
+    "id": "req_005",
+    "seeker_name": "Hoàng Thị F",
+    "care_level": 3,
+    "elderly_age": 80,
+    "caregiver_age_range": [
+      35,
+      60
+    ],
+    "health_status": "weak",
+    "required_years_experience": 3,
+    "personality": [
+      "kiên nhẫn",
+      "hiểu biết"
+    ],
+    "attitude": [
+      "tận tâm",
+      "nhẹ nhàng"
+    ],
+    "overall_rating_range": [
+      3.5,
+      5.0
+    ],
+    "skills": {
+      "required_skills": [
+        "alzheimer",
+        "sa sút trí tuệ",
+        "giám sát an toàn",
+        "đồng hành"
+      ],
+      "priority_skills": [
+        "hỗ trợ tâm lý",
+        "hỗ trợ vệ sinh",
+        "nấu ăn",
+        "nhắc nhở uống thuốc"
+      ]
+    },
+    "location": {
+      "lat": 10.72,
+      "lon": 106.7,
+      "address": "Quận 7, TP.HCM"
+    },
+    "time_slots": [
+      {
+        "day": "monday",
+        "start": "08:00",
+        "end": "17:00"
+      },
+      {
+        "day": "wednesday",
+        "start": "08:00",
+        "end": "17:00"
+      },
+      {
+        "day": "friday",
+        "start": "08:00",
+        "end": "17:00"
+      }
+    ],
+    "budget_per_hour": 85000,
+    "gender_preference": "female"
+  }
+]

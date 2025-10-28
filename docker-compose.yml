@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: elderly_db
+    restart: always
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 123456789
+      POSTGRES_DB: elderly_platform
+    ports:
+      - "5432:5432"
+    networks:
+      - elderly-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    container_name: elderly_backend
+    build:
+      context: ./elderly-platform
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOSTNAME: db
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: 123456789
+    volumes:
+      - ./elderly-platform/src/main/resources/keys/key_firebase.json:/app/keys/key_firebase.json:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
+    networks:
+      - elderly-network
+
+  ai_matching:
+    container_name: elderly_ai_matching
+    build:
+      context: ./ai-matching
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    restart: always
+    networks:
+      - elderly-network
+
+volumes:
+  postgres_data:
+
+networks:
+  elderly-network:
+    name: elderly-network
+    driver: bridge

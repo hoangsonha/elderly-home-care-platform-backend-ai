@@ -1,0 +1,185 @@
+@startuml ElderCareConceptualERD
+
+!define ENTITY class
+!define RELATIONSHIP -->
+
+skinparam class {
+    BackgroundColor LightBlue
+    BorderColor DarkBlue
+    FontSize 12
+}
+
+skinparam arrow {
+    Color DarkBlue
+}
+
+' Core Authentication & Profile
+ENTITY Account {
+    + login credentials
+    + authentication data
+}
+
+ENTITY AccountProfile {
+    + personal information
+    + contact details
+    + version control
+}
+
+ENTITY Role {
+    + system roles
+    + family roles
+}
+
+' Specialized Profiles
+ENTITY CaregiverProfile {
+    + skills & experience
+    + availability
+    + service area
+}
+
+ENTITY CaregiverCredential {
+    + certificates
+    + licenses
+    + expiry dates
+}
+
+ENTITY ElderProfile {
+    + care needs
+    + preferences
+    + medical info
+}
+
+ENTITY HealthRecord {
+    + medical history
+    + current conditions
+    + medications
+}
+
+' Family Management
+ENTITY Family {
+    + family unit
+    + admin settings
+}
+
+ENTITY FamilyMember {
+    + member role
+    + permissions
+}
+
+' Core Services
+ENTITY CareService {
+    + service agreement
+    + duration & type
+    + status
+}
+
+ENTITY VideoConsultation {
+    + meeting details
+    + scheduling
+    + outcomes
+}
+
+' Work Management
+ENTITY WorkSchedule {
+    + visit schedule
+    + time slots
+}
+
+ENTITY WorkTask {
+    + specific tasks
+    + completion status
+}
+
+ENTITY Reschedule {
+    + schedule changes
+    + approvals
+}
+
+' Payment System
+ENTITY Payment {
+    + deposits
+    + service payments
+}
+
+ENTITY PaymentSchedule {
+    + payment reminders
+    + due dates
+}
+
+' Communication & Feedback
+ENTITY Feedback {
+    + ratings
+    + reviews
+    + comments
+}
+
+ENTITY ChatConversation {
+    + messages
+    + participants
+}
+
+ENTITY Notification {
+    + alerts
+    + reminders
+}
+
+' Emergency & Support
+ENTITY EmergencyContact {
+    + emergency numbers
+    + regional contacts
+}
+
+ENTITY MedicationReminder {
+    + medication schedule
+    + alerts
+}
+
+' AI Matching
+ENTITY CaregiverMatchSession {
+    + AI recommendations
+    + matching criteria
+}
+
+ENTITY CaregiverMatchSessionDetail {
+    + individual matches
+    + scores
+}
+
+' Relationships
+Account ||--o{ AccountProfile : "1:M\nhas"
+Account }o--o{ Role : "M:N\nassigned"
+AccountProfile ||--|| CaregiverProfile : "1:1\nspecializes"
+AccountProfile ||--o{ ElderProfile : "1:M\ncreates"
+
+CaregiverProfile ||--o{ CaregiverCredential : "1:M\nholds"
+ElderProfile ||--o{ HealthRecord : "1:M\nhas"
+
+Family ||--o{ ElderProfile : "1:M\ncontains"
+Family ||--o{ FamilyMember : "1:M\nincludes"
+AccountProfile ||--o{ FamilyMember : "1:M\nparticipates"
+
+ElderProfile ||--o{ CareService : "1:M\nrequests"
+CaregiverProfile ||--o{ CareService : "1:M\nprovides"
+
+AccountProfile ||--o{ VideoConsultation : "1:M\nschedules"
+VideoConsultation ||--o{ Feedback : "1:M\ngenerates"
+
+CareService ||--o{ WorkSchedule : "1:M\ncreates"
+WorkSchedule ||--o{ WorkTask : "1:M\ncontains"
+WorkSchedule ||--o{ Reschedule : "1:M\ncan_change"
+
+CareService ||--o{ Payment : "1:M\ngenerates"
+Payment ||--o{ PaymentSchedule : "1:M\nhas"
+CareService ||--o{ Feedback : "1:M\nreceives"
+
+AccountProfile ||--o{ ChatConversation : "M:N\nparticipates"
+AccountProfile ||--o{ Notification : "1:M\nreceives"
+
+ElderProfile ||--o{ EmergencyContact : "1:M\nhas"
+ElderProfile ||--o{ MedicationReminder : "1:M\nneeds"
+
+ElderProfile ||--o{ CaregiverMatchSession : "1:M\ninitiates"
+CaregiverMatchSession ||--o{ CaregiverMatchSessionDetail : "1:M\ncontains"
+
+@enduml
+
