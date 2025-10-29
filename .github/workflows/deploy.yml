@@ -1,0 +1,77 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main      # Deploy khi push vào main branch
+      - master    # Hoặc master branch
+  workflow_dispatch:  # Cho phép chạy manual từ GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to VPS via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -e  # Exit on error
+            
+            # Navigate to project directory
+            cd ~/elderly-home-care-platform-backend-ai || { echo "Directory not found!"; exit 1; }
+            
+            # Determine current branch (if exists) or use default
+            CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
+            echo "Current branch: $CURRENT_BRANCH"
+            
+            # Pull latest code from GitHub
+            echo "Pulling latest code..."
+            git fetch origin
+            git pull origin $CURRENT_BRANCH || git pull origin main || git pull origin master || echo "Git pull failed, continuing with existing code..."
+            
+            # Stop existing containers (gracefully, don't remove volumes)
+            echo "Stopping containers..."
+            docker-compose down || echo "No containers running"
+            
+            # Rebuild and start containers (database volume will be preserved)
+            echo "Building containers..."
+            docker-compose build --no-cache || { echo "Build failed!"; exit 1; }
+            
+            echo "Starting containers..."
+            docker-compose up -d || { echo "Start failed!"; exit 1; }
+            
+            # Wait for services to be ready
+            echo "Waiting for services to start..."
+            sleep 15
+            
+            # Check container status
+            echo "=== Container Status ==="
+            docker-compose ps
+            
+            # Check if all containers are running
+            FAILED_CONTAINERS=$(docker-compose ps | grep -c "Exit" || echo "0")
+            if [ "$FAILED_CONTAINERS" -gt "0" ]; then
+              echo "WARNING: Some containers failed to start!"
+              docker-compose ps
+            fi
+            
+            # Show recent logs
+            echo "=== Recent Logs (last 30 lines) ==="
+            docker-compose logs --tail=30
+            
+            # Health check (optional - test backend endpoint)
+            echo "=== Health Check ==="
+            sleep 5
+            curl -f http://localhost:8080/v3/api-docs || echo "Backend health check failed (might still be starting)"
+            
+            echo ""
+            echo "✅ Deployment completed!"
+            echo "Database data has been preserved in Docker volume."

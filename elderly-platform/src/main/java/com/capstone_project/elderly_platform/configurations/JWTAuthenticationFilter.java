@@ -40,6 +40,8 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
 
     private final List<String> NON_USER = List.of(
             "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/swagger-ui/index.html",
             "/v3/**",
             "/api-docs/**",
             "/swagger-resources/**",
@@ -55,7 +57,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
     public String getToken(HttpServletRequest request) {
         try {
             String s = request.getHeader("Authorization");
-            if (s.startsWith("Bearer ") && StringUtils.hasText(s)) {
+            if (s != null && s.startsWith("Bearer ") && StringUtils.hasText(s)) {
                 return s.substring(7);
             }
         } catch (Exception e) {
