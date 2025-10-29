@@ -91,9 +91,9 @@ jobs:
                     
                     # Keep only last 10 backups (cleanup old backups)
                     echo "🧹 Cleaning up old backups (keeping last 10)..."
-                    OLD_COUNT=$(cd "$BACKUP_DIR" && ls -t db_backup_*.sql.gz 2>/dev/null | tail -n +11 | wc -l)
-                    (cd "$BACKUP_DIR" && ls -t db_backup_*.sql.gz 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true)
+                    OLD_COUNT=$(cd "$BACKUP_DIR" && (ls -t db_backup_*.sql.gz 2>/dev/null || true) | tail -n +11 | wc -l || echo "0")
                     if [ "$OLD_COUNT" -gt 0 ]; then
+                      (cd "$BACKUP_DIR" && (ls -t db_backup_*.sql.gz 2>/dev/null || true) | tail -n +11 | xargs rm -f 2>/dev/null || true)
                       echo "   🗑️  Removed $OLD_COUNT old backup(s)"
                     else
                       echo "   ℹ️  No old backups to remove"
