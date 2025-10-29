@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: 123456789
       POSTGRES_DB: elderly_platform
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - elderly-network
     healthcheck:
@@ -31,6 +31,7 @@ services:
       DB_PORT: 5432
       DB_USERNAME: postgres
       DB_PASSWORD: 123456789
+      # Note: DB_PORT in container stays 5432, only host mapping changed
     volumes:
       - ./elderly-platform/src/main/resources/keys/key_firebase.json:/app/keys/key_firebase.json:ro
     depends_on:

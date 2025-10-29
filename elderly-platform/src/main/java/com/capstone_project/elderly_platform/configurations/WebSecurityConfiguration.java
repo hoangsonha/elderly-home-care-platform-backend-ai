@@ -40,13 +40,15 @@ public class WebSecurityConfiguration {
         httpSecurity
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .authorizeHttpRequests((auth) ->
-                        auth
-                                .requestMatchers("/**").permitAll()
-                                .anyRequest().authenticated())
+                .authorizeHttpRequests((auth) -> auth
+                        .requestMatchers("/public/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .anyRequest().authenticated())
                 .sessionManagement(m -> m.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
-        return httpSecurity.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class).build();
+        return httpSecurity.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+                .build();
     }
 
 }

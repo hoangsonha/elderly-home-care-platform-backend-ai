@@ -43,13 +43,14 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
             "/v3/**",
             "/api-docs/**",
             "/swagger-resources/**",
+            "/public/**",
+            "/actuator/**",
             "/api/v1/public/**",
             "/api/v1/hashtags/non-paging",
             "/api/v1/reviews/top-trending",
             "/api/v1/reviews/search",
             "/api/v1/payments/**",
-            "/api/v1/subscriptions/**"
-    );
+            "/api/v1/subscriptions/**");
 
     public String getToken(HttpServletRequest request) {
         try {
@@ -64,7 +65,8 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain) throws ServletException, IOException {
         try {
             if (request.getServletPath().equals("/")) {
                 response.sendRedirect(request.getContextPath() + "/swagger-ui/index.html");
@@ -77,12 +79,15 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
             String bearerToken = getToken(request);
             if (Strings.hasText(bearerToken) && jwtTokenConfiguration.validate(bearerToken, EnumTokenType.TOKEN)) {
                 String email = jwtTokenConfiguration.getEmailFromJwt(bearerToken, EnumTokenType.TOKEN);
-                CustomAccountDetail customAccountDetail = (CustomAccountDetail) customAccountDetailService.loadUserByUsername(email);
+                CustomAccountDetail customAccountDetail = (CustomAccountDetail) customAccountDetailService
+                        .loadUserByUsername(email);
                 if (customAccountDetail != null) {
-                    if (customAccountDetail.getAccessToken() != null && customAccountDetail.getAccessToken().equals(bearerToken)) {
-                        UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
-                                new UsernamePasswordAuthenticationToken(customAccountDetail, null, customAccountDetail.getAuthorities());
-                        usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    if (customAccountDetail.getAccessToken() != null
+                            && customAccountDetail.getAccessToken().equals(bearerToken)) {
+                        UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+                                customAccountDetail, null, customAccountDetail.getAuthorities());
+                        usernamePasswordAuthenticationToken
+                                .setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                         SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
                     } else {
                         throw new AuthenticationException("You don't have permission");

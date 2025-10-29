@@ -1,0 +1,31 @@
+{
+    "seeker_name": "Người dùng",
+    "care_level": 3,
+    "health_status": "moderate",
+    "elderly_age": 75,
+    "caregiver_age_range": [25, 50],
+    "gender_preference": null,
+    "required_years_experience": 3,
+    "overall_rating_range": [3.0, 4.0],
+    "personality": ["thân thiện", "kiên nhẫn"],
+    "attitude": ["tích cực", "chăm chỉ"],
+    "skills": {
+        "required_skills": ["tiêm insulin", "đo đường huyết"],
+        "priority_skills": ["nấu ăn", "massage"]
+    },
+    "time_slots": [
+        {"day": "monday", "start": "06:00", "end": "12:00"},
+        {"day": "tuesday", "start": "12:00", "end": "18:00"}
+    ],
+    "location": {
+        "lat": 10.7350,
+        "lon": 106.7200,
+        "address": "Quận 7, TP.HCM"
+    },
+    "budget_per_hour": 150000,
+    "top_n": 10
+}
+
+
+
+

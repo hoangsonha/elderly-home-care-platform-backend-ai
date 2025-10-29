@@ -46,3 +46,8 @@ application:
   default:
     current-page: 1
     page-size: 5
+
+ai:
+  matching:
+    service:
+      url: http://ai_matching:8000
