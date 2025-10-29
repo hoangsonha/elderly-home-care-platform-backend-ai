@@ -166,8 +166,16 @@ jobs:
             echo ""
             
             # Check if all containers are running
-            FAILED_CONTAINERS=$($DOCKER_COMPOSE ps | grep -c "Exit" || echo "0")
-            if [ "$FAILED_CONTAINERS" -gt "0" ]; then
+            set +e  # Temporarily disable exit on error
+            EXIT_COUNT=$($DOCKER_COMPOSE ps 2>/dev/null | grep -c "Exit" 2>/dev/null || echo "0")
+            EXIT_COUNT=$(echo "$EXIT_COUNT" | tr -d '[:space:]' | head -1)
+            # Validate that it's a number
+            if ! [[ "$EXIT_COUNT" =~ ^[0-9]+$ ]]; then
+              EXIT_COUNT=0
+            fi
+            set -e  # Re-enable exit on error
+            
+            if [ "$EXIT_COUNT" -gt 0 ]; then
               echo "⚠️  WARNING: Some containers failed to start!"
               $DOCKER_COMPOSE ps
               echo ""
