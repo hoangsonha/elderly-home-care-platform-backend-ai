@@ -167,15 +167,16 @@ jobs:
             
             # Check if all containers are running
             set +e  # Temporarily disable exit on error
-            EXIT_COUNT=$($DOCKER_COMPOSE ps 2>/dev/null | grep -c "Exit" 2>/dev/null || echo "0")
-            EXIT_COUNT=$(echo "$EXIT_COUNT" | tr -d '[:space:]' | head -1)
-            # Validate that it's a number
-            if ! [[ "$EXIT_COUNT" =~ ^[0-9]+$ ]]; then
-              EXIT_COUNT=0
+            # Simple check: if any container has "Exit" in status
+            PS_OUTPUT=$($DOCKER_COMPOSE ps 2>/dev/null)
+            if echo "$PS_OUTPUT" | grep -q "Exit"; then
+              HAS_EXITED="yes"
+            else
+              HAS_EXITED="no"
             fi
             set -e  # Re-enable exit on error
             
-            if [ "$EXIT_COUNT" -gt 0 ]; then
+            if [ "$HAS_EXITED" = "yes" ]; then
               echo "⚠️  WARNING: Some containers failed to start!"
               $DOCKER_COMPOSE ps
               echo ""
