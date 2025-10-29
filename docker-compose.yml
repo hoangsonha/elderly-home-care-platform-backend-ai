@@ -48,6 +48,9 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    volumes:
+      # Persist Hugging Face model cache to avoid re-downloading PhoBERT
+      - ~/.cache/huggingface:/root/.cache/huggingface
     restart: always
     networks:
       - elderly-network

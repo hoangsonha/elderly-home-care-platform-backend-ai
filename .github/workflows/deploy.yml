@@ -128,8 +128,12 @@ jobs:
             
             # Rebuild and start containers
             echo "🔨 [STEP 6/8] Building containers..."
-            echo "   ⏳ This may take several minutes..."
-            if $DOCKER_COMPOSE build --no-cache; then
+            echo "   ℹ️  Building only changed services (using cache when possible)..."
+            echo "   ⏳ This may take several minutes if dependencies changed..."
+            # Build without --no-cache to use Docker layer cache
+            # This way, if only code changed (not requirements), it will build faster
+            # If requirements.txt changed, Docker will rebuild from that layer
+            if $DOCKER_COMPOSE build; then
               echo "✅ Build completed successfully"
             else
               echo "❌ Build failed!"
