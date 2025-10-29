@@ -197,6 +197,9 @@ id_rsa*
 id_ed25519*
 github_actions_deploy*
 
+# SSH backup files (on VPS)
+.ssh_authorized_keys_backup
+
 # ========== macOS ==========
 .AppleDouble
 .LSOverride
