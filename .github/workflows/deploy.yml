@@ -89,19 +89,19 @@ jobs:
                     echo "   📦 File: $(basename $BACKUP_FILE)"
                     echo "   📊 Size: $BACKUP_SIZE"
                     
-        # Keep only last 10 backups (cleanup old backups)
-        echo "🧹 Cleaning up old backups (keeping last 10)..."
-        (set +e; \
-         cd "$BACKUP_DIR" 2>/dev/null || exit 0; \
-         BACKUP_FILES=($(ls -t db_backup_*.sql.gz 2>/dev/null || true)); \
-         if [ ${#BACKUP_FILES[@]} -gt 10 ]; then \
-           REMOVE_FILES=("${BACKUP_FILES[@]:10}"); \
-           echo "   🗑️  Removing ${#REMOVE_FILES[@]} old backup(s)..."; \
-           rm -f "${REMOVE_FILES[@]}" 2>/dev/null || true; \
-           echo "   ✅ Old backups cleaned up"; \
-         else \
-           echo "   ℹ️  No old backups to remove (only ${#BACKUP_FILES[@]} backup(s))"; \
-         fi)
+                    # Keep only last 10 backups (cleanup old backups)
+                    echo "🧹 Cleaning up old backups (keeping last 10)..."
+                    (set +e; \
+                     cd "$BACKUP_DIR" 2>/dev/null || exit 0; \
+                     BACKUP_FILES=($(ls -t db_backup_*.sql.gz 2>/dev/null || true)); \
+                     if [ ${#BACKUP_FILES[@]} -gt 10 ]; then \
+                       REMOVE_FILES=("${BACKUP_FILES[@]:10}"); \
+                       echo "   🗑️  Removing ${#REMOVE_FILES[@]} old backup(s)..."; \
+                       rm -f "${REMOVE_FILES[@]}" 2>/dev/null || true; \
+                       echo "   ✅ Old backups cleaned up"; \
+                     else \
+                       echo "   ℹ️  No old backups to remove (only ${#BACKUP_FILES[@]} backup(s))"; \
+                     fi)
                   else
                     echo "⚠️  Warning: Could not compress backup"
                   fi
