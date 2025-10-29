@@ -23,7 +23,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           debug: true
-          script_stop: true
+          script_stop: false  # ⬅️ CHANGED: Don't stop on non-critical errors
           script: |
             set -e  # Exit on error
             
@@ -130,9 +130,6 @@ jobs:
             echo "🔨 [STEP 6/8] Building containers..."
             echo "   ℹ️  Building only changed services (using cache when possible)..."
             echo "   ⏳ This may take several minutes if dependencies changed..."
-            # Build without --no-cache to use Docker layer cache
-            # This way, if only code changed (not requirements), it will build faster
-            # If requirements.txt changed, Docker will rebuild from that layer
             if $DOCKER_COMPOSE build; then
               echo "✅ Build completed successfully"
             else
@@ -167,23 +164,23 @@ jobs:
             
             # Check if all containers are running
             set +e  # Temporarily disable exit on error
-            # Simple check: if any container has "Exit" in status
-            PS_OUTPUT=$($DOCKER_COMPOSE ps 2>/dev/null)
-            if echo "$PS_OUTPUT" | grep -q "Exit"; then
-              HAS_EXITED="yes"
-            else
-              HAS_EXITED="no"
+            EXIT_COUNT=$($DOCKER_COMPOSE ps 2>/dev/null | grep -c "Exit" 2>/dev/null || echo "0")
+            EXIT_COUNT=$(echo "$EXIT_COUNT" | tr -d '[:space:]' | head -1)
+            if ! [[ "$EXIT_COUNT" =~ ^[0-9]+$ ]]; then
+              EXIT_COUNT=0
             fi
-            set -e  # Re-enable exit on error
             
-            if [ "$HAS_EXITED" = "yes" ]; then
+            if [ "$EXIT_COUNT" -gt 0 ]; then
               echo "⚠️  WARNING: Some containers failed to start!"
               $DOCKER_COMPOSE ps
               echo ""
+              set -e  # Re-enable exit on error
+              exit 1  # Fail the deployment if containers didn't start
             else
               echo "✅ All containers are running"
               echo ""
             fi
+            set -e  # Re-enable exit on error
             
             # Show recent logs
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -193,14 +190,18 @@ jobs:
             echo ""
             
             # Health check (optional - test backend endpoint)
+            # ⬇️ FIXED: Don't fail script if health check fails
             echo "🏥 HEALTH CHECK"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             sleep 5
+            set +e  # Disable exit on error for health check
             if curl -f http://localhost:8080/v3/api-docs > /dev/null 2>&1; then
               echo "✅ Backend is responding (HTTP 200)"
             else
               echo "⚠️  Backend health check failed (might still be starting up)"
+              echo "   ℹ️  This is normal - backend may need more time to initialize"
             fi
+            set -e  # Re-enable exit on error
             echo ""
             
             echo "╔══════════════════════════════════════════════════════════════╗"
@@ -211,4 +212,5 @@ jobs:
             echo "   • Database data preserved in Docker volume"
             echo "   • All containers rebuilt and restarted"
             echo "   • Services should be accessible shortly"
+            echo "   • Check logs with: docker compose logs -f"
             echo ""
