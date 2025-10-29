@@ -91,13 +91,27 @@ jobs:
                     
                     # Keep only last 10 backups (cleanup old backups)
                     echo "🧹 Cleaning up old backups (keeping last 10)..."
-                    OLD_COUNT=$(cd "$BACKUP_DIR" && (ls -t db_backup_*.sql.gz 2>/dev/null || true) | tail -n +11 | wc -l || echo "0")
-                    if [ "$OLD_COUNT" -gt 0 ]; then
-                      (cd "$BACKUP_DIR" && (ls -t db_backup_*.sql.gz 2>/dev/null || true) | tail -n +11 | xargs rm -f 2>/dev/null || true)
-                      echo "   🗑️  Removed $OLD_COUNT old backup(s)"
-                    else
-                      echo "   ℹ️  No old backups to remove"
+                    set +e  # Temporarily disable exit on error for cleanup
+                    if [ -d "$BACKUP_DIR" ]; then
+                      cd "$BACKUP_DIR"
+                      BACKUP_FILES=$(ls -t db_backup_*.sql.gz 2>/dev/null || echo "")
+                      if [ -n "$BACKUP_FILES" ]; then
+                        TOTAL_COUNT=$(echo "$BACKUP_FILES" | wc -l | tr -d ' ')
+                        if [ "$TOTAL_COUNT" -gt 10 ]; then
+                          OLD_COUNT=$((TOTAL_COUNT - 10))
+                          echo "$BACKUP_FILES" | tail -n +11 | while read -r file; do
+                            [ -n "$file" ] && rm -f "$file" 2>/dev/null || true
+                          done
+                          echo "   🗑️  Removed $OLD_COUNT old backup(s)"
+                        else
+                          echo "   ℹ️  No old backups to remove (only $TOTAL_COUNT backup(s))"
+                        fi
+                      else
+                        echo "   ℹ️  No backups found to clean up"
+                      fi
+                      cd - > /dev/null
                     fi
+                    set -e  # Re-enable exit on error
                   else
                     echo "⚠️  Warning: Could not compress backup"
                   fi
