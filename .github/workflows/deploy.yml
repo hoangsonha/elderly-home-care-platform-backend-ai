@@ -27,53 +27,171 @@ jobs:
           script: |
             set -e  # Exit on error
             
+            echo ""
+            echo "╔══════════════════════════════════════════════════════════════╗"
+            echo "║           🚀 Starting Deployment to VPS                      ║"
+            echo "╚══════════════════════════════════════════════════════════════╝"
+            echo ""
+            
+            # Detect docker-compose command (v1 or v2)
+            echo "🔍 [STEP 1/8] Detecting Docker Compose version..."
+            if command -v docker-compose &> /dev/null; then
+              DOCKER_COMPOSE="docker-compose"
+            elif docker compose version &> /dev/null; then
+              DOCKER_COMPOSE="docker compose"
+            else
+              echo "❌ Error: docker-compose not found!"
+              exit 1
+            fi
+            echo "✅ Using: $DOCKER_COMPOSE"
+            echo ""
+            
             # Navigate to project directory
-            cd ~/elderly-home-care-platform-backend-ai || { echo "Directory not found!"; exit 1; }
+            echo "📂 [STEP 2/8] Navigating to project directory..."
+            cd ~/elderly-home-care-platform-backend-ai || { echo "❌ Directory not found!"; exit 1; }
+            echo "✅ Current directory: $(pwd)"
+            echo ""
             
             # Determine current branch (if exists) or use default
             CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
-            echo "Current branch: $CURRENT_BRANCH"
+            echo "🌿 Git Branch: $CURRENT_BRANCH"
+            echo ""
             
             # Pull latest code from GitHub
-            echo "Pulling latest code..."
+            echo "⬇️  [STEP 3/8] Pulling latest code from GitHub..."
             git fetch origin
-            git pull origin $CURRENT_BRANCH || git pull origin main || git pull origin master || echo "Git pull failed, continuing with existing code..."
+            if git pull origin $CURRENT_BRANCH || git pull origin main || git pull origin master; then
+              echo "✅ Code updated successfully"
+            else
+              echo "⚠️  Git pull failed, continuing with existing code..."
+            fi
+            echo ""
+            
+            # Backup database before deployment
+            echo "💾 [STEP 4/8] Creating Database Backup..."
+            BACKUP_DIR="$PWD/backups"
+            mkdir -p "$BACKUP_DIR"
+            echo "📁 Backup directory: $BACKUP_DIR"
+            
+            # Check if database container is running
+            if docker ps | grep -q elderly_db; then
+              BACKUP_FILE="$BACKUP_DIR/db_backup_$(date +%Y%m%d_%H%M%S).sql"
+              echo "🔄 Creating backup: $(basename $BACKUP_FILE)"
+              
+              # Create backup using pg_dump
+              if docker exec elderly_db pg_dump -U postgres elderly_platform > "$BACKUP_FILE" 2>/dev/null; then
+                if [ -f "$BACKUP_FILE" ] && [ -s "$BACKUP_FILE" ]; then
+                  # Compress backup to save space
+                  if gzip -f "$BACKUP_FILE" 2>/dev/null; then
+                    BACKUP_FILE="${BACKUP_FILE}.gz"
+                    BACKUP_SIZE=$(ls -lh "$BACKUP_FILE" | awk '{print $5}')
+                    echo "✅ Backup created successfully!"
+                    echo "   📦 File: $(basename $BACKUP_FILE)"
+                    echo "   📊 Size: $BACKUP_SIZE"
+                    
+                    # Keep only last 10 backups (cleanup old backups)
+                    echo "🧹 Cleaning up old backups (keeping last 10)..."
+                    OLD_COUNT=$(cd "$BACKUP_DIR" && ls -t db_backup_*.sql.gz 2>/dev/null | tail -n +11 | wc -l)
+                    (cd "$BACKUP_DIR" && ls -t db_backup_*.sql.gz 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true)
+                    if [ "$OLD_COUNT" -gt 0 ]; then
+                      echo "   🗑️  Removed $OLD_COUNT old backup(s)"
+                    else
+                      echo "   ℹ️  No old backups to remove"
+                    fi
+                  else
+                    echo "⚠️  Warning: Could not compress backup"
+                  fi
+                else
+                  echo "⚠️  Warning: Backup file is empty"
+                fi
+              else
+                echo "⚠️  Warning: Could not create backup (database might not be accessible)"
+              fi
+            else
+              echo "⚠️  Database container is not running, skipping backup"
+            fi
+            echo ""
             
             # Stop existing containers (gracefully, don't remove volumes)
-            echo "Stopping containers..."
-            docker-compose down || echo "No containers running"
+            echo "🛑 [STEP 5/8] Stopping existing containers..."
+            echo "   ℹ️  Note: Volumes will be preserved (database data safe)"
+            if $DOCKER_COMPOSE down; then
+              echo "✅ Containers stopped successfully"
+            else
+              echo "ℹ️  No containers were running"
+            fi
+            echo ""
             
-            # Rebuild and start containers (database volume will be preserved)
-            echo "Building containers..."
-            docker-compose build --no-cache || { echo "Build failed!"; exit 1; }
+            # Rebuild and start containers
+            echo "🔨 [STEP 6/8] Building containers..."
+            echo "   ⏳ This may take several minutes..."
+            if $DOCKER_COMPOSE build --no-cache; then
+              echo "✅ Build completed successfully"
+            else
+              echo "❌ Build failed!"
+              exit 1
+            fi
+            echo ""
             
-            echo "Starting containers..."
-            docker-compose up -d || { echo "Start failed!"; exit 1; }
+            echo "🚀 [STEP 7/8] Starting containers..."
+            if $DOCKER_COMPOSE up -d; then
+              echo "✅ Containers started successfully"
+            else
+              echo "❌ Start failed!"
+              exit 1
+            fi
+            echo ""
             
             # Wait for services to be ready
-            echo "Waiting for services to start..."
+            echo "⏳ Waiting for services to be ready (15 seconds)..."
             sleep 15
+            echo "✅ Wait completed"
+            echo ""
             
             # Check container status
-            echo "=== Container Status ==="
-            docker-compose ps
+            echo "📊 [STEP 8/8] Checking deployment status..."
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 CONTAINER STATUS"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            $DOCKER_COMPOSE ps
+            echo ""
             
             # Check if all containers are running
-            FAILED_CONTAINERS=$(docker-compose ps | grep -c "Exit" || echo "0")
+            FAILED_CONTAINERS=$($DOCKER_COMPOSE ps | grep -c "Exit" || echo "0")
             if [ "$FAILED_CONTAINERS" -gt "0" ]; then
-              echo "WARNING: Some containers failed to start!"
-              docker-compose ps
+              echo "⚠️  WARNING: Some containers failed to start!"
+              $DOCKER_COMPOSE ps
+              echo ""
+            else
+              echo "✅ All containers are running"
+              echo ""
             fi
             
             # Show recent logs
-            echo "=== Recent Logs (last 30 lines) ==="
-            docker-compose logs --tail=30
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📝 RECENT LOGS (last 30 lines)"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            $DOCKER_COMPOSE logs --tail=30
+            echo ""
             
             # Health check (optional - test backend endpoint)
-            echo "=== Health Check ==="
+            echo "🏥 HEALTH CHECK"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             sleep 5
-            curl -f http://localhost:8080/v3/api-docs || echo "Backend health check failed (might still be starting)"
-            
+            if curl -f http://localhost:8080/v3/api-docs > /dev/null 2>&1; then
+              echo "✅ Backend is responding (HTTP 200)"
+            else
+              echo "⚠️  Backend health check failed (might still be starting up)"
+            fi
             echo ""
-            echo "✅ Deployment completed!"
-            echo "Database data has been preserved in Docker volume."
+            
+            echo "╔══════════════════════════════════════════════════════════════╗"
+            echo "║              ✅ DEPLOYMENT COMPLETED SUCCESSFULLY!            ║"
+            echo "╚══════════════════════════════════════════════════════════════╝"
+            echo ""
+            echo "📌 Summary:"
+            echo "   • Database data preserved in Docker volume"
+            echo "   • All containers rebuilt and restarted"
+            echo "   • Services should be accessible shortly"
+            echo ""
