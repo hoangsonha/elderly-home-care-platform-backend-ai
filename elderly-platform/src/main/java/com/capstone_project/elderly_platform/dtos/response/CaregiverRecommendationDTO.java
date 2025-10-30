@@ -68,6 +68,3 @@ public class CaregiverRecommendationDTO {
         private Double trust;
     }
 }
-
-
-

@@ -1,7 +1,7 @@
 package com.capstone_project.elderly_platform.utils;
 
-import com.capstone_project.elderly_platform.pojos.Role;
 import org.springframework.data.jpa.domain.Specification;
+import com.capstone_project.elderly_platform.pojos.Role;
 
 public class RoleSpecification {
 

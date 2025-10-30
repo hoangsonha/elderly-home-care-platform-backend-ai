@@ -1,15 +1,15 @@
 package com.capstone_project.elderly_platform.pojos;
 
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -25,25 +25,13 @@ public class Account extends BaseEntity {
     @GeneratedValue(generator = "UUID")
     @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
     @Column(name = "account_id")
-    UUID accountID;
-
-    @Column(name = "first_name", length = 25)
-    String firstName;
-
-    @Column(name = "last_name", length = 25)
-    String lastName;
+    UUID accountId;
 
     @Column(name = "email", nullable = false, unique = true, length = 255)
     String email;
 
     @Column(name = "password", length = 60)
     String password;
-
-    @Column(name = "phone", unique = true, length = 12)
-    String phone;
-
-    @Column(name = "dob", columnDefinition = "DATE")
-    LocalDate dob;
 
     @Column(name = "enabled", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
     Boolean enabled = false;
@@ -57,12 +45,12 @@ public class Account extends BaseEntity {
     @Column(name = "refresh_token", columnDefinition = "TEXT")
     String refreshToken;
 
-    @Column(name = "is_google_account", nullable = false, columnDefinition = "BOOLEAN DEFAULT false")
-    Boolean isGoogleAccount = false;
+    @Column(length = 6)
+    String codeVerify;
 
-    @ManyToMany
-    @JoinTable(name = "account_roles", joinColumns = @JoinColumn(name = "account_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
-    List<Role> roles;
+    @ManyToOne
+    @JoinColumn(name = "role_id")
+    Role role;
 
 //    @JdbcTypeCode(SqlTypes.JSON)
 //    @Column(name = "seat_map", columnDefinition = "jsonb")

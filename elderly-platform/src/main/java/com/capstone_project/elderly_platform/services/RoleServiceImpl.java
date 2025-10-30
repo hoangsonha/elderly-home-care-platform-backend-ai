@@ -1,21 +1,27 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.enums.EnumRoleType;
+import com.capstone_project.elderly_platform.pojos.Role;
+import com.capstone_project.elderly_platform.repositories.RoleRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
+
+    private final RoleRepository roleRepository;
+
+    @Override
+    public Role getRoleByRoleName(EnumRoleType roleType) {
+        List<Role> roles = roleRepository.getRoleByRoleName(roleType);
+        if (roles == null || roles.isEmpty()) {
+            return null;
+        }
+        return roles.get(0);
+    }
 //
 //    private final AircraftTypeRepository aircraftTypeRepository;
 //    private final AircraftTypeMapper aircraftTypeMapper;

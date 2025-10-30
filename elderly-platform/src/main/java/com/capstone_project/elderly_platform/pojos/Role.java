@@ -2,7 +2,12 @@ package com.capstone_project.elderly_platform.pojos;
 
 import com.capstone_project.elderly_platform.enums.EnumRoleType;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
 
@@ -30,6 +35,6 @@ public class Role {
     @Column(name = "description", length = 500)
     String description;
 
-    @ManyToMany(mappedBy = "roles")
+    @OneToMany(mappedBy = "role")
     List<Account> accounts;
 }

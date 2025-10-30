@@ -1,8 +1,8 @@
 package com.capstone_project.elderly_platform.utils;
 
-import com.capstone_project.elderly_platform.pojos.Account;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
+import com.capstone_project.elderly_platform.pojos.Account;
 
 public class AccountSpecification {
 

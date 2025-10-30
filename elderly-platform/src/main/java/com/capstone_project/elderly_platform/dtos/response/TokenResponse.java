@@ -3,21 +3,22 @@ package com.capstone_project.elderly_platform.dtos.response;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.Value;
 import lombok.experimental.FieldDefaults;
 
-@Data
+import java.util.UUID;
+
+@Value
 @NoArgsConstructor(force = true)
 @AllArgsConstructor
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class PagingResponse {
+public class TokenResponse {
     String code;
     String message;
-    int currentPage;
-    int totalPages;
-    int elementPerPage;
-    long totalElements;
-    Object data;
+    String token;
+    String refreshToken;
+    UUID accountId;
+    String email;
 }

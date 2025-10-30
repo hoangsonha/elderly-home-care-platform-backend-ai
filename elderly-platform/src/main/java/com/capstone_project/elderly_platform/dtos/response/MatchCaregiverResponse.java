@@ -30,5 +30,3 @@ public class MatchCaregiverResponse {
 
     private List<CaregiverRecommendationDTO> recommendations;
 }
-
-

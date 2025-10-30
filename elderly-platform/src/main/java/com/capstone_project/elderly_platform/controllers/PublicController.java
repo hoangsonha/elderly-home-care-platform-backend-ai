@@ -1,7 +1,5 @@
 package com.capstone_project.elderly_platform.controllers;
 
-import com.capstone_project.elderly_platform.dtos.request.MatchCaregiverRequest;
-import com.capstone_project.elderly_platform.dtos.response.MatchCaregiverResponse;
 import com.capstone_project.elderly_platform.services.AIMatchingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -119,14 +117,11 @@ public class PublicController {
      */
     @Operation(summary = "Match caregivers using AI", description = "Match caregivers using AI matching service based on care requirements")
     @PostMapping("/match-caregivers")
-    public ResponseEntity<?> matchCaregivers(@RequestBody MatchCaregiverRequest request) {
+    public ResponseEntity<?> matchCaregivers(@RequestBody Map<String, Object> request) {
         try {
-            log.info("Received caregiver matching request for seeker: {}", request.getSeekerName());
+            log.info("Received caregiver matching request");
 
-            MatchCaregiverResponse response = aiMatchingService.matchCaregivers(request);
-
-            log.info("Successfully matched {} caregivers for seeker: {}",
-                    response.getTotalMatches(), request.getSeekerName());
+            Map<String, Object> response = aiMatchingService.matchCaregivers(request);
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {

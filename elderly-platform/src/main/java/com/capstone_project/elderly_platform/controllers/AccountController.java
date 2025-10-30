@@ -1,18 +1,26 @@
 package com.capstone_project.elderly_platform.controllers;
 
-import io.swagger.v3.oas.annotations.Operation;
+import com.capstone_project.elderly_platform.dtos.request.AccountLoginRequest;
+import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
+import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
+import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
+import com.capstone_project.elderly_platform.exceptions.BadRequestException;
+import com.capstone_project.elderly_platform.exceptions.ElementExistException;
+import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
+import com.capstone_project.elderly_platform.services.AccountService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.UUID;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RequestMapping("/accounts")
 @RestController
@@ -21,6 +29,85 @@ import java.util.UUID;
 @Slf4j
 @Tag(name = "Aircraft", description = "Operations related to aircraft management")
 public class AccountController {
+
+    private final AccountService accountService;
+
+    @PostMapping("/register")
+    public ResponseEntity<ObjectResponse> accountRegister(@Valid @RequestBody AccountRegisterRequest accountRegisterRequest) {
+        try {
+            boolean account = accountService.registerAccount(accountRegisterRequest);
+            return account ? ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Đăng ký tài khoản thành công", account)) :
+                    ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Đăng ký tài khoản thất bại do không gửi được email", null));
+        } catch (BadRequestException e) {
+            log.error("Error found : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", e.getMessage(), null));
+        } catch (ElementExistException e) {
+            log.error("Error found : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error register user", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Đăng ký tài khoản thất bại", null));
+        }
+    }
+
+    @PostMapping("/register/verification")
+    public ResponseEntity<TokenResponse> userRegister(@Valid @RequestBody AccountVerificationRequest accountRegisterRequest) {
+        try {
+            TokenResponse tokenResponse = accountService.verificationUser(accountRegisterRequest);
+            return ResponseEntity.status(tokenResponse.getCode().equals("Success") ? HttpStatus.OK : HttpStatus.UNAUTHORIZED).body(tokenResponse);
+        } catch (BadRequestException e) {
+            log.error("Error verification found : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new TokenResponse("Failed", e.getMessage(), null, null, null, null));
+        } catch (Exception e) {
+            log.error("Cannot verification : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                    TokenResponse.builder()
+                            .code("FAILED")
+                            .message("Mã không trùng khớp")
+                            .build()
+            );
+        }
+    }
+
+    @PostMapping("/refresh_token")
+    public ResponseEntity<TokenResponse> refreshToken(HttpServletRequest request) {
+        String refreshToken = request.getHeader("RefreshToken");
+        TokenResponse tokenResponse = accountService.refreshToken(refreshToken);
+        return ResponseEntity.status(tokenResponse.getCode().equals("Success") ? HttpStatus.OK : HttpStatus.UNAUTHORIZED).body(tokenResponse);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<TokenResponse> loginPage(@Valid @RequestBody AccountLoginRequest accountLoginRequest) {
+        try {
+            TokenResponse tokenResponse = accountService.login(accountLoginRequest.getEmail(), accountLoginRequest.getPassword());
+            return ResponseEntity.status(tokenResponse.getCode().equals("Success") ? HttpStatus.OK : HttpStatus.UNAUTHORIZED).body(tokenResponse);
+        } catch (Exception e) {
+            log.error("Cannot login : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                    TokenResponse.builder()
+                            .code("FAILED")
+                            .message("Đăng nhập thất bại")
+                            .build()
+            );
+        }
+    }
+
+    // logout
+    @PostMapping("/logout")
+    public ResponseEntity<ObjectResponse> getLogout(HttpServletRequest request) {
+        try {
+            boolean checkLogout = accountService.logout(request);
+            return checkLogout ? ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Đăng xuất thành công", null)) :
+                    ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", "Đăng xuất thất bại", null));
+        } catch (ElementNotFoundException e) {
+            log.error("Error logout not found : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", "Đăng xuất thất bại", null));
+        } catch (Exception e) {
+            log.error("Error logout : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", "Đăng xuất thất bại", null));
+        }
+    }
+
 
 //    private final AircraftService aircraftService;
 //

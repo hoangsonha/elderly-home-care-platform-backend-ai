@@ -1,368 +1,277 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.configurations.CustomAccountDetail;
+import com.capstone_project.elderly_platform.configurations.JWTAuthenticationFilter;
+import com.capstone_project.elderly_platform.configurations.JwtTokenConfiguration;
+import com.capstone_project.elderly_platform.pojos.Account;
+import com.capstone_project.elderly_platform.pojos.Role;
+import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
+import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
+import com.capstone_project.elderly_platform.enums.EnumRoleType;
+import com.capstone_project.elderly_platform.enums.EnumTokenType;
+import com.capstone_project.elderly_platform.exceptions.BadRequestException;
+import com.capstone_project.elderly_platform.exceptions.ElementExistException;
+import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
+import com.capstone_project.elderly_platform.exceptions.EntityNotFoundException;
+import com.capstone_project.elderly_platform.repositories.AccountRepository;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AccountServiceImpl implements AccountService {
 
-//    private final AircraftRepository aircraftRepository;
-//    private final AircraftTypeRepository aircraftTypeRepository;
-//    private final AircraftMapper aircraftMapper;
-//
-//    @Override
-//    public PagingResponse getAircraftsPaging(Integer currentPage, Integer pageSize) {
-//        Pageable pageable = PageRequest.of(currentPage - 1, pageSize);
-//
-//        var pageData = aircraftRepository.findAll(pageable);
-//
-//        return !pageData.getContent().isEmpty() ? PagingResponse.builder()
-//                .code("Success")
-//                .message("Get all aircrafts paging successfully")
-//                .currentPage(currentPage)
-//                .elementPerPage(pageSize)
-//                .totalElements(pageData.getTotalElements())
-//                .totalPages(pageData.getTotalPages())
-//                .data(pageData.getContent().stream()
-//                        .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                        .toList())
-//                .build() :
-//                PagingResponse.builder()
-//                        .code("Failed")
-//                        .message("Get all aircrafts paging failed")
-//                        .currentPage(currentPage)
-//                        .elementPerPage(pageSize)
-//                        .totalElements(pageData.getTotalElements())
-//                        .totalPages(pageData.getTotalPages())
-//                        .data(pageData.getContent().stream()
-//                                .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                                .toList())
-//                        .build();
-//    }
-//
-//    @Override
-//    public PagingResponse getAircraftsActive(Integer currentPage, Integer pageSize) {
-//        Pageable pageable = PageRequest.of(currentPage - 1, pageSize);
-//
-//        var pageData = aircraftRepository.findAllByDeletedFalse(pageable);
-//
-//        return !pageData.getContent().isEmpty() ? PagingResponse.builder()
-//                .code("Success")
-//                .message("Get all aircrafts paging successfully")
-//                .currentPage(currentPage)
-//                .elementPerPage(pageSize)
-//                .totalElements(pageData.getTotalElements())
-//                .totalPages(pageData.getTotalPages())
-//                .data(pageData.getContent().stream()
-//                        .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                        .toList())
-//                .build() :
-//                PagingResponse.builder()
-//                        .code("Failed")
-//                        .message("Get all aircrafts paging failed")
-//                        .currentPage(currentPage)
-//                        .elementPerPage(pageSize)
-//                        .totalElements(pageData.getTotalElements())
-//                        .totalPages(pageData.getTotalPages())
-//                        .data(pageData.getContent().stream()
-//                                .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                                .toList())
-//                        .build();
-//    }
-//
-//    @Override
-//    public List<AircraftResponseDTO> getAircrafts() {
-//        return aircraftRepository.findByDeletedIsFalse().stream().map(aircraftMapper::aircrafttoAircraftResponseDTO).collect(Collectors.toList());
-//    }
-//
-//    @Override
-//    public AircraftResponseDTO findById(UUID AircraftID) {
-//        Aircraft aircraft = aircraftRepository.findAircraftById(AircraftID);
-//        if (aircraft == null) {
-//            throw new ElementNotFoundException("Aircraft can not found");
-//        }
-//        return aircraftMapper.aircrafttoAircraftResponseDTO(aircraft);
-//    }
-//
-//    @Override
-//    public AircraftResponseDTO findByIdActive(UUID AircraftID) {
-//        Aircraft aircraft = aircraftRepository.findAircraftById(AircraftID);
-//        if (aircraft == null) {
-//            throw new ElementNotFoundException("Aircraft can not found");
-//        }
-//        if (!aircraft.isDeleted()) {
-//            return aircraftMapper.aircrafttoAircraftResponseDTO(aircraft);
-//        }
-//        return null;
-//    }
-//
-//    @Override
-//    public AircraftResponseDTO findByCode(SearchAircraftCodeRequest code) {
-//        Aircraft aircraft = aircraftRepository.findAircraftByCode(code.getCode());
-//        if (aircraft == null) {
-//            throw new ElementNotFoundException("Aircraft can not found");
-//        }
-//        return aircraftMapper.aircrafttoAircraftResponseDTO(aircraft);
-//    }
-//
-//    @Override
-//    public AircraftResponseDTO unDeleteAircraft(UUID AircraftID) {
-//        Aircraft aircraft = aircraftRepository.findAircraftById(AircraftID);
-//        if (aircraft == null) {
-//            throw new ElementNotFoundException("Aircraft can not found");
-//        }
-//        if (!aircraft.isDeleted()) {
-//            throw new UnchangedStateException("Aircraft is not deleted");
-//        }
-//        aircraft.setDeleted(false);
-//        return aircraftMapper.aircrafttoAircraftResponseDTO(aircraftRepository.save(aircraft));
-//    }
-//
-//    @Override
-//    public AircraftResponseDTO deleteAircraft(UUID AircraftID) {
-//        Aircraft aircraft = aircraftRepository.findAircraftById(AircraftID);
-//        if (aircraft == null) {
-//            throw new ElementNotFoundException("Aircraft can not found");
-//        }
-//        if (aircraft.isDeleted()) {
-//            throw new UnchangedStateException("Aircraft was deleted yet");
-//        }
-//        aircraft.setDeleted(true);
-//        return aircraftMapper.aircrafttoAircraftResponseDTO(aircraftRepository.save(aircraft));
-//    }
-//
-//    @Transactional
-//    @Override
-//    public AircraftResponseDTO createAircraft(CreateAircraftRequest createAircraftRequest) {
-//
-//        Aircraft aircraft = aircraftRepository.findAircraftByCode(createAircraftRequest.getCode());
-//        if (aircraft != null) {
-//            throw new ElementExistException("Aircraft already exists");
-//        }
-//
-//        if (createAircraftRequest.getAircraftType() == null) {
-//            throw new BadRequestException("Create aircraft type request is required");
-//        }
-//
-//        Aircraft aircraftNew = Aircraft.builder()
-//                .code(createAircraftRequest.getCode())
-//                .build();
-//
-//        AircraftType aircraftType = aircraftTypeRepository.findAircraftTypeByModel(createAircraftRequest.getAircraftType().getModel());
-//
-//        if (aircraftType != null) {
-//            aircraftNew.setAircraftType(aircraftType);
-//        } else {
-//            AircraftType aircraftTypeNew = AircraftType.builder()
-//                    .model(createAircraftRequest.getAircraftType().getModel())
-//                    .manufacturer(createAircraftRequest.getAircraftType().getManufacturer())
-//                    .seatMap((Map<String, Object>) createAircraftRequest.getAircraftType().getSeatMap())
-//                    .totalSeats(createAircraftRequest.getAircraftType().getTotalSeats())
-//                    .aircrafts(List.of(aircraftNew))
-//                    .build();
-//
-//            aircraftNew.setAircraftType(aircraftTypeNew);
-//        }
-//        return aircraftMapper.aircrafttoAircraftResponseDTO(aircraftRepository.save(aircraftNew));
-//    }
-//
-//    @Override
-//    public AircraftResponseDTO updateAircraft(UpdateAircraftRequest updateAircraftRequest, UUID aircraftID) {
-//
-//        Aircraft aircraft = aircraftRepository.findAircraftById(aircraftID);
-//        if (aircraft == null) {
-//            throw new ElementNotFoundException("Aircraft not found");
-//        }
-//
-//        if (!aircraft.getCode().equals(updateAircraftRequest.getCode()) && StringUtils.hasText(updateAircraftRequest.getCode())) {
-//            Aircraft aircraftExisCode = aircraftRepository.findAircraftByCode(updateAircraftRequest.getCode());
-//            if (aircraftExisCode != null) {
-//                throw new ElementExistException("Aircraft already exists");
-//            }
-//            aircraft.setCode(updateAircraftRequest.getCode());
-//        }
-//
-//        if (updateAircraftRequest.getAircraftType() == null) {
-//            throw new BadRequestException("Create aircraft type request is required");
-//        }
-//
-////        AircraftType aircraftType = aircraftTypeRepository.findAircraftTypeByModel(updateAircraftRequest.getAircraftType().getModel());
-////
-////        if (aircraftType != null) {
-////            throw new ElementExistException("Aircraft type already exists");
-////        }
-//
-//        AircraftType aircraftType = aircraft.getAircraftType();
-//
-//        if (!aircraftType.getModel().equals(updateAircraftRequest.getAircraftType().getModel()) && StringUtils.hasText(updateAircraftRequest.getAircraftType().getModel())) {
-//            AircraftType aircraftTypeExistModel = aircraftTypeRepository.findAircraftTypeByModel(updateAircraftRequest.getAircraftType().getModel());
-//            if (aircraftTypeExistModel != null) {
-//                throw new ElementExistException("AircraftTypeModel already exists");
-//            }
-//            aircraftType.setModel(updateAircraftRequest.getAircraftType().getModel());
-//        }
-//
-//        if (StringUtils.hasText(updateAircraftRequest.getAircraftType().getManufacturer())) {
-//            aircraftType.setManufacturer(updateAircraftRequest.getAircraftType().getManufacturer());
-//        }
-//
-//        if (updateAircraftRequest.getAircraftType().getSeatMap() != null) {
-//            aircraftType.setSeatMap((Map<String, Object>) updateAircraftRequest.getAircraftType().getSeatMap());
-//        }
-//
-//        aircraft.setAircraftType(aircraftType);
-//
-//
-//        return aircraftMapper.aircrafttoAircraftResponseDTO(aircraftRepository.save(aircraft));
-//    }
-//
-//    @Override
-//    public PagingResponse searchAircrafts(Integer currentPage, Integer pageSize, String code, String model, String manufacturer) {
-//        Pageable pageable;
-//        Specification<Aircraft> spec = Specification.where(null);
-//
-//        List<String> keys = new ArrayList<>();
-//        List<String> values = new ArrayList<>();
-//
-//        String searchCode = "";
-//        if (StringUtils.hasText(code)) {
-//            searchCode = code;
-//        }
-//        keys.add("code");
-//        values.add(searchCode);
-//
-//        String searchModel = "";
-//        if (StringUtils.hasText(model)) {
-//            searchModel = model;
-//        }
-//        keys.add("model");
-//        values.add(searchModel);
-//
-//        String searchManufacturer = "";
-//        if (StringUtils.hasText(manufacturer)) {
-//            searchManufacturer = manufacturer;
-//        }
-//        keys.add("manufacturer");
-//        values.add(searchManufacturer);
-//
-//        if(keys.size() == values.size()) {
-//            for(int i = 0; i < keys.size(); i++) {
-//                String field = keys.get(i);
-//                String value = values.get(i);
-//                Specification<Aircraft> newSpec = AircraftSpecification.searchByField(field, value);
-//                if(newSpec != null) {
-//                    spec = spec.and(newSpec);
-//                }
-//            }
-//        }
-//
-//        pageable = PageRequest.of(currentPage - 1, pageSize);
-//
-//        var pageData = aircraftRepository.findAll(spec, pageable);
-//
-//        return !pageData.getContent().isEmpty() ? PagingResponse.builder()
-//                .code("Success")
-//                .message("Get all aircrafts paging successfully")
-//                .currentPage(currentPage)
-//                .elementPerPage(pageSize)
-//                .totalElements(pageData.getTotalElements())
-//                .totalPages(pageData.getTotalPages())
-//                .data(pageData.getContent().stream()
-//                        .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                        .toList())
-//                .build() :
-//                PagingResponse.builder()
-//                        .code("Failed")
-//                        .message("Get all aircrafts paging failed")
-//                        .currentPage(currentPage)
-//                        .elementPerPage(pageSize)
-//                        .totalElements(pageData.getTotalElements())
-//                        .totalPages(pageData.getTotalPages())
-//                        .data(pageData.getContent().stream()
-//                                .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                                .toList())
-//                        .build();
-//    }
-//
-//    @Override
-//    public PagingResponse searchAircraftsActive(Integer currentPage, Integer pageSize, String code, String model, String manufacturer) {
-//        Pageable pageable;
-//        Specification<Aircraft> spec = Specification.where(null);
-//
-//        List<String> keys = new ArrayList<>();
-//        List<String> values = new ArrayList<>();
-//
-//        String searchCode = "";
-//        if (StringUtils.hasText(code)) {
-//            searchCode = code;
-//        }
-//        keys.add("code");
-//        values.add(searchCode);
-//
-//        String searchModel = "";
-//        if (StringUtils.hasText(model)) {
-//            searchModel = model;
-//        }
-//        keys.add("model");
-//        values.add(searchModel);
-//
-//        String searchManufacturer = "";
-//        if (StringUtils.hasText(manufacturer)) {
-//            searchManufacturer = manufacturer;
-//        }
-//        keys.add("manufacturer");
-//        values.add(searchManufacturer);
-//
-//        if(keys.size() == values.size()) {
-//            for(int i = 0; i < keys.size(); i++) {
-//                String field = keys.get(i);
-//                String value = values.get(i);
-//                Specification<Aircraft> newSpec = AircraftSpecification.searchByField(field, value);
-//                if(newSpec != null) {
-//                    spec = spec.and(newSpec);
-//                }
-//            }
-//        }
-//
-//        pageable = PageRequest.of(currentPage - 1, pageSize);
-//
-//        var pageData = aircraftRepository.findAll(spec, pageable);
-//
-//        return !pageData.getContent().isEmpty() ? PagingResponse.builder()
-//                .code("Success")
-//                .message("Get all aircrafts paging successfully")
-//                .currentPage(currentPage)
-//                .elementPerPage(pageSize)
-//                .totalElements(pageData.getTotalElements())
-//                .totalPages(pageData.getTotalPages())
-//                .data(pageData.getContent().stream()
-//                        .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                        .toList())
-//                .build() :
-//                PagingResponse.builder()
-//                        .code("Failed")
-//                        .message("Get all aircrafts paging failed")
-//                        .currentPage(currentPage)
-//                        .elementPerPage(pageSize)
-//                        .totalElements(pageData.getTotalElements())
-//                        .totalPages(pageData.getTotalPages())
-//                        .data(pageData.getContent().stream()
-//                                .filter(BaseEntity::isDeleted)
-//                                .map(aircraftMapper::aircrafttoAircraftResponseDTO)
-//                                .toList())
-//                        .build();
-//    }
+    private final AccountRepository accountRepository;
+    private final RoleService roleService;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final JwtTokenConfiguration jwtTokenConfiguration;
+    private final JWTAuthenticationFilter jwtAuthenticationFilter;
+    private final AuthenticationManager authenticationManager;
 
+    private final JavaMailSender javaMailSender;
+
+    private final SpringTemplateEngine templateEngine;
+
+    @Value("${spring.mail.username}")
+    private String from;
+
+    @Transactional
+    @Override
+    public boolean registerAccount(AccountRegisterRequest accountRegisterRequest) {
+        Account checkExistingAccount = accountRepository.getAccountByEmail(accountRegisterRequest.getEmail());
+        if (checkExistingAccount != null) {
+            throw new ElementExistException("Tài khoản đã tồn tại");
+        }
+
+        Role role = null;
+
+        if (accountRegisterRequest.getRole() != null && accountRegisterRequest.getRole().equals("ROLE_CARE_SEEKER")) {
+            role = roleService.getRoleByRoleName(EnumRoleType.ROLE_CARE_SEEKER);
+        } else if (accountRegisterRequest.getRole() != null && accountRegisterRequest.getRole().equals("ROLE_CAREGIVER")) {
+            role = roleService.getRoleByRoleName(EnumRoleType.ROLE_CAREGIVER);
+        } else {
+            throw new BadRequestException("Vai trò không hợp lệ");
+        }
+
+        Account account = Account.builder()
+                .email(accountRegisterRequest.getEmail())
+                .password(bCryptPasswordEncoder.encode(accountRegisterRequest.getPassword()))
+                .accessToken(null)
+                .refreshToken(null)
+                .enabled(false)
+                .nonLocked(false)
+                .role(role)
+                .codeVerify(generateSixDigitCode())
+                .build();
+
+        Account accountSave = accountRepository.save(account);
+
+        return sendVerificationEmail(accountSave.getEmail(), accountSave.getRole().getRoleName().name(), accountSave.getCodeVerify());
+    }
+
+
+    @Override
+    public TokenResponse verificationUser(AccountVerificationRequest request) {
+        Account account = accountRepository.getAccountByEmail(request.getEmail());
+
+        if (account == null) {
+            throw new BadRequestException("Tài khoản không tồn tại");
+        }
+
+        if (request.getVerificationCode().equals(account.getCodeVerify())) {
+            account.setCodeVerify(null);
+            account.setEnabled(true);
+            account.setNonLocked(true);
+
+            CustomAccountDetail accountDetail = CustomAccountDetail.mapAccountToAccountDetail(account);
+            String token = jwtTokenConfiguration.generatedToken(accountDetail);
+            String refreshToken = jwtTokenConfiguration.generatedRefreshToken(accountDetail);
+
+            account.setRefreshToken(refreshToken);
+            account.setAccessToken(token);
+            accountRepository.save(account);
+
+            return TokenResponse.builder()
+                    .code("Success")
+                    .message("Xác thực thành công")
+                    .accountId(account.getAccountId())
+                    .email(account.getEmail())
+                    .token(token)
+                    .refreshToken(refreshToken)
+                    .build();
+        }
+        throw new BadRequestException("Mã xác thực không đúng. Vui lòng thử lại");
+    }
+
+    public String generateSixDigitCode() {
+        Random random = new Random();
+        int number = random.nextInt(1_000_000);
+        return String.format("%06d", number);
+    }
+
+    private boolean sendVerificationEmail(String email, String role, String verificationCode) {
+//        String recipient, String subject, String content, MultipartFile[] files
+        if (email == null) {
+            return false;
+        }
+        try {
+            Context context = new Context();
+            context.setVariable("verificationCode", verificationCode);
+            context.setVariable("name", role.equals(EnumRoleType.ROLE_CARE_SEEKER.name()) ? "Người thuê mới" : "Người chăm sóc mới");
+            context.setVariable("role", role.equals(EnumRoleType.ROLE_CARE_SEEKER.name()) ? "seeker" : "caregiver");
+
+            String content = "confirm";
+
+            String mailne = templateEngine.process(content, context);
+
+            String title = "Mã xác nhận tài khoản";
+            String senderName = "ELDERLY PLATFORM";
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom(from, senderName);
+
+            if(email.contains(",")) {
+                helper.setTo(InternetAddress.parse(email));
+            } else {
+                helper.setTo(email);
+            }
+            helper.setSubject(title);
+            helper.setText(mailne, true);
+            javaMailSender.send(mimeMessage);
+            log.error("Send mail to {}", email);
+            return true;
+        } catch (Exception e) {
+            log.error("Can not send mail {}", e.toString());
+            return false;
+        }
+    }
+
+    @Override
+    public TokenResponse refreshToken(String refreshToken) {
+        TokenResponse tokenResponse = TokenResponse.builder()
+                .code("Failed")
+                .message("Làm mới token thất bại")
+                .build();
+        String email = jwtTokenConfiguration.getEmailFromJwt(refreshToken, EnumTokenType.REFRESH_TOKEN);
+        Account account = accountRepository.getAccountByEmail(email);
+        if (account != null) {
+            if (StringUtils.hasText(refreshToken) && account.getRefreshToken().equals(refreshToken)) {
+                if (jwtTokenConfiguration.validate(refreshToken, EnumTokenType.REFRESH_TOKEN)) {
+                    CustomAccountDetail customAccountDetail = CustomAccountDetail.mapAccountToAccountDetail(account);
+                    if (customAccountDetail != null) {
+                        String newToken = jwtTokenConfiguration.generatedToken(customAccountDetail);
+                        account.setAccessToken(newToken);
+                        accountRepository.save(account);
+                        tokenResponse = TokenResponse.builder()
+                                .code("Success")
+                                .message("Làm mới token thành công")
+                                .accountId(account.getAccountId())
+                                .token(newToken)
+                                .refreshToken(refreshToken)
+                                .email(account.getEmail())
+                                .build();
+                    }
+                }
+            }
+        }
+        return tokenResponse;
+    }
+
+    @Override
+    public TokenResponse login(String email, String password) {
+        TokenResponse tokenResponse = TokenResponse.builder()
+                .code("Failed")
+                .message("Đăng nhập thất bại")
+                .build();
+        UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
+                email, password);
+        Authentication authentication = authenticationManager.authenticate(usernamePasswordAuthenticationToken);
+        CustomAccountDetail accountDetail = (CustomAccountDetail) authentication.getPrincipal();
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        // SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String token = jwtTokenConfiguration.generatedToken(accountDetail);
+        String refreshToken = jwtTokenConfiguration.generatedRefreshToken(accountDetail);
+        Account account = accountRepository.getAccountByEmail(accountDetail.getEmail());
+        if (account != null) {
+            account.setRefreshToken(refreshToken);
+            account.setAccessToken(token);
+            accountRepository.save(account);
+            tokenResponse = TokenResponse.builder()
+                    .code("Success")
+                    .message("Đăng nhập thành công")
+                    .accountId(account.getAccountId())
+                    .email(account.getEmail())
+                    .token(token)
+                    .refreshToken(refreshToken)
+                    .build();
+        }
+        return tokenResponse;
+    }
+
+    @Override
+    public boolean logout(HttpServletRequest request) {
+        String token = jwtAuthenticationFilter.getToken(request);
+        String email = jwtTokenConfiguration.getEmailFromJwt(token, EnumTokenType.TOKEN);
+        Account account = accountRepository.getAccountByEmail(email);
+        if (account == null) {
+            throw new ElementNotFoundException("Không tìm thấy tài khoản");
+        }
+        account.setAccessToken(null);
+        account.setRefreshToken(null);
+        Account checkUser = accountRepository.save(account);
+
+        return checkUser.getAccessToken() == null;
+    }
+
+    @Override
+    public Account getAccountById(UUID id) {
+        return accountRepository.findByAccountIdAndDeletedIsFalse(id).orElseThrow(
+                () -> new EntityNotFoundException("Không tìm thấy người dùng"));
+    }
+
+    // @Override
+    // public PagingResponse findAll(int currentPage, int pageSize) {
+    // Pageable pageable = PageRequest.of(currentPage - 1, pageSize);
+    //
+    // var pageData = employeeRepository.findAll(pageable);
+    //
+    // return PagingResponse.builder()
+    // .currentPage(currentPage)
+    // .pageSize(pageSize)
+    // .totalElements(pageData.getTotalElements())
+    // .totalPages(pageData.getTotalPages())
+    // .data(pageData.getContent())
+    // .build();
+    // }
+    //
+    // @Override
+    // public Employee findById(Integer id) {
+    // return this.employeeRepository.findById(id).orElse(null);
+    // }
+    //
+    // @Override
+    // public Employee save(Employee entity) {
+    // return this.employeeRepository.save(entity);
+    // }
 }

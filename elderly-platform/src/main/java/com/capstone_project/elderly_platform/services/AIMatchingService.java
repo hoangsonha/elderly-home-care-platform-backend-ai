@@ -1,7 +1,4 @@
 package com.capstone_project.elderly_platform.services;
-
-import com.capstone_project.elderly_platform.dtos.request.MatchCaregiverRequest;
-import com.capstone_project.elderly_platform.dtos.response.MatchCaregiverResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -10,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -24,25 +22,24 @@ public class AIMatchingService {
         this.restTemplate = restTemplate;
     }
 
-    public MatchCaregiverResponse matchCaregivers(MatchCaregiverRequest request) {
+    public Map<String, Object> matchCaregivers(Map<String, Object> request) {
         try {
             String url = aiServiceUrl + "/api/match-mobile";
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            HttpEntity<MatchCaregiverRequest> httpEntity = new HttpEntity<>(request, headers);
+            HttpEntity<Map<String, Object>> httpEntity = new HttpEntity<>(request, headers);
 
             log.info("Calling AI matching service: {}", url);
 
-            ResponseEntity<MatchCaregiverResponse> response = restTemplate.postForEntity(
+            ResponseEntity<Map> response = restTemplate.postForEntity(
                     url,
                     httpEntity,
-                    MatchCaregiverResponse.class);
+                    Map.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                log.info("AI matching service returned {} matches", response.getBody().getTotalMatches());
-                return response.getBody();
+                return (Map<String, Object>) response.getBody();
             } else {
                 log.error("AI matching service returned error status: {}", response.getStatusCode());
                 throw new RuntimeException("Failed to get response from AI matching service");

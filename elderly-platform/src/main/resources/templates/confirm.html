@@ -11,47 +11,110 @@
                        bgcolor="#fff">
                     <tbody>
                     <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                        <td class="" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 16px; vertical-align: top; color: #fff; font-weight: 500; text-align: center; border-radius: 3px 3px 0 0; background-color: #38414a; margin: 0; padding: 20px;"
-                            align="center" bgcolor="#71b6f9" valign="top">
-                            <a href="#" style="font-size:32px;color:#fff;">TOIREVIEW</a> <br>
-                            <span style="margin-top: 10px;display: block;">Review mọi thứ ẩn danh</span>
+                        <td class="" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 16px; vertical-align: top; color: #fff; font-weight: 500; text-align: center; border-radius: 3px 3px 0 0; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); margin: 0; padding: 30px;"
+                            align="center" valign="top">
+                            <a href="#" style="font-size:36px; color:#fff; text-decoration: none; font-weight: 700;">
+                                🏥 ELDER CARE CONNECT
+                            </a>
+                            <br>
+                            <span style="margin-top: 15px; display: block; font-size: 15px; font-weight: 400; opacity: 0.95;">
+                                Nền tảng kết nối dịch vụ chăm sóc người cao tuổi
+                            </span>
                         </td>
                     </tr>
                     <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                        <td class="content-wrap" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 20px;" valign="top">
+                        <td class="content-wrap" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 30px;" valign="top">
                             <table width="100%" cellpadding="0" cellspacing="0" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
                                 <tbody>
                                 <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
-                                        Xin chào <strong style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">[[${name}]]</strong>
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 16px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
+                                        Kính chào <strong style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 16px; color: #667eea; margin: 0;">[[${name}]]</strong>,
                                     </td>
                                 </tr>
                                 <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
-                                        Bạn đã <strong style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">đăng ký</strong> tài khoản trên hệ thống của chúng tôi.
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 15px; vertical-align: top; margin: 0; padding: 0 0 20px; line-height: 1.6;" valign="top">
+                                        Chào mừng bạn đến với <strong style="color: #667eea;">Elder Care Connect</strong> - Nền tảng kết nối dịch vụ chăm sóc người cao tuổi tại nhà ứng dụng trí tuệ nhân tạo!
                                     </td>
                                 </tr>
-                                <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
-                                        Cảm ơn bạn đã đăng ký tài khoản tại <strong>TOIREVIEW</strong>! Chúng tôi rất vui mừng khi có bạn là một phần của cộng đồng. Hành trình khám phá những nội dung chất lượng và trải nghiệm đáng tin cậy bắt đầu từ đây.
+
+                                <!-- Role-specific message -->
+                                <tr th:if="${role == 'seeker'}" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 15px; vertical-align: top; margin: 0; padding: 0 0 20px; line-height: 1.6; background-color: #f8f9ff; padding: 20px; border-radius: 8px; border-left: 4px solid #667eea;" valign="top">
+                                        Bạn đã đăng ký với vai trò <strong style="color: #667eea;">👤 Người thuê dịch vụ</strong>
                                         <br><br>
-                                        Tại TOIREVIEW, chúng tôi cam kết mang đến cho bạn nền tảng đánh giá và chia sẻ chân thực, giúp bạn đưa ra những quyết định sáng suốt. Nếu bạn có bất kỳ câu hỏi hoặc cần hỗ trợ, đội ngũ chăm sóc khách hàng của chúng tôi luôn sẵn sàng giúp đỡ bạn.
+                                        Với tài khoản này, bạn có thể:
+                                        <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
+                                            <li>🔍 Tìm kiếm người chăm sóc phù hợp với AI</li>
+                                            <li>📅 Đặt lịch chăm sóc linh hoạt</li>
+                                            <li>💬 Trao đổi trực tiếp với người chăm sóc</li>
+                                            <li>📊 Theo dõi tình trạng sức khỏe người thân</li>
+                                            <li>⭐ Đánh giá chất lượng dịch vụ</li>
+                                        </ul>
                                     </td>
                                 </tr>
+
+                                <tr th:if="${role == 'caregiver'}" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 15px; vertical-align: top; margin: 0; padding: 0 0 20px; line-height: 1.6; background-color: #f0fdf4; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981;" valign="top">
+                                        Bạn đã đăng ký với vai trò <strong style="color: #10b981;">👨‍⚕️ Người chăm sóc</strong>
+                                        <br><br>
+                                        Với tài khoản này, bạn có thể:
+                                        <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.8;">
+                                            <li>📝 Tạo hồ sơ chuyên môn của bạn</li>
+                                            <li>💼 Nhận yêu cầu chăm sóc phù hợp</li>
+                                            <li>💰 Quản lý thu nhập và lịch làm việc</li>
+                                            <li>📱 Ghi nhận công việc hàng ngày</li>
+                                            <li>🎓 Nâng cao kỹ năng qua khóa học</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+
                                 <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
-                                        Chào mừng bạn đến với TOIREVIEW – nơi bạn có thể tin tưởng vào những đánh giá chất lượng và sự hỗ trợ tận tâm.
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 15px; vertical-align: top; margin: 0; padding: 20px 0; line-height: 1.6;" valign="top">
+                                        Để hoàn tất đăng ký, vui lòng xác thực tài khoản của bạn bằng mã dưới đây:
                                     </td>
                                 </tr>
+
+                                <!-- Verification Code Box -->
                                 <tr>
-                                    <td class="content-block" style="padding: 20px 0; text-align: center;">
-                                        <p style="font-size: 16px; margin: 0;">Mã xác thực của bạn là:</p>
-                                        <p style="font-size: 28px; font-weight: bold; color: #f1556c; margin: 10px 0;">[[${verificationCode}]]</p>
+                                    <td class="content-block" style="padding: 30px 0; text-align: center; background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-radius: 12px;">
+                                        <p style="font-size: 16px; margin: 0 0 15px 0; color: #666; font-weight: 500;">MÃ XÁC THỰC CỦA BẠN</p>
+                                        <p style="font-size: 42px; font-weight: 700; color: #667eea; margin: 10px 0; letter-spacing: 8px; font-family: 'Courier New', monospace;">
+                                            [[${verificationCode}]]
+                                        </p>
+                                        <p style="font-size: 13px; margin: 15px 0 0 0; color: #999;">
+                                            ⏰ Mã có hiệu lực trong <strong>15 phút</strong>
+                                        </p>
                                     </td>
                                 </tr>
+
                                 <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 0 0 20px;" valign="top">
-                                        Cảm ơn bạn đã chọn <b>TOIREVIEW</b>.
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; vertical-align: top; margin: 0; padding: 25px 0 10px 0; line-height: 1.6; color: #666;" valign="top">
+                                        <strong style="color: #e74c3c;">⚠️ Lưu ý bảo mật:</strong>
+                                        <ul style="margin: 10px 0; padding-left: 20px; line-height: 1.8; font-size: 13px;">
+                                            <li>Không chia sẻ mã này với bất kỳ ai</li>
+                                            <li>Nhân viên Elder Care Connect sẽ không bao giờ yêu cầu mã của bạn</li>
+                                            <li>Nếu bạn không thực hiện đăng ký này, vui lòng bỏ qua email</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+
+                                <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 15px; vertical-align: top; margin: 0; padding: 20px 0 0 0; line-height: 1.6;" valign="top">
+                                        Nếu bạn cần hỗ trợ, đội ngũ của chúng tôi luôn sẵn sàng giúp đỡ:
+                                        <br>
+                                        📧 Email: <a href="mailto:support@eldercare.com" style="color: #667eea;">support@eldercare.com</a>
+                                        <br>
+                                        📞 Hotline: <strong style="color: #667eea;">1900-xxxx</strong> (24/7)
+                                    </td>
+                                </tr>
+
+                                <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
+                                    <td class="content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 15px; vertical-align: top; margin: 0; padding: 25px 0 0 0; line-height: 1.6;" valign="top">
+                                        Trân trọng,
+                                        <br>
+                                        <strong style="color: #667eea;">Đội ngũ Elder Care Connect</strong>
+                                        <br>
+                                        <em style="color: #999; font-size: 13px;">Vì sức khỏe và hạnh phúc của người thân bạn 💙</em>
                                     </td>
                                 </tr>
                                 </tbody>
@@ -60,11 +123,31 @@
                     </tr>
                     </tbody>
                 </table>
+
+                <!-- Footer -->
                 <div class="footer" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; width: 100%; clear: both; color: #999; margin: 0; padding: 20px;">
                     <table width="100%" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
                         <tbody>
                         <tr style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 14px; margin: 0;">
-                            <td class="aligncenter content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; vertical-align: top; color: #999; text-align: center; margin: 0; padding: 0 0 20px;" align="center" valign="top"><a href="#" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; color: #999; text-decoration: underline; margin: 0;">Unsubscribe</a> from these alerts.
+                            <td class="aligncenter content-block" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; vertical-align: top; color: #999; text-align: center; margin: 0; padding: 0 0 10px; border-top: 1px solid #eee; padding-top: 20px;" align="center" valign="top">
+                                <p style="margin: 0 0 10px 0;">
+                                    Elder Care Connect - Nền tảng chăm sóc người cao tuổi
+                                </p>
+                                <p style="margin: 0 0 10px 0;">
+                                    📍 Địa chỉ: FPT University, Hồ Chí Minh, Việt Nam
+                                </p>
+                                <p style="margin: 0;">
+                                    <a href="#" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; color: #667eea; text-decoration: none; margin: 0 10px;">Chính sách bảo mật</a> |
+                                    <a href="#" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; color: #667eea; text-decoration: none; margin: 0 10px;">Điều khoản sử dụng</a> |
+                                    <a href="#" style="font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif; box-sizing: border-box; font-size: 12px; color: #999; text-decoration: underline; margin: 0 10px;">Hủy đăng ký</a>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="aligncenter" style="text-align: center; padding-top: 15px;" align="center">
+                                <p style="font-size: 11px; color: #bbb; margin: 0;">
+                                    © 2025 Elder Care Connect. All rights reserved.
+                                </p>
                             </td>
                         </tr>
                         </tbody>

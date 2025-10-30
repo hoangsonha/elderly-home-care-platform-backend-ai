@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.configurations;
 
 import com.capstone_project.elderly_platform.pojos.Account;
+import com.capstone_project.elderly_platform.pojos.Role;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,19 +13,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
-
 
 @Getter
 @Setter
 @Builder
 public class CustomAccountDetail implements UserDetails {
     private UUID id;
-    private String firstName;
-    private String lastName;
     private String email;
     private String password;
-    private String phone;
     private String accessToken;
     private String refreshToken;
     private Boolean nonLocked;
@@ -33,17 +29,15 @@ public class CustomAccountDetail implements UserDetails {
 
     public static CustomAccountDetail mapAccountToAccountDetail(Account account) {
 
-        List<GrantedAuthority> roles = account.getRoles().stream().map(
-                role -> new SimpleGrantedAuthority(role.getRoleName().name())
-                ).collect(Collectors.toList());
+        Role role = account.getRole();
+        SimpleGrantedAuthority simpleGrantedAuthority = new SimpleGrantedAuthority(role.getRoleName().name());
+        List<GrantedAuthority> roles = new ArrayList<>();
+        roles.add(simpleGrantedAuthority);
 
         return CustomAccountDetail.builder()
-                .id(account.getAccountID())
-                .firstName(account.getFirstName())
-                .lastName(account.getLastName())
+                .id(account.getAccountId())
                 .email(account.getEmail())
                 .password(account.getPassword())
-                .phone(account.getPhone())
                 .nonLocked(account.getNonLocked())
                 .enabled(account.getEnabled())
                 .accessToken(account.getAccessToken())

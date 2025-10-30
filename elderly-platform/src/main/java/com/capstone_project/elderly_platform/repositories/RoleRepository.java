@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.repositories;
 
+import com.capstone_project.elderly_platform.enums.EnumRoleType;
 import com.capstone_project.elderly_platform.pojos.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, UUID> {
+    List<Role> getRoleByRoleName(EnumRoleType roleName);
 //    Page<Aircraft> findAllByDeletedFalse(Pageable pageable);
 //    List<Aircraft> findByDeletedIsFalse();
 //    Aircraft findAircraftById(UUID id);
