@@ -32,9 +32,6 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: 123456789
       # Note: DB_PORT in container stays 5432, only host mapping changed
-      # CORS Configuration - Allow all origins for public APIs
-      CORS_ALLOW_ALL: "true"
-      # Or specify specific origins: CORS_ALLOWED_ORIGINS: "http://your-domain.com,https://app.your-domain.com"
     volumes:
       - ./elderly-platform/src/main/resources/keys/key_firebase.json:/app/keys/key_firebase.json:ro
     depends_on:

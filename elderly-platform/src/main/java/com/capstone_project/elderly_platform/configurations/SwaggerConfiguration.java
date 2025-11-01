@@ -42,7 +42,7 @@ public class SwaggerConfiguration {
                 .title(swaggerAppName)
                 .version("3.0")
                 .contact(contact)
-                .description("Those api below to manage diamond shop");
+                .description("Those api below to manage elderly platform application");
 
         SecurityRequirement securityRequirement = new SecurityRequirement();
         securityRequirement.addList(swaggerAddSecurityName);
