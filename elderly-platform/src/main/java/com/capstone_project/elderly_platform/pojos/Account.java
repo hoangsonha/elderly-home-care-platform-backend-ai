@@ -52,8 +52,8 @@ public class Account extends BaseEntity {
     @JoinColumn(name = "role_id")
     Role role;
 
-//    @JdbcTypeCode(SqlTypes.JSON)
-//    @Column(name = "seat_map", columnDefinition = "jsonb")
-//    Map<String, Object> seatMap;
+    // @JdbcTypeCode(SqlTypes.JSON)
+    // @Column(name = "seat_map", columnDefinition = "jsonb")
+    // Map<String, Object> seatMap;
 
 }

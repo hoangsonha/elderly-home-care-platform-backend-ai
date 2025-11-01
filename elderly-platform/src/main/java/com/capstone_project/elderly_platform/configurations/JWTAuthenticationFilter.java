@@ -46,6 +46,7 @@ public class JWTAuthenticationFilter extends OncePerRequestFilter {
             "/api-docs/**",
             "/swagger-resources/**",
             "/public/**",
+            "/accounts/**",
             "/actuator/**",
             "/api/v1/public/**",
             "/api/v1/hashtags/non-paging",

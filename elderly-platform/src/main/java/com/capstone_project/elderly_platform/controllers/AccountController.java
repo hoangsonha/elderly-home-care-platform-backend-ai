@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RefreshScope
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "Aircraft", description = "Operations related to aircraft management")
+@Tag(name = "Account", description = "Operations related to authentication management")
 public class AccountController {
 
     private final AccountService accountService;
