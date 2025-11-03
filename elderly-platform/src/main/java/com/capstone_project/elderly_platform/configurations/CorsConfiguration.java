@@ -14,15 +14,11 @@ public class CorsConfiguration {
     @Bean
     public CorsFilter corsFilter() {
         org.springframework.web.cors.CorsConfiguration corsConfiguration = new org.springframework.web.cors.CorsConfiguration();
-        corsConfiguration.setAllowedOrigins(Arrays.asList(
+        corsConfiguration.setAllowedOriginPatterns(Arrays.asList(
                 "http://localhost",
-                "http://localhost:5173",
-                "http://localhost:3000",
-                "http://localhost:3001",
-                "http://toireview.net",
-                "https://toireview.net",
-                "http://34.134.211.231:8080",
-                "https://34.134.211.231:8080"));
+                "http://localhost:*",
+                "http://34.134.211.231:*",
+                "https://34.134.211.231:*"));
         corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         corsConfiguration.setAllowedHeaders(List.of("*"));
         corsConfiguration.setExposedHeaders(List.of("Content-Disposition"));
@@ -31,4 +27,25 @@ public class CorsConfiguration {
         source.registerCorsConfiguration("/**", corsConfiguration);
         return new CorsFilter(source);
     }
+
+//    @Bean
+//    public CorsFilter corsFilter() {
+//        org.springframework.web.cors.CorsConfiguration corsConfiguration = new org.springframework.web.cors.CorsConfiguration();
+//        corsConfiguration.setAllowedOrigins(Arrays.asList(
+//                "http://localhost",
+//                "http://localhost:5173",
+//                "http://localhost:3000",
+//                "http://localhost:3001",
+//                "http://toireview.net",
+//                "https://toireview.net",
+//                "http://34.134.211.231:8080",
+//                "https://34.134.211.231:8080"));
+//        corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+//        corsConfiguration.setAllowedHeaders(List.of("*"));
+//        corsConfiguration.setExposedHeaders(List.of("Content-Disposition"));
+//        corsConfiguration.setAllowCredentials(true);
+//        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+//        source.registerCorsConfiguration("/**", corsConfiguration);
+//        return new CorsFilter(source);
+//    }
 }
