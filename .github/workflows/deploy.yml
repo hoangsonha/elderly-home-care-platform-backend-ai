@@ -22,8 +22,7 @@ jobs:
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
-          debug: true
-          script_stop: false  # ⬅️ CHANGED: Don't stop on non-critical errors
+          script_stop: false  # Don't stop on non-critical errors
           script: |
             set -e  # Exit on error
             
@@ -47,41 +46,9 @@ jobs:
             echo ""
             
             # Navigate to project directory
-            echo "📂 [STEP 2/9] Navigating to project directory..."
+            echo "📂 [STEP 2/8] Navigating to project directory..."
             cd ~/elderly-home-care-platform-backend-ai || { echo "❌ Directory not found!"; exit 1; }
             echo "✅ Current directory: $(pwd)"
-            echo ""
-            
-            # Protect SSH authorized_keys (backup and restore if needed)
-            echo "🔐 [STEP 3/9] Protecting SSH authorized_keys..."
-            SSH_DIR="$HOME/.ssh"
-            SSH_KEY_FILE="$SSH_DIR/authorized_keys"
-            SSH_BACKUP_FILE="$PWD/.ssh_authorized_keys_backup"
-            
-            # Create .ssh directory if it doesn't exist
-            mkdir -p "$SSH_DIR"
-            
-            # Backup existing authorized_keys if it exists and has content
-            if [ -f "$SSH_KEY_FILE" ] && [ -s "$SSH_KEY_FILE" ]; then
-              echo "   📋 Backing up existing authorized_keys..."
-              cp "$SSH_KEY_FILE" "$SSH_BACKUP_FILE" 2>/dev/null || true
-              echo "   ✅ Backup created"
-            elif [ -f "$SSH_BACKUP_FILE" ] && [ -s "$SSH_BACKUP_FILE" ]; then
-              echo "   ⚠️  authorized_keys missing, restoring from backup..."
-              cp "$SSH_BACKUP_FILE" "$SSH_KEY_FILE" 2>/dev/null || true
-              chmod 600 "$SSH_KEY_FILE" 2>/dev/null || true
-              echo "   ✅ Restored from backup"
-            else
-              echo "   ⚠️  No authorized_keys found and no backup available"
-              echo "   ℹ️  Please add SSH key manually: echo 'PUBLIC_KEY' > ~/.ssh/authorized_keys"
-            fi
-            
-            # Ensure correct permissions
-            chmod 700 "$SSH_DIR" 2>/dev/null || true
-            if [ -f "$SSH_KEY_FILE" ]; then
-              chmod 600 "$SSH_KEY_FILE" 2>/dev/null || true
-            fi
-            echo "✅ SSH protection completed"
             echo ""
             
             # Determine current branch (if exists) or use default
@@ -90,7 +57,7 @@ jobs:
             echo ""
             
             # Pull latest code from GitHub
-            echo "⬇️  [STEP 4/9] Pulling latest code from GitHub..."
+            echo "⬇️  [STEP 3/8] Pulling latest code from GitHub..."
             git fetch origin
             if git pull origin $CURRENT_BRANCH || git pull origin main || git pull origin master; then
               echo "✅ Code updated successfully"
@@ -100,7 +67,7 @@ jobs:
             echo ""
             
             # Backup database before deployment
-            echo "💾 [STEP 5/9] Creating Database Backup..."
+            echo "💾 [STEP 4/8] Creating Database Backup..."
             BACKUP_DIR="$PWD/backups"
             mkdir -p "$BACKUP_DIR"
             echo "📁 Backup directory: $BACKUP_DIR"
@@ -149,7 +116,7 @@ jobs:
             echo ""
             
             # Stop existing containers (gracefully, don't remove volumes)
-            echo "🛑 [STEP 6/9] Stopping existing containers..."
+            echo "🛑 [STEP 5/8] Stopping existing containers..."
             echo "   ℹ️  Note: Volumes will be preserved (database data safe)"
             if $DOCKER_COMPOSE down; then
               echo "✅ Containers stopped successfully"
@@ -159,7 +126,7 @@ jobs:
             echo ""
             
             # Rebuild and start containers
-            echo "🔨 [STEP 7/9] Building containers..."
+            echo "🔨 [STEP 6/8] Building containers..."
             echo "   ℹ️  Building only changed services (using cache when possible)..."
             echo "   ⏳ This may take several minutes if dependencies changed..."
             if $DOCKER_COMPOSE build; then
@@ -170,7 +137,7 @@ jobs:
             fi
             echo ""
             
-            echo "🚀 [STEP 8/9] Starting containers..."
+            echo "🚀 [STEP 7/8] Starting containers..."
             if $DOCKER_COMPOSE up -d; then
               echo "✅ Containers started successfully"
             else
@@ -186,19 +153,7 @@ jobs:
             echo ""
             
             # Check container status
-            echo "📊 [STEP 9/9] Checking deployment status..."
-            
-            # Final SSH key backup check
-            echo "🔐 Final SSH key protection check..."
-            if [ -f "$SSH_KEY_FILE" ] && [ -s "$SSH_KEY_FILE" ]; then
-              # Ensure backup is up to date
-              cp "$SSH_KEY_FILE" "$SSH_BACKUP_FILE" 2>/dev/null || true
-              echo "   ✅ SSH authorized_keys is safe"
-            else
-              echo "   ⚠️  WARNING: authorized_keys is missing or empty!"
-              echo "   💡 Restore from backup manually if needed"
-            fi
-            echo ""
+            echo "📊 [STEP 8/8] Checking deployment status..."
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "📦 CONTAINER STATUS"
