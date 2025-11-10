@@ -52,6 +52,12 @@ public class Account extends BaseEntity {
     @JoinColumn(name = "role_id")
     Role role;
 
+    @OneToOne(mappedBy = "account")
+    CareSeekerProfile careSeekerProfile;
+
+    @OneToOne(mappedBy = "account")
+    CaregiverProfile caregiverProfile;
+
     // @JdbcTypeCode(SqlTypes.JSON)
     // @Column(name = "seat_map", columnDefinition = "jsonb")
     // Map<String, Object> seatMap;

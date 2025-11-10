@@ -5,14 +5,6 @@
     "care_level": 3,
     "health_status": "weak",
     "required_years_experience": 3,
-    "personality": [
-      "thân thiện",
-      "kiên nhẫn"
-    ],
-    "attitude": [
-      "tích cực",
-      "chăm chỉ"
-    ],
     "overall_rating_range": [
       3.5,
       5.0
@@ -57,24 +49,15 @@
       "lon": 106.72,
       "address": "Quận 7, TP.HCM"
     },
-    "budget_per_hour": 90000,
     "gender_preference": null
   },
   {
     "id": "req_002",
     "seeker_name": "Nguyễn Văn C",
-    "care_level": 4,
+    "care_level": 3,
     "elderly_age": 85,
     "health_status": "weak",
     "required_years_experience": 5,
-    "personality": [
-      "kiên nhẫn",
-      "tận tâm"
-    ],
-    "attitude": [
-      "chuyên nghiệp",
-      "cẩn thận"
-    ],
     "overall_rating_range": [
       4.0,
       5.0
@@ -116,7 +99,6 @@
         "end": "18:00"
       }
     ],
-    "budget_per_hour": 110000,
     "gender_preference": null
   },
   {
@@ -130,14 +112,6 @@
     ],
     "health_status": "good",
     "required_years_experience": null,
-    "personality": [
-      "vui vẻ",
-      "nhiệt tình"
-    ],
-    "attitude": [
-      "thân thiện",
-      "hòa đồng"
-    ],
     "overall_rating_range": null,
     "skills": {
       "required_skills": [
@@ -173,7 +147,6 @@
         "end": "12:00"
       }
     ],
-    "budget_per_hour": 70000,
     "gender_preference": null
   },
   {
@@ -183,14 +156,6 @@
     "elderly_age": 72,
     "health_status": "moderate",
     "required_years_experience": 2,
-    "personality": [
-      "cẩn thận",
-      "tỉ mỉ"
-    ],
-    "attitude": [
-      "chăm chỉ",
-      "trách nhiệm"
-    ],
     "overall_rating_range": [
       3.0,
       4.5
@@ -230,7 +195,6 @@
         "end": "12:00"
       }
     ],
-    "budget_per_hour": 75000,
     "gender_preference": "female"
   },
   {
@@ -244,14 +208,6 @@
     ],
     "health_status": "weak",
     "required_years_experience": 3,
-    "personality": [
-      "kiên nhẫn",
-      "hiểu biết"
-    ],
-    "attitude": [
-      "tận tâm",
-      "nhẹ nhàng"
-    ],
     "overall_rating_range": [
       3.5,
       5.0
@@ -292,7 +248,6 @@
         "end": "17:00"
       }
     ],
-    "budget_per_hour": 85000,
     "gender_preference": "female"
   }
 ]

@@ -40,7 +40,7 @@ class RuleBasedMatcher:
     
     Hard Filters (11 filters):
         1. Care Level: caregiver.max_care_level >= request.care_level
-        2. Degree: Level 3+ bắt buộc có bằng cấp
+        2. Degree: Level 2+ bắt buộc có bằng cấp
         3. Distance: distance <= caregiver.service_radius_km
         4. Time: 100% overlap với available slots
         5. Gender: match gender preference (nếu có)
@@ -51,26 +51,24 @@ class RuleBasedMatcher:
         10. Overall Rating Range: caregiver.overall_rating nằm trong request.overall_rating_range (nếu có)
         11. Required Skills: 100% required_skills phải có trong caregiver skills
     
-    Soft Scoring Features (7 features, weights sum = 1.0):
+    Soft Scoring Features (6 features, weights sum = 1.0):
         - Credential (30%): Bằng cấp, care level
         - Skills (25%): Priority skills matching
         - Distance (15%): Khoảng cách địa lý
         - Rating (12%): Đánh giá từ khách hàng
-        - Experience (8%): Số năm kinh nghiệm
-        - Price (8%): Gần budget
-        - Trust (2%): Trust score
+        - Experience (9%): Số năm kinh nghiệm
+        - Trust (9%): Trust score
     """
     
     def __init__(self):
         # Weights for scoring features (sum = 1.0)
         self.weights = {
-            'credential': 0.30,   # Bằng cấp, care level (+5%)
-            'skills': 0.25,       # Priority skills matching (+5%)
-            'distance': 0.15,     # Gần = thuận tiện (+3%)
-            'rating': 0.12,       # Chất lượng đã được verify (+2%)
-            'experience': 0.08,   # Kinh nghiệm (giữ nguyên)
-            'price': 0.08,        # Gần budget (giữ nguyên)
-            'trust': 0.02         # Độ tin cậy (-3%)
+            'credential': 0.30,   # Bằng cấp, care level
+            'skills': 0.25,       # Priority skills matching
+            'distance': 0.15,     # Gần = thuận tiện
+            'rating': 0.12,       # Chất lượng đã được verify
+            'experience': 0.09,   # Kinh nghiệm
+            'trust': 0.09         # Độ tin cậy
         }
     
     def match(
@@ -286,7 +284,6 @@ class RuleBasedMatcher:
         # Tính max_care_level động thay vì dùng giá trị cố định
         max_care_level = self.calculate_max_care_level_dynamic(cg)
         years_experience = professional_info.get('years_experience', cg.get('years_experience'))
-        hourly_rate = professional_info.get('price_per_hour', professional_info.get('hourly_rate', cg.get('hourly_rate', cg.get('price_per_hour'))))
         gender = personal_info.get('gender', cg.get('gender'))
         cg_lat = location_info.get('lat', cg.get('lat'))
         cg_lon = location_info.get('lon', cg.get('lon'))
@@ -300,8 +297,8 @@ class RuleBasedMatcher:
         if max_care_level < req['care_level']:
             return None
         
-        # Filter 2: Degree requirement cho level 3+
-        # Level 3-4 BẮT BUỘC phải có bằng cấp
+        # Filter 2: Degree requirement cho level 2+
+        # Level 2-3 BẮT BUỘC phải có bằng cấp
         credentials = cg.get('credentials', [])
         
         # Helper: Check credential còn hạn
@@ -319,7 +316,7 @@ class RuleBasedMatcher:
         valid_credentials = [c for c in credentials if is_valid_credential(c)]
         has_degree = any(c.get('type') == 'degree' for c in valid_credentials)
         
-        if req['care_level'] >= 3 and not has_degree:
+        if req['care_level'] >= 2 and not has_degree:
             return None
         
         # Filter 3: Distance - Logic đúng: caregiver quyết định bán kính phục vụ
@@ -446,10 +443,7 @@ class RuleBasedMatcher:
         # 6. Experience score - Improved: min 0.1 cho caregiver mới
         experience_score = min(1.0, max(0.1, years_experience / 10.0))
         
-        # 7. Price score (gần budget = tốt)
-        price_score = self._calculate_price_score(req, cg, hourly_rate)
-        
-        # 8. Trust score (simplified: dựa trên rating + experience + reviews)
+        # 7. Trust score (simplified: dựa trên rating + experience + reviews)
         trust_score = self._calculate_trust_score(cg)
         
         # ========== WEIGHTED SUM ==========
@@ -460,7 +454,6 @@ class RuleBasedMatcher:
             self.weights['distance'] * distance_score +
             self.weights['rating'] * rating_score +
             self.weights['experience'] * experience_score +
-            self.weights['price'] * price_score +
             self.weights['trust'] * trust_score
         )
         
@@ -473,7 +466,6 @@ class RuleBasedMatcher:
                 'distance': round(distance_score, 3),
                 'rating': round(rating_score, 3),
                 'experience': round(experience_score, 3),
-                'price': round(price_score, 3),
                 'trust': round(trust_score, 3)
             }
         }
@@ -549,15 +541,15 @@ class RuleBasedMatcher:
         Tính điểm credential dựa trên degree và certificates.
         
         Logic:
-            - Degree: Level 1 = 1 điểm, Level 2 = 2 điểm, Level 3 = 3 điểm, Level 4 = 4 điểm
-            - Certificate: Mỗi certificate đạt yêu cầu = 0.5 điểm (max 12 certs = 6 điểm)
-            - Max total: 4 + 6 = 10 điểm
+            - Degree: Level 1 = 1 điểm, Level 2 = 2 điểm, Level 3 = 3 điểm
+            - Certificate: Mỗi certificate đạt yêu cầu = 0.5 điểm (max 14 certs = 7 điểm)
+            - Max total: 3 + 7 = 10 điểm
             - Normalize về 0-1: score / 10.0
         """
         credentials = cg.get('credentials', [])
         required_level = req['care_level']
         score = 0.0
-        MAX_CREDENTIAL_SCORE = 10.0  # Max: degree 4 + 12 certs
+        MAX_CREDENTIAL_SCORE = 10.0  # Max: degree 3 + 14 certs
         
         # Lọc credentials hợp lệ
         def is_valid_credential(cred):
@@ -575,7 +567,7 @@ class RuleBasedMatcher:
         
         valid_credentials = [c for c in credentials if is_valid_credential(c)]
         
-        # 1. Degree bonus: Level 1 = 1 điểm, Level 2 = 2 điểm, Level 3 = 3 điểm, Level 4 = 4 điểm
+        # 1. Degree bonus: Level 1 = 1 điểm, Level 2 = 2 điểm, Level 3 = 3 điểm
         degrees = [c for c in valid_credentials if c.get('type') == 'degree']
         if degrees:
             # Lấy degree có level cao nhất
@@ -585,7 +577,7 @@ class RuleBasedMatcher:
                 if applicable_levels:
                     max_degree_level = max(max_degree_level, max(applicable_levels))
             
-            # Degree bonus theo level (1-4 điểm)
+            # Degree bonus theo level (1-3 điểm)
             degree_bonus = max_degree_level
             score += degree_bonus
         
@@ -600,8 +592,8 @@ class RuleBasedMatcher:
                 if any(level >= required_level for level in applicable_levels):
                     score += 0.5  # Mỗi certificate đạt yêu cầu = +0.5 điểm
                     cert_count += 1
-                    # Giới hạn max 12 certificates (6 điểm)
-                    if cert_count >= 12:
+                    # Giới hạn max 14 certificates (7 điểm)
+                    if cert_count >= 14:
                         break
         
         # Normalize về 0-1
@@ -649,42 +641,6 @@ class RuleBasedMatcher:
         
         # Normalize về 0-1
         return min(1.0, bayesian_rating / 5.0)
-    
-    def _calculate_price_score(self, req: Dict, cg: Dict, hourly_rate: float = None) -> float:
-        """
-        Tính điểm price - normalize về 0-1.
-        
-        Logic:
-            - Rẻ hơn budget: Điểm cao hơn (tuyến tính)
-            - Đúng budget: 1.0
-            - Đắt hơn budget: Penalty (giảm điểm)
-            - Đắt gấp đôi hoặc hơn: 0.0
-            - Budget null: Trả về 1.0 (không ảnh hưởng điểm)
-        """
-        budget = req.get('budget_per_hour')
-        
-        # Nếu budget_per_hour là null hoặc không có, trả về 1.0
-        if budget is None:
-            return 1.0
-        if hourly_rate is None:
-            professional_info = cg.get('professional_info', cg)
-            hourly_rate = professional_info.get('price_per_hour', professional_info.get('hourly_rate', cg.get('price_per_hour', cg.get('hourly_rate', 0))))
-        
-        if hourly_rate <= budget:
-            # Giá <= budget: điểm từ 0.8 - 1.0
-            # Giá = 50% budget → 1.0
-            # Giá = budget → 0.9
-            if hourly_rate < budget * 0.5:
-                return 1.0  # Rất rẻ
-            else:
-                # Tuyến tính từ 1.0 (50% budget) xuống 0.9 (100% budget)
-                ratio = hourly_rate / budget
-                return 1.0 - (ratio - 0.5) * 0.2  # 0.9 - 1.0
-        else:
-            # Giá > budget: penalty
-            # Giá gấp đôi budget → 0.0
-            excess_ratio = (hourly_rate - budget) / budget
-            return max(0.0, 1.0 - excess_ratio)
     
     def _calculate_trust_score(self, cg: Dict) -> float:
         """
@@ -763,7 +719,6 @@ class RuleBasedMatcher:
         # Tính max_care_level động thay vì dùng giá trị cố định
         max_care_level = self.calculate_max_care_level_dynamic(cg)
         years_experience = professional_info.get('years_experience', cg.get('years_experience'))
-        hourly_rate = professional_info.get('price_per_hour', professional_info.get('hourly_rate', cg.get('hourly_rate', cg.get('price_per_hour'))))
         gender = personal_info.get('gender', cg.get('gender'))
         cg_lat = location_info.get('lat', cg.get('lat'))
         cg_lon = location_info.get('lon', cg.get('lon'))
@@ -894,10 +849,7 @@ class RuleBasedMatcher:
         # 6. Experience score - Improved: min 0.1 cho caregiver mới
         experience_score = min(1.0, max(0.1, years_experience / 10.0))
         
-        # 7. Price score (gần budget = tốt)
-        price_score = self._calculate_price_score(req, cg, hourly_rate)
-        
-        # 8. Trust score (simplified: dựa trên rating + experience + reviews)
+        # 7. Trust score (simplified: dựa trên rating + experience + reviews)
         trust_score = self._calculate_trust_score(cg)
         
         # ========== WEIGHTED SUM ==========
@@ -908,7 +860,6 @@ class RuleBasedMatcher:
             self.weights['distance'] * distance_score +
             self.weights['rating'] * rating_score +
             self.weights['experience'] * experience_score +
-            self.weights['price'] * price_score +
             self.weights['trust'] * trust_score
         )
         
@@ -921,7 +872,6 @@ class RuleBasedMatcher:
                 'distance': round(distance_score, 3),
                 'rating': round(rating_score, 3),
                 'experience': round(experience_score, 3),
-                'price': round(price_score, 3),
                 'trust': round(trust_score, 3)
             }
         }

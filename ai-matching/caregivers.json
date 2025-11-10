@@ -28,8 +28,7 @@
         "issue_date": "2016-06-15",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_9aa22386"
@@ -57,8 +56,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -275,8 +273,7 @@
         "name": "Bác sĩ Đa khoa",
         "issue_date": "2013-07-20",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_a1cf3e92"
@@ -287,8 +284,7 @@
         "issue_date": "2019-11-15",
         "expiry_date": "2025-11-15",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -304,8 +300,7 @@
         "expiry_date": "2027-03-10",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -503,8 +498,7 @@
         "issue_date": "2017-06-30",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_eb15a42b"
@@ -730,8 +724,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -746,8 +739,7 @@
         "expiry_date": "2031-03-06",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -983,8 +975,7 @@
         "issue_date": "2023-04-01",
         "expiry_date": "2026-04-06",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -1214,8 +1205,7 @@
         "issue_date": "2022-02-01",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_965e8a9e"
@@ -1226,8 +1216,7 @@
         "issue_date": "2025-05-29",
         "expiry_date": "2030-07-08",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "cardiology"
@@ -1242,8 +1231,7 @@
         "expiry_date": "2027-09-17",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -1257,7 +1245,7 @@
         "issue_date": "2023-01-18",
         "expiry_date": "2026-12-06",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -1508,8 +1496,7 @@
         "issue_date": "2023-12-29",
         "expiry_date": "2029-04-13",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -1695,7 +1682,7 @@
         "issue_date": "2024-08-05",
         "expiry_date": "2028-09-19",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -1912,8 +1899,7 @@
         "issue_date": "2024-06-22",
         "expiry_date": "2030-10-21",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "cardiology"
@@ -1927,8 +1913,7 @@
         "issue_date": "2023-07-29",
         "expiry_date": "2030-03-20",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -2392,7 +2377,7 @@
         "issue_date": "2024-09-01",
         "expiry_date": "2029-01-09",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -2406,8 +2391,7 @@
         "issue_date": "2022-11-17",
         "expiry_date": "2029-02-08",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -2620,8 +2604,7 @@
         "issue_date": "2024-01-08",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_cd0acba5"
@@ -2634,8 +2617,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -2853,8 +2835,7 @@
         "issue_date": "2022-12-21",
         "expiry_date": "2029-01-17",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -3079,8 +3060,7 @@
         "issue_date": "2018-01-18",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_da6bc77f"
@@ -3092,8 +3072,7 @@
         "expiry_date": "2030-11-28",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -3122,8 +3101,7 @@
         "issue_date": "2023-10-24",
         "expiry_date": "2029-04-10",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -3345,8 +3323,7 @@
         "issue_date": "2017-04-01",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_0c65a2f1"
@@ -3359,8 +3336,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -3840,8 +3816,7 @@
         "issue_date": "2022-02-02",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_adc451a1"
@@ -3852,8 +3827,7 @@
         "issue_date": "2025-06-18",
         "expiry_date": "2029-12-03",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -3869,8 +3843,7 @@
         "expiry_date": "2028-12-11",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -3884,8 +3857,7 @@
         "issue_date": "2024-03-09",
         "expiry_date": "2031-03-03",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -4104,8 +4076,7 @@
         "issue_date": "2020-12-22",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_0067e363"
@@ -4116,8 +4087,7 @@
         "issue_date": "2024-01-08",
         "expiry_date": "2029-12-13",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "cardiology"
@@ -4133,8 +4103,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -4371,8 +4340,7 @@
         "issue_date": "2023-07-17",
         "expiry_date": "2027-12-15",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -4387,8 +4355,7 @@
         "issue_date": "2023-04-22",
         "expiry_date": "2029-01-13",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -4608,7 +4575,7 @@
         "issue_date": "2024-11-04",
         "expiry_date": "2029-10-27",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -4637,8 +4604,7 @@
         "issue_date": "2025-02-11",
         "expiry_date": "2031-02-26",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -4855,8 +4821,7 @@
         "issue_date": "2023-03-18",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_5e8ecd26"
@@ -4869,8 +4834,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -4885,8 +4849,7 @@
         "expiry_date": "2030-05-22",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -5112,8 +5075,7 @@
         "issue_date": "2025-06-16",
         "expiry_date": "2032-06-10",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "cardiology"
@@ -5127,8 +5089,7 @@
         "issue_date": "2022-10-25",
         "expiry_date": "2027-06-20",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -5369,8 +5330,7 @@
         "issue_date": "2024-12-26",
         "expiry_date": "2030-09-25",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "cardiology"
@@ -5588,8 +5548,7 @@
         "issue_date": "2018-02-14",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_96b30b97"
@@ -5816,8 +5775,7 @@
         "issue_date": "2015-10-07",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_2a70c683"
@@ -5830,8 +5788,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -6061,8 +6018,7 @@
         "issue_date": "2021-09-15",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_429c3160"
@@ -6088,7 +6044,7 @@
         "issue_date": "2024-11-04",
         "expiry_date": "2028-11-25",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -6307,8 +6263,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -6520,8 +6475,7 @@
         "issue_date": "2016-12-17",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_131013cc"
@@ -6547,8 +6501,7 @@
         "issue_date": "2023-04-20",
         "expiry_date": "2027-12-24",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -6768,7 +6721,7 @@
         "issue_date": "2023-11-28",
         "expiry_date": "2030-03-07",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -6973,8 +6926,7 @@
         "issue_date": "2024-07-06",
         "expiry_date": "2029-05-23",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -7203,8 +7155,7 @@
         "expiry_date": "2029-09-10",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -7455,7 +7406,7 @@
         "issue_date": "2024-05-16",
         "expiry_date": "2027-06-26",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -7469,8 +7420,7 @@
         "issue_date": "2024-01-18",
         "expiry_date": "2028-05-03",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -7671,8 +7621,7 @@
         "issue_date": "2021-08-07",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_c1cfd36e"
@@ -7684,8 +7633,7 @@
         "expiry_date": "2030-07-09",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -7701,8 +7649,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -7716,7 +7663,7 @@
         "issue_date": "2025-02-21",
         "expiry_date": "2030-11-01",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -7943,8 +7890,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -8177,8 +8123,7 @@
         "issue_date": "2024-05-31",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_4a2bee74"
@@ -8189,7 +8134,7 @@
         "issue_date": "2024-09-17",
         "expiry_date": "2028-08-28",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -8428,8 +8373,7 @@
         "issue_date": "2020-07-26",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_ae1e7c37"
@@ -8442,8 +8386,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -8457,7 +8400,7 @@
         "issue_date": "2024-02-23",
         "expiry_date": "2030-11-10",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -8684,8 +8627,7 @@
         "issue_date": "2022-12-28",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_cd36459f"
@@ -8696,7 +8638,7 @@
         "issue_date": "2023-12-27",
         "expiry_date": "2028-01-27",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -8711,8 +8653,7 @@
         "expiry_date": "2026-04-25",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -8943,8 +8884,7 @@
         "issue_date": "2025-03-20",
         "expiry_date": "2030-06-25",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -9209,8 +9149,7 @@
         "issue_date": "2020-09-01",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_50606f34"
@@ -9221,8 +9160,7 @@
         "issue_date": "2024-02-21",
         "expiry_date": "2028-10-08",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -9237,8 +9175,7 @@
         "issue_date": "2023-09-22",
         "expiry_date": "2028-07-24",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -9463,8 +9400,7 @@
         "issue_date": "2024-02-25",
         "expiry_date": "2028-04-25",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -9494,8 +9430,7 @@
         "expiry_date": "2026-03-13",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -9712,8 +9647,7 @@
         "issue_date": "2023-01-30",
         "expiry_date": "2028-10-28",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -9729,8 +9663,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -9744,8 +9677,7 @@
         "issue_date": "2023-10-02",
         "expiry_date": "2029-01-26",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -9958,8 +9890,7 @@
         "expiry_date": "2031-07-31",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "physiotherapy"
@@ -10204,7 +10135,7 @@
         "issue_date": "2024-07-05",
         "expiry_date": "2030-03-31",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
@@ -10431,8 +10362,7 @@
         "issue_date": "2017-07-19",
         "applicable_levels": [
           2,
-          3,
-          4
+          3
         ],
         "status": "verified",
         "credential_id": "degr_1_99e86ca9"
@@ -10459,8 +10389,7 @@
         "issue_date": "2024-12-10",
         "expiry_date": "2030-03-18",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -10476,8 +10405,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -10882,8 +10810,7 @@
         "issue_date": "2022-12-07",
         "expiry_date": "2026-06-04",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "parkinson"
@@ -10899,8 +10826,7 @@
         "applicable_levels": [
           1,
           2,
-          3,
-          4
+          3
         ],
         "tags": [
           "first_aid"
@@ -11113,8 +11039,7 @@
         "issue_date": "2023-06-08",
         "expiry_date": "2030-05-26",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "cardiology"
@@ -11330,8 +11255,7 @@
         "issue_date": "2025-08-08",
         "expiry_date": "2030-12-28",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "stroke",
@@ -11361,8 +11285,7 @@
         "issue_date": "2024-08-16",
         "expiry_date": "2030-08-18",
         "applicable_levels": [
-          3,
-          4
+          3
         ],
         "tags": [
           "cardiology"
@@ -11595,7 +11518,7 @@
         "issue_date": "2024-03-05",
         "expiry_date": "2028-07-26",
         "applicable_levels": [
-          4
+          3
         ],
         "tags": [
           "palliative_care"
