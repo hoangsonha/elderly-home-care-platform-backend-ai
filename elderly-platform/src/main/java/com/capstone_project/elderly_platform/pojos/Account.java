@@ -48,6 +48,9 @@ public class Account extends BaseEntity {
     @Column(length = 6)
     String codeVerify;
 
+    @Column(name = "avatar_url", columnDefinition = "TEXT")
+    String avatarUrl;
+
     @ManyToOne
     @JoinColumn(name = "role_id")
     Role role;

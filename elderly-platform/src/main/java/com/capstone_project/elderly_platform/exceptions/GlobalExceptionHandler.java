@@ -35,7 +35,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> elementExistException(AccessDeniedException e, WebRequest request) {
+    public ResponseEntity<ErrorResponse> accessDeniedException(AccessDeniedException e, WebRequest request) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ErrorResponse(new Date(), "Thất bại", "Bạn không có quyền truy cập API này", e.getMessage(), request.getDescription(false).replace("uri=", "")));
     }
 

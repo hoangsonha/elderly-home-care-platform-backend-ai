@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.pojos;
 
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
+import com.capstone_project.elderly_platform.enums.EnumServicePackageType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -32,6 +33,9 @@ public class ServicePackage extends BaseEntity {
     String description;
 
     Integer durationHours;
+
+    @Enumerated(EnumType.STRING)
+    EnumServicePackageType packageType;
 
     Double price;
 

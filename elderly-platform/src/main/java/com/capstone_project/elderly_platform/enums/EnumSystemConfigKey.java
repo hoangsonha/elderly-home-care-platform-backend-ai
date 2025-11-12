@@ -1,0 +1,18 @@
+package com.capstone_project.elderly_platform.enums;
+
+public enum EnumSystemConfigKey {
+    // Service Package - Minimum Advance Hours
+    SERVICE_PACKAGE_MINIMUM_ADVANCE_HOURS_BASIC,
+    SERVICE_PACKAGE_MINIMUM_ADVANCE_HOURS_PROFESSIONAL,
+    SERVICE_PACKAGE_MINIMUM_ADVANCE_HOURS_ADVANCED,
+
+    // Caregiver Response Deadline Hours
+    CAREGIVER_RESPONSE_DEADLINE_3_DAYS_OR_MORE,
+    CAREGIVER_RESPONSE_DEADLINE_1_TO_2_DAYS,
+    CAREGIVER_RESPONSE_DEADLINE_LESS_THAN_24H,
+
+    // System Fee
+    SYSTEM_FEE_PERCENTAGE
+}
+
+

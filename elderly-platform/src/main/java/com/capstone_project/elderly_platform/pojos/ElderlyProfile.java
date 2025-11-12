@@ -30,6 +30,8 @@ public class ElderlyProfile extends BaseEntity {
 
     String fullName;
 
+    String phoneNumber;
+
     LocalDate birthDate;
 
     @JdbcTypeCode(SqlTypes.JSON)

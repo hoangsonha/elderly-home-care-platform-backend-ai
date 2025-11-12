@@ -62,6 +62,10 @@ public class CareService extends BaseEntity {
     @Column(name = "location", columnDefinition = "jsonb")
     String location;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "config_version", columnDefinition = "jsonb")
+    String configVersion;  // JSON map of config keys and their values at booking time (all active configs)
+
     @ManyToOne
     @JoinColumn(name = "seeker_id")
     CareSeekerProfile careSeekerProfile;

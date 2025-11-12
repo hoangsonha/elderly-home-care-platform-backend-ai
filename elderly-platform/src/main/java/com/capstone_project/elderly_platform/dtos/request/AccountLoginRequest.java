@@ -12,7 +12,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class AccountLoginRequest {
-
     @Email(message = "Invalid email")
     @NotNull(message = "Please enter email")
     @NotBlank(message = "Email is not blank")
