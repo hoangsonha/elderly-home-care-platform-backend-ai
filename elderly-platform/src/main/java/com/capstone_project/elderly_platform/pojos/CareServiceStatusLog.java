@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.pojos;
 
 import com.capstone_project.elderly_platform.enums.EnumActorType;
+import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -27,10 +28,12 @@ public class CareServiceStatusLog extends BaseEntity {
     EnumActorType changedBy;
 
     @Column(name = "old_status", length = 50)
-    String oldStatus;
+    @Enumerated(EnumType.STRING)
+    EnumCareServiceStatusType oldStatus;
 
     @Column(name = "new_status", length = 50)
-    String newStatus;
+    @Enumerated(EnumType.STRING)
+    EnumCareServiceStatusType newStatus;
 
     @Column(name = "note", columnDefinition = "TEXT")
     String note;

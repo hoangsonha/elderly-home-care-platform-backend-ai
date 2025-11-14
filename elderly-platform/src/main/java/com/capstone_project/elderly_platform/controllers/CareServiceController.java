@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.controllers;
 
-import com.capstone_project.elderly_platform.dtos.request.CareServiceRequest;
+import com.capstone_project.elderly_platform.dtos.request.ConfirmationCareServiceRequest;
+import com.capstone_project.elderly_platform.dtos.request.CreateCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
@@ -33,15 +34,15 @@ public class CareServiceController {
      /**
      * Method create care service booking for elderly
      *
-     * @param careServiceRequest param basic for booking
+     * @param createCareServiceRequest param basic for booking
      * @return booking or null
      */
     @Operation(summary = "Create care service", description = "Create care service booking for elderly")
     @PreAuthorize("hasRole('CARE_SEEKER')")
     @PostMapping("")
-    public ResponseEntity<ObjectResponse> createCareService(@Valid @RequestBody CareServiceRequest careServiceRequest) {
+    public ResponseEntity<ObjectResponse> createCareService(@Valid @RequestBody CreateCareServiceRequest createCareServiceRequest) {
         try {
-            CareServiceResponseDTO careServiceResponseDTO = careServiceService.createCareService(careServiceRequest);
+            CareServiceResponseDTO careServiceResponseDTO = careServiceService.createCareService(createCareServiceRequest);
             return ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Create care service successfully", careServiceResponseDTO));
         } catch (BadRequestException e) {
             log.error("Error creating care service", e);
@@ -51,6 +52,53 @@ public class CareServiceController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error creating care service", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Method caregiver accept care service booking for elderly from care seeker
+     *
+     * @param confirmationCareServiceRequest param basic for booking
+     * @return booking or null
+     */
+    @Operation(summary = "Accept care service from caregiver", description = "Caregiver accept care service booking for elderly from care eeeker")
+    @PreAuthorize("hasRole('CAREGIVER')")
+    @PostMapping("/accept-care-service-from-caregiver")
+    public ResponseEntity<ObjectResponse> acceptCareServiceFromCaregiver(@Valid @RequestBody ConfirmationCareServiceRequest confirmationCareServiceRequest) {
+        try {
+            CareServiceResponseDTO careServiceResponseDTO = careServiceService.acceptCareServiceFromCaregiver(confirmationCareServiceRequest);
+            return ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Accept care service successfully", careServiceResponseDTO));
+        } catch (BadRequestException e) {
+            log.error("Error accept care service", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (ElementExistException e) {
+            log.error("Error accept care service", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error accept care service", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Method caregiver or care seeker decline care service booking for elderly
+     *
+     * @param confirmationCareServiceRequest param basic for booking
+     * @return booking or null
+     */
+    @Operation(summary = "Decline care service from caregiver or care seeker", description = "Caregiver or care seeker decline care service booking for elderly")
+    @PreAuthorize("hasRole('CAREGIVER') or hasRole('CARE_SEEKER')")
+    @PostMapping("/decline-care-service")
+    public ResponseEntity<ObjectResponse> declineCareService(@Valid @RequestBody ConfirmationCareServiceRequest confirmationCareServiceRequest) {
+        try {
+            CareServiceResponseDTO careServiceResponseDTO = careServiceService.declineCareService(confirmationCareServiceRequest);
+            return ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Accept care service successfully", careServiceResponseDTO));
+        } catch (ElementExistException e) {
+            log.error("Error accept care service", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error accept care service", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
         }
     }

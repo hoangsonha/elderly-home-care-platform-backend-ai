@@ -1,17 +1,29 @@
 package com.capstone_project.elderly_platform.services;
 
-import com.capstone_project.elderly_platform.dtos.request.CareServiceRequest;
-import com.capstone_project.elderly_platform.dtos.request.LocationRequest;
+import com.capstone_project.elderly_platform.configurations.CustomAccountDetail;
+import com.capstone_project.elderly_platform.dtos.request.ConfirmationCareServiceRequest;
+import com.capstone_project.elderly_platform.dtos.request.CreateCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
+import com.capstone_project.elderly_platform.enums.EnumActorType;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.enums.EnumServicePackageType;
 import com.capstone_project.elderly_platform.enums.EnumSystemConfigKey;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.mappers.CareServiceMapper;
+import com.capstone_project.elderly_platform.mappers.CareSeekerProfileMapper;
+import com.capstone_project.elderly_platform.mappers.CaregiverProfileMapper;
+import com.capstone_project.elderly_platform.mappers.ElderlyProfileMapper;
+import com.capstone_project.elderly_platform.mappers.ServicePackageMapper;
 import com.capstone_project.elderly_platform.pojos.*;
 import com.capstone_project.elderly_platform.repositories.*;
+import com.capstone_project.elderly_platform.utils.SecurityUtils;
 import com.capstone_project.elderly_platform.utils.StringUtils;
+import com.capstone_project.elderly_platform.services.ExpiredCareServiceQueueService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,6 +32,7 @@ import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -38,13 +51,20 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final CareSeekerProfileRepository careSeekerProfileRepository;
     private final CaregiverProfileRepository caregiverProfileRepository;
     private final ServicePackageRepository servicePackageRepository;
+    private final CareServiceStatusLogRepository careServiceStatusLogRepository;
     private final ObjectMapper objectMapper;
     private final SystemConfigService systemConfigService;
     private final CareServiceMapper careServiceMapper;
+    private final ElderlyProfileMapper elderlyProfileMapper;
+    private final CareSeekerProfileMapper careSeekerProfileMapper;
+    private final CaregiverProfileMapper caregiverProfileMapper;
+    private final ServicePackageMapper servicePackageMapper;
+    private final NotificationService notificationService;
+    private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
 
+    @Transactional
     @Override
-    public CareServiceResponseDTO createCareService(CareServiceRequest request) {
-
+    public CareServiceResponseDTO createCareService(CreateCareServiceRequest request) {
         ElderlyProfile elderlyProfile = elderlyProfileRepository
                 .findByElderlyProfileIdAndDeletedIsFalse(request.getElderlyProfileId());
         if (elderlyProfile == null) {
@@ -69,12 +89,12 @@ public class CareServiceServiceImpl implements CareServiceService {
             throw new ElementNotFoundException("Service package not found");
         }
 
-        // create snapshot
+        // create snapshot using DTOs
         CareServiceSnapshot snapshot = CareServiceSnapshot.builder()
-                .elderlyProfile(createElderlyProfileSnapshot(elderlyProfile))
-                .careSeekerProfile(createCareSeekerProfileSnapshot(careSeekerProfile))
-                .caregiverProfile(createCaregiverProfileSnapshot(caregiverProfile))
-                .servicePackage(createServicePackageSnapshot(servicePackage))
+                .elderlyProfile(elderlyProfileMapper.toDTO(elderlyProfile))
+                .careSeekerProfile(careSeekerProfileMapper.toDTO(careSeekerProfile))
+                .caregiverProfile(caregiverProfileMapper.toDTO(caregiverProfile))
+                .servicePackage(servicePackageMapper.toDTO(servicePackage))
                 .build();
 
         // Change snapshot to JSON string
@@ -187,8 +207,118 @@ public class CareServiceServiceImpl implements CareServiceService {
                 .servicePackage(servicePackage)
                 .build();
 
-        return careServiceMapper.toDTO(careServiceRepository.save(careService));
+        CareService savedCareService = careServiceRepository.save(careService);
+
+        // Schedule expiration in Redis queue
+        try {
+            expiredCareServiceQueueService.scheduleExpiration(
+                    savedCareService.getCareServiceId(),
+                    caregiverResponseDeadline);
+            log.info("Scheduled expiration for care service {} at {}",
+                    savedCareService.getCareServiceId(), caregiverResponseDeadline);
+        } catch (Exception e) {
+            log.error("Failed to schedule expiration for care service {}: {}",
+                    savedCareService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - care service is already saved, expiration can be
+            // handled manually
+        }
+
+        return careServiceMapper.toDTO(savedCareService);
     }
+
+    @Override
+    public CareServiceResponseDTO acceptCareServiceFromCaregiver(ConfirmationCareServiceRequest request) {
+        CareService careService = careServiceRepository
+                .findByCareServiceIdAndDeletedIsFalse(request.getCareServiceId());
+        if (careService == null) {
+            throw new ElementNotFoundException("Care service not found");
+        }
+
+        if (!careService.getStatus().equals(EnumCareServiceStatusType.PENDING_CAREGIVER)) {
+            throw new BadRequestException("Care service status is not PENDING_CAREGIVER. Current status: "
+                    + careService.getStatus());
+        }
+
+        // Cancel scheduled expiration from Redis queue
+        expiredCareServiceQueueService.cancelExpiration(careService.getCareServiceId());
+
+        CustomAccountDetail currentUser = SecurityUtils.getCurrentUser();
+        UUID caregiverAccountId = currentUser.getId();
+
+        CareServiceStatusLog careServiceStatusLog = CareServiceStatusLog.builder()
+                .changedBy(EnumActorType.CAREGIVER)
+                .careService(careService)
+                .oldStatus(careService.getStatus())
+                .newStatus(EnumCareServiceStatusType.CAREGIVER_APPROVED)
+                .note("Accepted by caregiver with account ID: " + caregiverAccountId + " for care service ID: "
+                        + careService.getCareServiceId())
+                .build();
+
+        careServiceStatusLogRepository.save(careServiceStatusLog);
+
+        careService.setStatus(EnumCareServiceStatusType.CAREGIVER_APPROVED);
+        CareService savedCareService = careServiceRepository.save(careService);
+
+        // Send notification to both parties
+        notificationService.sendCareServiceStatusChangeNotification(savedCareService,
+                EnumCareServiceStatusType.CAREGIVER_APPROVED.name());
+
+        return careServiceMapper.toDTO(savedCareService);
+    }
+
+    @Override
+    public CareServiceResponseDTO declineCareService(ConfirmationCareServiceRequest request) {
+        CareService careService = careServiceRepository
+                .findByCareServiceIdAndDeletedIsFalse(request.getCareServiceId());
+        if (careService == null) {
+            throw new ElementNotFoundException("Care service not found");
+        }
+
+        // Cancel scheduled expiration from Redis queue
+        expiredCareServiceQueueService.cancelExpiration(careService.getCareServiceId());
+
+        CustomAccountDetail currentUser = SecurityUtils.getCurrentUser();
+        UUID caregiverAccountId = currentUser.getId();
+
+        if (!SecurityUtils.hasRole("ROLE_CAREGIVER") && !SecurityUtils.hasRole("ROLE_CARE_SEEKER")) {
+            throw new BadRequestException("Only caregiver or care seeker can decline this service");
+        }
+
+        String title = SecurityUtils.hasRole("ROLE_CAREGIVER") ? "caregiver" : "care seeker";
+
+        EnumActorType actorType = SecurityUtils.hasRole("ROLE_CAREGIVER") ? EnumActorType.CAREGIVER
+                : EnumActorType.CARE_SEEKER;
+
+        CareServiceStatusLog careServiceStatusLog = CareServiceStatusLog.builder()
+                .changedBy(actorType)
+                .careService(careService)
+                .oldStatus(careService.getStatus())
+                .newStatus(EnumCareServiceStatusType.CANCELLED)
+                .note("Decline by " + title + " with account ID: " + caregiverAccountId + " for care service ID: "
+                        + careService.getCareServiceId())
+                .build();
+
+        careServiceStatusLogRepository.save(careServiceStatusLog);
+
+        careService.setStatus(EnumCareServiceStatusType.CANCELLED);
+        CareService savedCareService = careServiceRepository.save(careService);
+
+        // Send notification to both parties
+        notificationService.sendCareServiceStatusChangeNotification(savedCareService,
+                EnumCareServiceStatusType.CANCELLED.name());
+
+        return careServiceMapper.toDTO(savedCareService);
+    }
+
+    /*
+     * ------------------------------- Private method
+     * ---------------------------------
+     */
+
+    // Note: checkAndExpireIfNeeded() method removed - expiration is now handled by
+    // Redis queue worker
+    // No need to check manually as worker processes expired care services
+    // automatically
 
     // Validate time of booking
     private void validateMinimumAdvanceBookingTime(LocalDate workDate, LocalTime startTime,
@@ -273,192 +403,16 @@ public class CareServiceServiceImpl implements CareServiceService {
         return now.plusHours(responseDeadlineHours);
     }
 
-    private ElderlyProfileSnapshot createElderlyProfileSnapshot(ElderlyProfile elderlyProfile) {
-        LocationSnapshot location = parseLocation(elderlyProfile.getLocation());
-        return ElderlyProfileSnapshot.builder()
-                .elderlyProfileId(elderlyProfile.getElderlyProfileId())
-                .fullName(elderlyProfile.getFullName())
-                .birthDate(elderlyProfile.getBirthDate())
-                .location(location)
-                .gender(elderlyProfile.getGender() != null ? elderlyProfile.getGender().name() : null)
-                .avatarUrl(elderlyProfile.getAvatarUrl())
-                .profileData(elderlyProfile.getProfileData())
-                .careRequirement(elderlyProfile.getCareRequirement())
-                .note(elderlyProfile.getNote())
-                .healthNote(elderlyProfile.getHealthNote())
-                .status(elderlyProfile.getStatus() != null ? elderlyProfile.getStatus().name() : null)
-                .build();
-    }
-
-    private CareSeekerProfileSnapshot createCareSeekerProfileSnapshot(CareSeekerProfile careSeekerProfile) {
-        LocationSnapshot location = parseLocation(careSeekerProfile.getLocation());
-        return CareSeekerProfileSnapshot.builder()
-                .careSeekerProfileId(careSeekerProfile.getCareSeekerProfileId())
-                .fullName(careSeekerProfile.getFullName())
-                .phoneNumber(careSeekerProfile.getPhoneNumber())
-                .location(location)
-                .birthDate(careSeekerProfile.getBirthDate())
-                .gender(careSeekerProfile.getGender() != null ? careSeekerProfile.getGender().name() : null)
-                .profileData(careSeekerProfile.getProfileData())
-                .build();
-    }
-
-    private CaregiverProfileSnapshot createCaregiverProfileSnapshot(CaregiverProfile caregiverProfile) {
-        LocationSnapshot location = parseLocation(caregiverProfile.getLocation());
-        return CaregiverProfileSnapshot.builder()
-                .caregiverProfileId(caregiverProfile.getCaregiverProfileId())
-                .fullName(caregiverProfile.getFullName())
-                .phoneNumber(caregiverProfile.getPhoneNumber())
-                .location(location)
-                .bio(caregiverProfile.getBio())
-                .isVerified(caregiverProfile.getIsVerified())
-                .birthDate(caregiverProfile.getBirthDate())
-                .gender(caregiverProfile.getGender() != null ? caregiverProfile.getGender().name() : null)
-                .profileData(caregiverProfile.getProfileData())
-                .build();
-    }
-
-    private ServicePackageSnapshot createServicePackageSnapshot(ServicePackage servicePackage) {
-        // Map service tasks to snapshot
-        java.util.List<ServiceTaskSnapshot> taskSnapshots = null;
-        if (servicePackage.getServiceTasks() != null && !servicePackage.getServiceTasks().isEmpty()) {
-            taskSnapshots = servicePackage.getServiceTasks().stream()
-                    .map(task -> ServiceTaskSnapshot.builder()
-                            .serviceTaskId(task.getServiceTaskId())
-                            .taskName(task.getTaskName())
-                            .description(task.getDescription())
-                            .status(task.getStatus() != null ? task.getStatus().name() : null)
-                            .build())
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        return ServicePackageSnapshot.builder()
-                .servicePackageId(servicePackage.getServicePackageId())
-                .packageName(servicePackage.getPackageName())
-                .description(servicePackage.getDescription())
-                .durationHours(servicePackage.getDurationHours())
-                .packageType(servicePackage.getPackageType() != null ? servicePackage.getPackageType().name() : null)
-                .price(servicePackage.getPrice())
-                .note(servicePackage.getNote())
-                .serviceIncluded(null) // Not used, set to null
-                .status(servicePackage.getStatus() != null ? servicePackage.getStatus().name() : null)
-                .serviceTasks(taskSnapshots)
-                .build();
-    }
-
-    private LocationSnapshot parseLocation(String locationJson) {
-        if (locationJson == null || locationJson.trim().isEmpty()) {
-            return null;
-        }
-        try {
-            LocationRequest locationRequest = objectMapper.readValue(locationJson, LocationRequest.class);
-            return LocationSnapshot.builder()
-                    .address(locationRequest.getAddress())
-                    .latitude(locationRequest.getLatitude())
-                    .longitude(locationRequest.getLongitude())
-                    .build();
-        } catch (Exception e) {
-            // return null if parsing fails or log errors
-            return null;
-        }
-    }
-
-    // Inner classes for snapshot
+    // Inner class for snapshot - using DTOs instead of custom snapshot classes
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     private static class CareServiceSnapshot {
-        private ElderlyProfileSnapshot elderlyProfile;
-        private CareSeekerProfileSnapshot careSeekerProfile;
-        private CaregiverProfileSnapshot caregiverProfile;
-        private ServicePackageSnapshot servicePackage;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    private static class ElderlyProfileSnapshot {
-        private UUID elderlyProfileId;
-        private String fullName;
-        private LocalDate birthDate;
-        private LocationSnapshot location;
-        private String gender;
-        private String avatarUrl;
-        private String profileData;
-        private String careRequirement;
-        private String note;
-        private String healthNote;
-        private String status;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    private static class CareSeekerProfileSnapshot {
-        private UUID careSeekerProfileId;
-        private String fullName;
-        private String phoneNumber;
-        private LocationSnapshot location;
-        private LocalDate birthDate;
-        private String gender;
-        private String profileData;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    private static class CaregiverProfileSnapshot {
-        private UUID caregiverProfileId;
-        private String fullName;
-        private String phoneNumber;
-        private LocationSnapshot location;
-        private String bio;
-        private Boolean isVerified;
-        private LocalDate birthDate;
-        private String gender;
-        private String profileData;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    private static class ServicePackageSnapshot {
-        private UUID servicePackageId;
-        private String packageName;
-        private String description;
-        private Integer durationHours;
-        private String packageType;
-        private Double price;
-        private String note;
-        private String serviceIncluded; // Not used, kept for backward compatibility
-        private String status;
-        private java.util.List<ServiceTaskSnapshot> serviceTasks;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    private static class ServiceTaskSnapshot {
-        private UUID serviceTaskId;
-        private String taskName;
-        private String description;
-        private String status;
-    }
-
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    private static class LocationSnapshot {
-        private String address;
-        private Double latitude;
-        private Double longitude;
+        private ElderlyProfileResponseDTO elderlyProfile;
+        private CareSeekerProfileResponseDTO careSeekerProfile;
+        private CaregiverProfileResponseDTO caregiverProfile;
+        private ServicePackageResponseDTO servicePackage;
     }
 
 }

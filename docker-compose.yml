@@ -19,6 +19,23 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    container_name: elderly_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --notify-keyspace-events Ex
+    volumes:
+      - redis_data:/data
+    networks:
+      - elderly-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     container_name: elderly_backend
     build:
@@ -27,15 +44,20 @@ services:
     ports:
       - "8080:8080"
     environment:
+      TZ: Asia/Ho_Chi_Minh
       DB_HOSTNAME: db
       DB_PORT: 5432
       DB_USERNAME: postgres
       DB_PASSWORD: 123456789
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       # Note: DB_PORT in container stays 5432, only host mapping changed
     volumes:
       - ./elderly-platform/src/main/resources/keys/key_firebase.json:/app/keys/key_firebase.json:ro
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: always
     networks:
@@ -48,6 +70,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      TZ: Asia/Ho_Chi_Minh
     volumes:
       # Persist Hugging Face model cache to avoid re-downloading PhoBERT
       - ~/.cache/huggingface:/root/.cache/huggingface
@@ -57,6 +81,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   elderly-network:

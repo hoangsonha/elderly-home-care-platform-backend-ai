@@ -20,6 +20,7 @@ public class ElderlyProfileResponseDTO {
     String profileData;
     String careRequirement;
     String note;
+    String healthStatus;
     String healthNote;
     String status;
 }

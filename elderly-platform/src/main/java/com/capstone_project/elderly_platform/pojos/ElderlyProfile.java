@@ -2,6 +2,7 @@ package com.capstone_project.elderly_platform.pojos;
 
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
 import com.capstone_project.elderly_platform.enums.EnumGenderType;
+import com.capstone_project.elderly_platform.enums.EnumHealthStatusType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -60,6 +61,9 @@ public class ElderlyProfile extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     EnumActivationStatusType status;
+
+    @Enumerated(EnumType.STRING)
+    EnumHealthStatusType healthStatus;
 
     @ManyToOne
     @JoinColumn(name = "care_seeker_id")

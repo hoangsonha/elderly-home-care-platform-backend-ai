@@ -47,6 +47,7 @@ public class ElderlyProfileMapper {
                 .careRequirement(profile.getCareRequirement()) // Keep as JSON string
                 .note(profile.getNote())
                 .healthNote(profile.getHealthNote())
+                .healthStatus(profile.getHealthStatus() != null ? profile.getHealthStatus().name() : null)
                 .status(profile.getStatus() != null
                         ? profile.getStatus().name()
                         : null)

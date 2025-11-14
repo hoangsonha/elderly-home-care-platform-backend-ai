@@ -14,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CareServiceRequest {
+public class CreateCareServiceRequest {
     @NotNull(message = "Please enter elderly id")
     UUID elderlyProfileId;
 
