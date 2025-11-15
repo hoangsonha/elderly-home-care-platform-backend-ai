@@ -8,10 +8,8 @@ import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResp
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
-import com.capstone_project.elderly_platform.enums.EnumActorType;
-import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
-import com.capstone_project.elderly_platform.enums.EnumServicePackageType;
-import com.capstone_project.elderly_platform.enums.EnumSystemConfigKey;
+import com.capstone_project.elderly_platform.dtos.response.ServiceTaskResponseDTO;
+import com.capstone_project.elderly_platform.enums.*;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.mappers.CareServiceMapper;
@@ -37,9 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -61,6 +57,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final ServicePackageMapper servicePackageMapper;
     private final NotificationService notificationService;
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
+    private final WorkScheduleRepository workScheduleRepository;
 
     @Transactional
     @Override
@@ -226,6 +223,7 @@ public class CareServiceServiceImpl implements CareServiceService {
         return careServiceMapper.toDTO(savedCareService);
     }
 
+    @Transactional
     @Override
     public CareServiceResponseDTO acceptCareServiceFromCaregiver(ConfirmationCareServiceRequest request) {
         CareService careService = careServiceRepository
@@ -243,14 +241,21 @@ public class CareServiceServiceImpl implements CareServiceService {
         expiredCareServiceQueueService.cancelExpiration(careService.getCareServiceId());
 
         CustomAccountDetail currentUser = SecurityUtils.getCurrentUser();
-        UUID caregiverAccountId = currentUser.getId();
+
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(currentUser.getId());
+
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found for account ID: " + currentUser.getId());
+        }
 
         CareServiceStatusLog careServiceStatusLog = CareServiceStatusLog.builder()
                 .changedBy(EnumActorType.CAREGIVER)
                 .careService(careService)
                 .oldStatus(careService.getStatus())
                 .newStatus(EnumCareServiceStatusType.CAREGIVER_APPROVED)
-                .note("Accepted by caregiver with account ID: " + caregiverAccountId + " for care service ID: "
+                .note("Accepted by caregiver with account ID: " + caregiverProfile.getCaregiverProfileId()
+                        + " for care service ID: "
                         + careService.getCareServiceId())
                 .build();
 
@@ -259,6 +264,64 @@ public class CareServiceServiceImpl implements CareServiceService {
         careService.setStatus(EnumCareServiceStatusType.CAREGIVER_APPROVED);
         CareService savedCareService = careServiceRepository.save(careService);
 
+        // Get tasks from careServiceSnapshot
+        List<WorkTask> workTaskList = new ArrayList<>();
+        try {
+            // Deserialize snapshot from JSON
+            CareServiceSnapshot snapshot = objectMapper.readValue(
+                    careService.getCareServiceSnapshot(),
+                    CareServiceSnapshot.class);
+
+            // Get serviceTasks from snapshot
+            if (snapshot.getServicePackage() != null
+                    && snapshot.getServicePackage().getServiceTasks() != null
+                    && !snapshot.getServicePackage().getServiceTasks().isEmpty()) {
+
+                List<ServiceTaskResponseDTO> serviceTaskDTOs = snapshot.getServicePackage().getServiceTasks();
+
+                for (ServiceTaskResponseDTO serviceTaskDTO : serviceTaskDTOs) {
+                    WorkTask workTask = WorkTask.builder()
+                            .name(serviceTaskDTO.getTaskName())
+                            .description(serviceTaskDTO.getDescription())
+                            .status(EnumWorkTaskStatusType.PENDING)
+                            .completedAt(null)
+                            .build();
+                    workTaskList.add(workTask);
+                }
+
+                log.info("Created {} work tasks from care service snapshot for care service {}",
+                        workTaskList.size(), careService.getCareServiceId());
+            } else {
+                log.warn("No service tasks found in snapshot for care service {}",
+                        careService.getCareServiceId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to deserialize care service snapshot or create work tasks for care service {}: {}",
+                    careService.getCareServiceId(), e.getMessage(), e);
+            throw new RuntimeException("Failed to create work tasks from snapshot", e);
+        }
+
+        // Create WorkSchedule
+        WorkSchedule workSchedule = WorkSchedule.builder()
+                .careService(savedCareService)
+                .workDate(savedCareService.getWorkDate())
+                .status(EnumWorkScheduleStatusType.SCHEDULED)
+                .totalTasks(workTaskList.size())
+                .completedTasks(0)
+                .caregiverProfile(caregiverProfile)
+                .workTasks(workTaskList)
+                .build();
+
+        // Set workSchedule for each WorkTask (bidirectional relationship)
+        for (WorkTask workTask : workTaskList) {
+            workTask.setWorkSchedule(workSchedule);
+        }
+
+        // Save WorkSchedule (WorkTasks will be saved via cascade or separately)
+        workScheduleRepository.save(workSchedule);
+        log.info("Created work schedule with {} tasks for care service {}",
+                workTaskList.size(), savedCareService.getCareServiceId());
+
         // Send notification to both parties
         notificationService.sendCareServiceStatusChangeNotification(savedCareService,
                 EnumCareServiceStatusType.CAREGIVER_APPROVED.name());
@@ -266,6 +329,7 @@ public class CareServiceServiceImpl implements CareServiceService {
         return careServiceMapper.toDTO(savedCareService);
     }
 
+    @Transactional
     @Override
     public CareServiceResponseDTO declineCareService(ConfirmationCareServiceRequest request) {
         CareService careService = careServiceRepository
@@ -311,8 +375,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     }
 
     /*
-     * ------------------------------- Private method
-     * ---------------------------------
+     * ------------------------------- Private methods -------------------------------
      */
 
     // Note: checkAndExpireIfNeeded() method removed - expiration is now handled by

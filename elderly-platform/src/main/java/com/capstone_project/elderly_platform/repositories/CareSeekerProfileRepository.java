@@ -10,7 +10,10 @@ import java.util.UUID;
 @Repository
 public interface CareSeekerProfileRepository extends JpaRepository<CareSeekerProfile, UUID> {
     CareSeekerProfile findByCareSeekerProfileIdAndDeletedIsFalse(UUID id);
+    
+    CareSeekerProfile findByAccount_AccountIdAndDeletedIsFalse(UUID accountId);
 }
+
 
 
 

@@ -50,7 +50,7 @@ public class WorkSchedule extends BaseEntity {
     @JoinColumn(name = "caregiver_id")
     CaregiverProfile caregiverProfile;
 
-    @OneToMany(mappedBy = "workSchedule")
+    @OneToMany(mappedBy = "workSchedule", cascade = CascadeType.ALL, orphanRemoval = true)
     List<WorkTask> workTasks;
 
 }
