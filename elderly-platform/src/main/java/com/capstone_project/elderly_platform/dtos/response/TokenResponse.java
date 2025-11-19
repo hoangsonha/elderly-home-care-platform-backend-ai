@@ -26,10 +26,5 @@ public class TokenResponse {
     Boolean enabled;
     Boolean nonLocked;
     Boolean hasProfile;
-
-    // Profile có thể là CareSeekerProfileResponseDTO hoặc
-    // CaregiverProfileResponseDTO
-    // Tùy vào role của account
     Object profile;
-
 }

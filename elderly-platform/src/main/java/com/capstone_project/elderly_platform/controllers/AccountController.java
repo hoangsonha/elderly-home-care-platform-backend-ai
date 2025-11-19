@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @RequestMapping("/api/v1/accounts")
 @RestController
@@ -58,7 +59,7 @@ public class AccountController {
             return ResponseEntity.status(tokenResponse.getCode().equals("Success") ? HttpStatus.OK : HttpStatus.UNAUTHORIZED).body(tokenResponse);
         } catch (BadRequestException e) {
             log.error("Error verification found : {}", e.toString());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new TokenResponse("Failed", e.getMessage(), null, null, null, null));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new TokenResponse("Failed", e.getMessage(), null, null, null, null, null, null, null, null, null, null));
         } catch (Exception e) {
             log.error("Cannot verification : {}", e.toString());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
