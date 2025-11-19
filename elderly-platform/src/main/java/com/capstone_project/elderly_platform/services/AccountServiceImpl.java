@@ -4,6 +4,8 @@ import com.capstone_project.elderly_platform.configurations.CustomAccountDetail;
 import com.capstone_project.elderly_platform.configurations.JWTAuthenticationFilter;
 import com.capstone_project.elderly_platform.configurations.JwtTokenConfiguration;
 import com.capstone_project.elderly_platform.pojos.Account;
+import com.capstone_project.elderly_platform.pojos.CareSeekerProfile;
+import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import com.capstone_project.elderly_platform.pojos.Role;
 import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
@@ -14,7 +16,11 @@ import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementExistException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.exceptions.EntityNotFoundException;
+import com.capstone_project.elderly_platform.mappers.CareSeekerProfileMapper;
+import com.capstone_project.elderly_platform.mappers.CaregiverProfileMapper;
 import com.capstone_project.elderly_platform.repositories.AccountRepository;
+import com.capstone_project.elderly_platform.repositories.CareSeekerProfileRepository;
+import com.capstone_project.elderly_platform.repositories.CaregiverProfileRepository;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.HttpServletRequest;
@@ -53,6 +59,11 @@ public class AccountServiceImpl implements AccountService {
 
     private final SpringTemplateEngine templateEngine;
 
+    private final CareSeekerProfileRepository careSeekerProfileRepository;
+    private final CaregiverProfileRepository caregiverProfileRepository;
+    private final CareSeekerProfileMapper careSeekerProfileMapper;
+    private final CaregiverProfileMapper caregiverProfileMapper;
+
     @Value("${spring.mail.username}")
     private String from;
 
@@ -68,7 +79,8 @@ public class AccountServiceImpl implements AccountService {
 
         if (accountRegisterRequest.getRole() != null && accountRegisterRequest.getRole().equals("ROLE_CARE_SEEKER")) {
             role = roleService.getRoleByRoleName(EnumRoleType.ROLE_CARE_SEEKER);
-        } else if (accountRegisterRequest.getRole() != null && accountRegisterRequest.getRole().equals("ROLE_CAREGIVER")) {
+        } else if (accountRegisterRequest.getRole() != null
+                && accountRegisterRequest.getRole().equals("ROLE_CAREGIVER")) {
             role = roleService.getRoleByRoleName(EnumRoleType.ROLE_CAREGIVER);
         } else {
             throw new BadRequestException("Vai trò không hợp lệ");
@@ -87,9 +99,9 @@ public class AccountServiceImpl implements AccountService {
 
         Account accountSave = accountRepository.save(account);
 
-        return sendVerificationEmail(accountSave.getEmail(), accountSave.getRole().getRoleName().name(), accountSave.getCodeVerify());
+        return sendVerificationEmail(accountSave.getEmail(), accountSave.getRole().getRoleName().name(),
+                accountSave.getCodeVerify());
     }
-
 
     @Override
     public TokenResponse verificationUser(AccountVerificationRequest request) {
@@ -112,6 +124,31 @@ public class AccountServiceImpl implements AccountService {
             account.setAccessToken(token);
             accountRepository.save(account);
 
+            // Lấy thông tin profile dựa vào role
+            Object profileData = null;
+            boolean hasProfile = false;
+            String roleName = account.getRole() != null ? account.getRole().getRoleName().name() : null;
+
+            if (account.getRole() != null) {
+                EnumRoleType roleType = account.getRole().getRoleName();
+
+                if (roleType == EnumRoleType.ROLE_CARE_SEEKER) {
+                    CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                            .findByAccount_AccountIdAndDeletedIsFalse(account.getAccountId());
+                    if (careSeekerProfile != null) {
+                        profileData = careSeekerProfileMapper.toDTO(careSeekerProfile);
+                        hasProfile = true;
+                    }
+                } else if (roleType == EnumRoleType.ROLE_CAREGIVER) {
+                    CaregiverProfile caregiverProfile = caregiverProfileRepository
+                            .findByAccount_AccountIdAndDeletedIsFalse(account.getAccountId());
+                    if (caregiverProfile != null) {
+                        profileData = caregiverProfileMapper.toDTO(caregiverProfile);
+                        hasProfile = true;
+                    }
+                }
+            }
+
             return TokenResponse.builder()
                     .code("Success")
                     .message("Xác thực thành công")
@@ -119,6 +156,12 @@ public class AccountServiceImpl implements AccountService {
                     .email(account.getEmail())
                     .token(token)
                     .refreshToken(refreshToken)
+                    .roleName(roleName)
+                    .avatarUrl(account.getAvatarUrl())
+                    .enabled(account.getEnabled())
+                    .nonLocked(account.getNonLocked())
+                    .hasProfile(hasProfile)
+                    .profile(profileData)
                     .build();
         }
         throw new BadRequestException("Mã xác thực không đúng. Vui lòng thử lại");
@@ -131,14 +174,15 @@ public class AccountServiceImpl implements AccountService {
     }
 
     private boolean sendVerificationEmail(String email, String role, String verificationCode) {
-//        String recipient, String subject, String content, MultipartFile[] files
+        // String recipient, String subject, String content, MultipartFile[] files
         if (email == null) {
             return false;
         }
         try {
             Context context = new Context();
             context.setVariable("verificationCode", verificationCode);
-            context.setVariable("name", role.equals(EnumRoleType.ROLE_CARE_SEEKER.name()) ? "Người thuê mới" : "Người chăm sóc mới");
+            context.setVariable("name",
+                    role.equals(EnumRoleType.ROLE_CARE_SEEKER.name()) ? "Người thuê mới" : "Người chăm sóc mới");
             context.setVariable("role", role.equals(EnumRoleType.ROLE_CARE_SEEKER.name()) ? "seeker" : "caregiver");
 
             String content = "confirm";
@@ -151,7 +195,7 @@ public class AccountServiceImpl implements AccountService {
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
             helper.setFrom(from, senderName);
 
-            if(email.contains(",")) {
+            if (email.contains(",")) {
                 helper.setTo(InternetAddress.parse(email));
             } else {
                 helper.setTo(email);
@@ -183,6 +227,32 @@ public class AccountServiceImpl implements AccountService {
                         String newToken = jwtTokenConfiguration.generatedToken(customAccountDetail);
                         account.setAccessToken(newToken);
                         accountRepository.save(account);
+
+                        // Lấy thông tin profile dựa vào role
+                        Object profileData = null;
+                        boolean hasProfile = false;
+                        String roleName = account.getRole() != null ? account.getRole().getRoleName().name() : null;
+
+                        if (account.getRole() != null) {
+                            EnumRoleType roleType = account.getRole().getRoleName();
+
+                            if (roleType == EnumRoleType.ROLE_CARE_SEEKER) {
+                                CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                                        .findByAccount_AccountIdAndDeletedIsFalse(account.getAccountId());
+                                if (careSeekerProfile != null) {
+                                    profileData = careSeekerProfileMapper.toDTO(careSeekerProfile);
+                                    hasProfile = true;
+                                }
+                            } else if (roleType == EnumRoleType.ROLE_CAREGIVER) {
+                                CaregiverProfile caregiverProfile = caregiverProfileRepository
+                                        .findByAccount_AccountIdAndDeletedIsFalse(account.getAccountId());
+                                if (caregiverProfile != null) {
+                                    profileData = caregiverProfileMapper.toDTO(caregiverProfile);
+                                    hasProfile = true;
+                                }
+                            }
+                        }
+
                         tokenResponse = TokenResponse.builder()
                                 .code("Success")
                                 .message("Làm mới token thành công")
@@ -190,6 +260,12 @@ public class AccountServiceImpl implements AccountService {
                                 .token(newToken)
                                 .refreshToken(refreshToken)
                                 .email(account.getEmail())
+                                .roleName(roleName)
+                                .avatarUrl(account.getAvatarUrl())
+                                .enabled(account.getEnabled())
+                                .nonLocked(account.getNonLocked())
+                                .hasProfile(hasProfile)
+                                .profile(profileData)
                                 .build();
                     }
                 }
@@ -202,7 +278,7 @@ public class AccountServiceImpl implements AccountService {
     public TokenResponse login(String email, String password) {
         TokenResponse tokenResponse = TokenResponse.builder()
                 .code("Failed")
-                .message("Đăng nhập thất bại")
+                .message("Login failed")
                 .build();
         UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken = new UsernamePasswordAuthenticationToken(
                 email, password);
@@ -217,13 +293,48 @@ public class AccountServiceImpl implements AccountService {
             account.setRefreshToken(refreshToken);
             account.setAccessToken(token);
             accountRepository.save(account);
+
+            // Lấy thông tin profile dựa vào role
+            Object profileData = null;
+            boolean hasProfile = false;
+            String roleName = account.getRole() != null ? account.getRole().getRoleName().name() : null;
+
+            if (account.getRole() != null) {
+                EnumRoleType roleType = account.getRole().getRoleName();
+
+                if (roleType == EnumRoleType.ROLE_CARE_SEEKER) {
+                    // Lấy CareSeekerProfile
+                    CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                            .findByAccount_AccountIdAndDeletedIsFalse(account.getAccountId());
+                    if (careSeekerProfile != null) {
+                        profileData = careSeekerProfileMapper.toDTO(careSeekerProfile);
+                        hasProfile = true;
+                    }
+                } else if (roleType == EnumRoleType.ROLE_CAREGIVER) {
+                    // Lấy CaregiverProfile
+                    CaregiverProfile caregiverProfile = caregiverProfileRepository
+                            .findByAccount_AccountIdAndDeletedIsFalse(account.getAccountId());
+                    if (caregiverProfile != null) {
+                        profileData = caregiverProfileMapper.toDTO(caregiverProfile);
+                        hasProfile = true;
+                    }
+                }
+                // ROLE_ADMIN không có profile nên profileData sẽ là null và hasProfile = false
+            }
+
             tokenResponse = TokenResponse.builder()
                     .code("Success")
-                    .message("Đăng nhập thành công")
+                    .message("Login successfully")
                     .accountId(account.getAccountId())
                     .email(account.getEmail())
                     .token(token)
                     .refreshToken(refreshToken)
+                    .roleName(roleName)
+                    .avatarUrl(account.getAvatarUrl())
+                    .enabled(account.getEnabled())
+                    .nonLocked(account.getNonLocked())
+                    .hasProfile(hasProfile)
+                    .profile(profileData)
                     .build();
         }
         return tokenResponse;

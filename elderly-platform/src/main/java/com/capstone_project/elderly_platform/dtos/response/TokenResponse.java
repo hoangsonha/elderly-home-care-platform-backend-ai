@@ -21,4 +21,15 @@ public class TokenResponse {
     String refreshToken;
     UUID accountId;
     String email;
+    String roleName;
+    String avatarUrl;
+    Boolean enabled;
+    Boolean nonLocked;
+    Boolean hasProfile;
+
+    // Profile có thể là CareSeekerProfileResponseDTO hoặc
+    // CaregiverProfileResponseDTO
+    // Tùy vào role của account
+    Object profile;
+
 }
