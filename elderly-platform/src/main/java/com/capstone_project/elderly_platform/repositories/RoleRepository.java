@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Repository
 public interface RoleRepository extends JpaRepository<Role, UUID> {
-    List<Role> getRoleByRoleName(EnumRoleType roleName);
+    Role getRoleByRoleName(EnumRoleType roleName);
 //    Page<Aircraft> findAllByDeletedFalse(Pageable pageable);
 //    List<Aircraft> findByDeletedIsFalse();
 //    Aircraft findAircraftById(UUID id);

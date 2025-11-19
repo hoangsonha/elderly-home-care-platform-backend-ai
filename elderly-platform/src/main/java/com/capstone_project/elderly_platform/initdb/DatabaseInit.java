@@ -30,6 +30,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Slf4j
 @Component
@@ -48,7 +49,7 @@ public class DatabaseInit implements CommandLineRunner {
         private final ObjectMapper objectMapper;
 
         @Override
-    public void run(String... args) {
+        public void run(String... args) {
                 initRoles();
                 Account adminAccount = initAccounts();
                 initSystemConfigs(adminAccount != null ? adminAccount.getAccountId() : null);
@@ -152,9 +153,11 @@ public class DatabaseInit implements CommandLineRunner {
                 if (accountRepository.count() == 0) {
                         log.info("Initializing default accounts...");
 
-                        Role adminRole = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_ADMIN).get(0);
-                        Role seekerRole = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_CARE_SEEKER).get(0);
-                        Role caregiverRole = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_CAREGIVER).get(0);
+                        // Fetch roles with safety check
+                        Role adminRoleList = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_ADMIN);
+                        Role seekerRoleList = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_CARE_SEEKER);
+                        Role caregiverRoleList = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_CAREGIVER);
+
 
                         // Admin account
                         Account adminAccount = Account.builder()
@@ -162,7 +165,7 @@ public class DatabaseInit implements CommandLineRunner {
                                         .password(bCryptPasswordEncoder.encode("Admin@123"))
                                         .enabled(true)
                                         .nonLocked(true)
-                                        .role(adminRole)
+                                        .role(adminRoleList)
                                         .build();
                         adminAccount = accountRepository.save(adminAccount);
                         log.info("Admin account created: admin@elderlycare.com / Admin@123");
@@ -173,7 +176,7 @@ public class DatabaseInit implements CommandLineRunner {
                                         .password(bCryptPasswordEncoder.encode("Seeker@123"))
                                         .enabled(true)
                                         .nonLocked(true)
-                                        .role(seekerRole)
+                                        .role(seekerRoleList)
                                         .avatarUrl("https://example.com/avatar/seeker.jpg")
                                         .build();
                         accountRepository.save(seekerAccount);
@@ -185,7 +188,7 @@ public class DatabaseInit implements CommandLineRunner {
                                         .password(bCryptPasswordEncoder.encode("Caregiver@123"))
                                         .enabled(true)
                                         .nonLocked(true)
-                                        .role(caregiverRole)
+                                        .role(caregiverRoleList)
                                         .avatarUrl("https://example.com/avatar/caregiver1.jpg")
                                         .build();
                         accountRepository.save(caregiverAccount1);
@@ -197,7 +200,7 @@ public class DatabaseInit implements CommandLineRunner {
                                         .password(bCryptPasswordEncoder.encode("Caregiver2@123"))
                                         .enabled(true)
                                         .nonLocked(true)
-                                        .role(caregiverRole)
+                                        .role(caregiverRoleList)
                                         .avatarUrl("https://example.com/avatar/caregiver2.jpg")
                                         .build();
                         accountRepository.save(caregiverAccount2);
@@ -221,7 +224,8 @@ public class DatabaseInit implements CommandLineRunner {
                         // Get accounts
                         Account seekerAccount = accountRepository.findAll().stream()
                                         .filter(account -> account.getRole() != null &&
-                                                        account.getRole().getRoleName() == EnumRoleType.ROLE_CARE_SEEKER)
+                                                        account.getRole()
+                                                                        .getRoleName() == EnumRoleType.ROLE_CARE_SEEKER)
                                         .findFirst()
                                         .orElse(null);
 
@@ -241,7 +245,8 @@ public class DatabaseInit implements CommandLineRunner {
                         }
 
                         // Create CareSeekerProfile
-                        String seekerLocationJson = createLocationJson("123 Đường Nguyễn Văn A, Quận 1, TP.HCM", 10.762622, 106.660172);
+                        String seekerLocationJson = createLocationJson("123 Đường Nguyễn Văn A, Quận 1, TP.HCM",
+                                        10.762622, 106.660172);
                         CareSeekerProfile careSeekerProfile = CareSeekerProfile.builder()
                                         .fullName("Nguyễn Văn Tìm")
                                         .phoneNumber("0901234567")
@@ -255,7 +260,8 @@ public class DatabaseInit implements CommandLineRunner {
                         log.info("CareSeekerProfile created: {}", careSeekerProfile.getFullName());
 
                         // Create CaregiverProfile 1
-                        String caregiver1LocationJson = createLocationJson("456 Đường Lê Lợi, Quận 3, TP.HCM", 10.7769, 106.7009);
+                        String caregiver1LocationJson = createLocationJson("456 Đường Lê Lợi, Quận 3, TP.HCM", 10.7769,
+                                        106.7009);
                         CaregiverProfile caregiverProfile1 = CaregiverProfile.builder()
                                         .fullName("Trần Thị Chăm Sóc")
                                         .phoneNumber("0902345678")
@@ -271,7 +277,8 @@ public class DatabaseInit implements CommandLineRunner {
                         log.info("CaregiverProfile 1 created: {}", caregiverProfile1.getFullName());
 
                         // Create CaregiverProfile 2
-                        String caregiver2LocationJson = createLocationJson("789 Đường Võ Văn Tần, Quận 10, TP.HCM", 10.7730, 106.6660);
+                        String caregiver2LocationJson = createLocationJson("789 Đường Võ Văn Tần, Quận 10, TP.HCM",
+                                        10.7730, 106.6660);
                         CaregiverProfile caregiverProfile2 = CaregiverProfile.builder()
                                         .fullName("Lê Văn Yêu Thương")
                                         .phoneNumber("0903456789")
@@ -287,7 +294,8 @@ public class DatabaseInit implements CommandLineRunner {
                         log.info("CaregiverProfile 2 created: {}", caregiverProfile2.getFullName());
 
                         // Create ElderlyProfile 1
-                        String elderly1LocationJson = createLocationJson("123 Đường Nguyễn Văn A, Quận 1, TP.HCM", 10.762622, 106.660172);
+                        String elderly1LocationJson = createLocationJson("123 Đường Nguyễn Văn A, Quận 1, TP.HCM",
+                                        10.762622, 106.660172);
                         ElderlyProfile elderlyProfile1 = ElderlyProfile.builder()
                                         .fullName("Nguyễn Thị Bà")
                                         .phoneNumber("0901111111")
@@ -306,7 +314,8 @@ public class DatabaseInit implements CommandLineRunner {
                         log.info("ElderlyProfile 1 created: {}", elderlyProfile1.getFullName());
 
                         // Create ElderlyProfile 2
-                        String elderly2LocationJson = createLocationJson("123 Đường Nguyễn Văn A, Quận 1, TP.HCM", 10.762622, 106.660172);
+                        String elderly2LocationJson = createLocationJson("123 Đường Nguyễn Văn A, Quận 1, TP.HCM",
+                                        10.762622, 106.660172);
                         ElderlyProfile elderlyProfile2 = ElderlyProfile.builder()
                                         .fullName("Nguyễn Văn Ông")
                                         .phoneNumber("0902222222")
@@ -440,7 +449,8 @@ public class DatabaseInit implements CommandLineRunner {
                         return objectMapper.writeValueAsString(location);
                 } catch (Exception e) {
                         log.error("Failed to create location JSON", e);
-                        return "{\"address\":\"" + address + "\",\"latitude\":" + latitude + ",\"longitude\":" + longitude + "}";
+                        return "{\"address\":\"" + address + "\",\"latitude\":" + latitude + ",\"longitude\":"
+                                        + longitude + "}";
                 }
         }
 }
