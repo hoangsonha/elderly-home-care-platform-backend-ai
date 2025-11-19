@@ -375,7 +375,8 @@ public class CareServiceServiceImpl implements CareServiceService {
     }
 
     /*
-     * ------------------------------- Private methods -------------------------------
+     * ------------------------------- Private methods
+     * -------------------------------
      */
 
     // Note: checkAndExpireIfNeeded() method removed - expiration is now handled by

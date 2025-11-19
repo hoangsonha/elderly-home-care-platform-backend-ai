@@ -1,4 +1,4 @@
-package com.capstone_project.elderly_platform.services;
+package com.capstone_project.elderly_platform.services.externals.ai;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;

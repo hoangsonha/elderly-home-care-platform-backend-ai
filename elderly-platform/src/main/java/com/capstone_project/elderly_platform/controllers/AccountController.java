@@ -14,13 +14,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @RequestMapping("/api/v1/accounts")
 @RestController
@@ -31,6 +32,37 @@ import org.springframework.web.bind.annotation.RestController;
 public class AccountController {
 
     private final AccountService accountService;
+
+    // Environment variables for testing
+    @Value("${spring.datasource.username:NOT_SET}")
+    private String dbUsername;
+    
+    @Value("${spring.datasource.password:NOT_SET}")
+    private String dbPassword;
+    
+    @Value("${spring.mail.username:NOT_SET}")
+    private String mailUsername;
+    
+    @Value("${spring.mail.password:NOT_SET}")
+    private String mailPassword;
+    
+    @Value("${jwt.secret:NOT_SET}")
+    private String jwtSecret;
+    
+    @Value("${jwt.refresh.secret:NOT_SET}")
+    private String jwtRefreshSecret;
+    
+    @Value("${payos.client-id:NOT_SET}")
+    private String payosClientId;
+    
+    @Value("${payos.api-key:NOT_SET}")
+    private String payosApiKey;
+    
+    @Value("${payos.checksum-key:NOT_SET}")
+    private String payosChecksumKey;
+    
+    @Value("${firebase.bucket.name:NOT_SET}")
+    private String firebaseBucket;
 
     @PostMapping("/register")
     public ResponseEntity<ObjectResponse> accountRegister(@Valid @RequestBody AccountRegisterRequest accountRegisterRequest) {
@@ -106,6 +138,67 @@ public class AccountController {
             log.error("Error logout : {}", e.toString());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", "Đăng xuất thất bại", null));
         }
+    }
+
+    // Test API để kiểm tra các environment variables đã load chưa
+    @GetMapping("/test-env-keys")
+    public ResponseEntity<Map<String, Object>> testEnvironmentKeys() {
+        Map<String, Object> envKeys = new HashMap<>();
+        
+        try {
+            // Database
+            envKeys.put("db_username", dbUsername);
+            envKeys.put("db_password", maskSecret(dbPassword));
+            
+            // Email
+            envKeys.put("mail_username", mailUsername);
+            envKeys.put("mail_password", maskSecret(mailPassword));
+            
+            // JWT
+            envKeys.put("jwt_secret", maskSecret(jwtSecret));
+            envKeys.put("jwt_secret_length", jwtSecret != null ? jwtSecret.length() : 0);
+            envKeys.put("jwt_refresh_secret", maskSecret(jwtRefreshSecret));
+            envKeys.put("jwt_refresh_secret_length", jwtRefreshSecret != null ? jwtRefreshSecret.length() : 0);
+            
+            // PayOS
+            envKeys.put("payos_client_id", maskSecret(payosClientId));
+            envKeys.put("payos_api_key", maskSecret(payosApiKey));
+            envKeys.put("payos_checksum_key", maskSecret(payosChecksumKey));
+            
+            // Firebase
+            envKeys.put("firebase_bucket", firebaseBucket);
+            
+            // Check Firebase Key Base64 từ env
+            String firebaseKeyBase64 = System.getenv("FIREBASE_KEY_BASE64");
+            envKeys.put("firebase_key_base64_exists", firebaseKeyBase64 != null && !firebaseKeyBase64.isEmpty());
+            envKeys.put("firebase_key_base64_length", firebaseKeyBase64 != null ? firebaseKeyBase64.length() : 0);
+            
+            // Spring profile active
+            envKeys.put("spring_profile", System.getProperty("spring.profiles.active", "NOT_SET"));
+            
+            // Status
+            envKeys.put("status", "SUCCESS");
+            envKeys.put("message", "All keys loaded successfully");
+            
+            return ResponseEntity.ok(envKeys);
+            
+        } catch (Exception e) {
+            log.error("Error testing environment keys", e);
+            envKeys.put("status", "ERROR");
+            envKeys.put("message", "Error: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(envKeys);
+        }
+    }
+    
+    // Helper method để mask sensitive data
+    private String maskSecret(String secret) {
+        if (secret == null || secret.equals("NOT_SET") || secret.isEmpty()) {
+            return "NOT_SET";
+        }
+        if (secret.length() <= 8) {
+            return "****";
+        }
+        return secret.substring(0, 4) + "****" + secret.substring(secret.length() - 4);
     }
 
 

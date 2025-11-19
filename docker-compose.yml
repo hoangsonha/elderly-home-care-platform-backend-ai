@@ -6,9 +6,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: 123456789
-      POSTGRES_DB: elderly_platform
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-elderly_platform}
     ports:
       - "5433:5432"
     networks:
@@ -45,14 +45,35 @@ services:
       - "8080:8080"
     environment:
       TZ: Asia/Ho_Chi_Minh
+      # Database
       DB_HOSTNAME: db
       DB_PORT: 5432
-      DB_USERNAME: postgres
-      DB_PASSWORD: 123456789
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      # Firebase credentials - ưu tiên FIREBASE_KEY_BASE64, fallback về file
+      FIREBASE_KEY_BASE64: ${FIREBASE_KEY_BASE64:-}
+      # Email
+      MAIL_USERNAME: ${MAIL_USERNAME:-}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      JWT_REFRESH_EXPIRATION: ${JWT_REFRESH_EXPIRATION:-}
+      # PayOS
+      PAYOS_CLIENT_ID: ${PAYOS_CLIENT_ID:-}
+      PAYOS_API_KEY: ${PAYOS_API_KEY:-}
+      PAYOS_CHECKSUM_KEY: ${PAYOS_CHECKSUM_KEY:-}
+      PAYOS_PAYOUT_CLIENT_ID: ${PAYOS_PAYOUT_CLIENT_ID:-}
+      PAYOS_PAYOUT_API_KEY: ${PAYOS_PAYOUT_API_KEY:-}
+      PAYOS_PAYOUT_CHECKSUM_KEY: ${PAYOS_PAYOUT_CHECKSUM_KEY:-}
       # Note: DB_PORT in container stays 5432, only host mapping changed
     volumes:
+      # Mount file key nếu không dùng FIREBASE_KEY_BASE64 (fallback)
       - ./elderly-platform/src/main/resources/keys/key_firebase.json:/app/keys/key_firebase.json:ro
     depends_on:
       db:

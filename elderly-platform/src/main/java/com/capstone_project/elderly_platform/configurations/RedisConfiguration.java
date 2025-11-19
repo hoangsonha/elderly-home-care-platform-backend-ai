@@ -27,7 +27,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  */
 @Slf4j
 @Configuration
-public class RedisConfig {
+public class RedisConfiguration {
 
     private static final String EXPIRED_KEYS_CHANNEL = "__keyevent@0__:expired";
 

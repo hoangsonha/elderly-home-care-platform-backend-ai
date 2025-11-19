@@ -76,7 +76,14 @@ docker-compose.override.yml
 .env.docker
 .env.prod
 .env.dev
-.env*
+.env
+.env.local
+.env.*.local
+
+# Spring Boot local config (contain secrets)
+elderly-platform/src/main/resources/application-local.yml
+elderly-platform/src/main/resources/application-dev.yml
+elderly-platform/src/main/resources/application-prod.yml
 
 # ========== Optional: OS & Editor Artifacts ==========
 *.swp

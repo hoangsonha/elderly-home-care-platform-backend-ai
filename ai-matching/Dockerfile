@@ -26,9 +26,10 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 COPY requirements.txt .
 
 # Install Python dependencies with cache mount for faster rebuilds
+# Use CPU-only torch to reduce image size (from ~10GB to ~2GB)
 # This uses BuildKit cache mount to persist pip cache between builds
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.txt
 
 # Copy application code
 COPY . .

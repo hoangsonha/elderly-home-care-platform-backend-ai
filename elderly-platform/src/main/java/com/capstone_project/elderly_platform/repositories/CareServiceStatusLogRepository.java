@@ -21,3 +21,10 @@ public interface CareServiceStatusLogRepository extends JpaRepository<CareServic
 
 
 
+
+
+
+
+
+
+

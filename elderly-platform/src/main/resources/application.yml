@@ -5,12 +5,14 @@ server:
   address: 0.0.0.0
 
 spring:
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
   application:
     name: elderly-platform
   datasource:
-    url: jdbc:postgresql://${DB_HOSTNAME:localhost}:${DB_PORT:5432}/elderly_platform
+    url: jdbc:postgresql://${DB_HOSTNAME:localhost}:${DB_PORT:5433}/elderly_platform
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456789}
+    password: ${DB_PASSWORD:}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -29,8 +31,8 @@ spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: hoangsonha21022002492@gmail.com
-    password: ejao nlge azdk aznz
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -39,11 +41,11 @@ spring:
             enable: true
 
 jwt:
-  secret: 753474857438754387594385743975348574893759843753498776576576575765634545435365346534645645364565465347657547465
-  expiration: 8640000
+  secret: ${JWT_SECRET:}
+  expiration: ${JWT_EXPIRATION:8640000}
   refresh:
-    secret: 123454857438754387594385743975348574893759843753498776576576575765634545435365346534645645364565465347657554321
-    expiration: 864000000
+    secret: ${JWT_REFRESH_SECRET:}
+    expiration: ${JWT_REFRESH_EXPIRATION:864000000}
   algorithms: HmacSHA256
 
 swagger:
@@ -69,3 +71,30 @@ ai:
   matching:
     service:
       url: http://ai_matching:8000
+
+# Core PayOS credentials
+payos:
+  client-id: ${PAYOS_CLIENT_ID:}
+  api-key: ${PAYOS_API_KEY:}
+  checksum-key: ${PAYOS_CHECKSUM_KEY:}
+
+  # Optional: Payout credentials (leave empty if not using payouts)
+  payout-client-id: ${PAYOS_PAYOUT_CLIENT_ID:}
+  payout-api-key: ${PAYOS_PAYOUT_API_KEY:}
+  payout-checksum-key: ${PAYOS_PAYOUT_CHECKSUM_KEY:}
+
+  # Logging level: DEBUG | INFO | NONE
+  log-level: NONE
+
+  # Callback URLs
+  url-success: /success
+  url-cancel: /cancel
+
+# Firebase
+firebase:
+  bucket:
+    name: swp391-f046d.appspot.com
+  get:
+    stream: ${FIREBASE_KEY_PATH:}
+    url: https://firebasestorage.googleapis.com/v0/b/swp391-f046d.appspot.com/o/%s?alt=media
+    folder: exe201_project

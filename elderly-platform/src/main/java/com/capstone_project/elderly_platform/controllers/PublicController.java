@@ -1,6 +1,6 @@
 package com.capstone_project.elderly_platform.controllers;
 
-import com.capstone_project.elderly_platform.services.AIMatchingService;
+import com.capstone_project.elderly_platform.services.externals.ai.AIMatchingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
