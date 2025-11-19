@@ -158,7 +158,6 @@ public class DatabaseInit implements CommandLineRunner {
                         Role seekerRoleList = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_CARE_SEEKER);
                         Role caregiverRoleList = roleRepository.getRoleByRoleName(EnumRoleType.ROLE_CAREGIVER);
 
-
                         // Admin account
                         Account adminAccount = Account.builder()
                                         .email("admin@elderlycare.com")

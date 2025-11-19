@@ -16,11 +16,8 @@ public class RoleServiceImpl implements RoleService {
 
     @Override
     public Role getRoleByRoleName(EnumRoleType roleType) {
-        List<Role> roles = roleRepository.getRoleByRoleName(roleType);
-        if (roles == null || roles.isEmpty()) {
-            return null;
-        }
-        return roles.get(0);
+
+        return roleRepository.getRoleByRoleName(roleType);
     }
 //
 //    private final AircraftTypeRepository aircraftTypeRepository;
