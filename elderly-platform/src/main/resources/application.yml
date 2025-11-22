@@ -25,9 +25,14 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        show_sql: true
+        show_sql: false
         format_sql: true
     show-sql: true
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 100MB
+      max-request-size: 100MB
   mail:
     host: smtp.gmail.com
     port: 587
@@ -66,6 +71,8 @@ application:
   default:
     current-page: 1
     page-size: 5
+  service-package:
+    allowed-duration-hours: 4,8  # Các giá trị duration hours được phép (phân cách bằng dấu phẩy)
 
 ai:
   matching:

@@ -1,12 +1,13 @@
 package com.capstone_project.elderly_platform.services.externals.payos;
 
-import com.capstone_project.elderly_platform.dtos.request.CreatePaymentLinkRequestBody;
-import com.capstone_project.elderly_platform.dtos.request.CreatePayoutRequest;
-import com.capstone_project.elderly_platform.dtos.response.PaymentLinkWithQRCodeResponse;
+import com.capstone_project.elderly_platform.dtos.request.externals.CreatePaymentLinkRequestBody;
+import com.capstone_project.elderly_platform.dtos.request.externals.CreatePaymentSuccess;
+import com.capstone_project.elderly_platform.dtos.request.externals.CreatePayoutRequest;
+import com.capstone_project.elderly_platform.dtos.request.externals.EstimatePayoutRequest;
+import com.capstone_project.elderly_platform.dtos.response.externals.PaymentLinkWithQRCodeResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import vn.payos.model.v1.payouts.Payout;
-import vn.payos.model.v1.payouts.PayoutRequests;
 import vn.payos.model.v1.payouts.batch.PayoutBatchRequest;
 import vn.payos.model.v1.payoutsAccount.PayoutAccountInfo;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
@@ -22,8 +23,8 @@ public interface PayOSService {
 
     // payment
 
-    PaymentLinkWithQRCodeResponse createPaymentLink(CreatePaymentLinkRequestBody requestBody, HttpServletRequest request);
-    PaymentLink getOrderStatus(long orderId);
+    PaymentLinkWithQRCodeResponse createPaymentLink(CreatePaymentLinkRequestBody requestBody);
+    PaymentLink getOrderStatus(long orderId, CreatePaymentSuccess requestBody);
     WebhookData payosTransferHandler(Object body);
     CreatePaymentLinkResponse createOrderLink(CreatePaymentLinkRequestBody requestBody);
     PaymentLink cancelOrderLink(long orderId);
@@ -40,5 +41,5 @@ public interface PayOSService {
     Payout getPayoutById(String payoutId);
     Payout createPayout(CreatePayoutRequest payoutRequest);
     Payout createPayoutBatch(PayoutBatchRequest payoutBatchRequest);
-
+    Map<String, Object> getEstimatedFees(EstimatePayoutRequest estimatePayoutRequest);
 }

@@ -10,6 +10,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -70,4 +71,6 @@ public class PayoutBatch extends BaseEntity {
     @JoinColumn(name = "caregiver_id")
     CaregiverProfile caregiverProfile;
 
+    @OneToMany(mappedBy = "payoutBatch", cascade = CascadeType.ALL)
+    List<Payout> payouts;
 }

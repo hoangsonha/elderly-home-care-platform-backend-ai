@@ -1,5 +1,6 @@
-package com.capstone_project.elderly_platform.dtos.response;
+package com.capstone_project.elderly_platform.dtos.response.externals;
 
+import com.capstone_project.elderly_platform.dtos.response.CaregiverRecommendationDTO;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

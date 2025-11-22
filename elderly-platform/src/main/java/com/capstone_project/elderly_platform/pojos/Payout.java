@@ -53,6 +53,7 @@ public class Payout extends BaseEntity {
     @JoinColumn(name = "caregiver_id")
     CaregiverProfile caregiverProfile;
 
-    // payout_patch_id
-
+    @ManyToOne
+    @JoinColumn(name = "payout_batch_id")
+    PayoutBatch payoutBatch;
 }

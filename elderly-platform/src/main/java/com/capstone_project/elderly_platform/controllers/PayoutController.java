@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.controllers;
 
-import com.capstone_project.elderly_platform.dtos.request.CreatePayoutRequest;
+import com.capstone_project.elderly_platform.dtos.request.externals.CreatePayoutRequest;
+import com.capstone_project.elderly_platform.dtos.request.externals.EstimatePayoutRequest;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.services.externals.payos.PayOSService;
@@ -11,11 +12,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import vn.payos.model.v1.payouts.Payout;
-import vn.payos.model.v1.payouts.PayoutRequests;
 import vn.payos.model.v1.payouts.batch.PayoutBatchRequest;
 import vn.payos.model.v1.payoutsAccount.PayoutAccountInfo;
 
 import java.util.List;
+import java.util.Map;
 
 @RequestMapping("/api/v1/payouts")
 @RestController
@@ -99,6 +100,21 @@ public class PayoutController {
         } catch (Exception e) {
             log.error("Error found", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Get balance failed. " + e.getMessage(), null));
+        }
+    }
+
+    @PostMapping("/estimate")
+    public ResponseEntity<ObjectResponse> estimate(@RequestBody EstimatePayoutRequest request) {
+        try {
+            Map<String, Object> response = payOSService.getEstimatedFees(request);
+            return response != null ? ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Get estimate bank fee payout successfully", response)) :
+                    ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Get estimate bank fee payout failed", null));
+        } catch (BadRequestException e) {
+            log.error("Error found : {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error found", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Get estimate bank fee payout failed. " + e.getMessage(), null));
         }
     }
 

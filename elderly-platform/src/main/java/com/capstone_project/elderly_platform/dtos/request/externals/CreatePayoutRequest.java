@@ -1,4 +1,4 @@
-package com.capstone_project.elderly_platform.dtos.request;
+package com.capstone_project.elderly_platform.dtos.request.externals;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

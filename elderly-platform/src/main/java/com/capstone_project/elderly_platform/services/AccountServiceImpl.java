@@ -91,8 +91,8 @@ public class AccountServiceImpl implements AccountService {
                 .password(bCryptPasswordEncoder.encode(accountRegisterRequest.getPassword()))
                 .accessToken(null)
                 .refreshToken(null)
-                .enabled(true)
-                .nonLocked(true)
+                .enabled(false)
+                .nonLocked(false)
                 .role(role)
                 .codeVerify(generateSixDigitCode())
                 .build();

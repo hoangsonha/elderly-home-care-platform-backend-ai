@@ -26,11 +26,9 @@ public class BaseEntity {
     LocalDateTime updatedAt;
 
     @Column(name = "deleted_at")
-    @UpdateTimestamp
     LocalDateTime deletedAt;
 
     @Column(name = "undeleted_at")
-    @UpdateTimestamp
     LocalDateTime unDeletedAt;
 
     boolean deleted = false;

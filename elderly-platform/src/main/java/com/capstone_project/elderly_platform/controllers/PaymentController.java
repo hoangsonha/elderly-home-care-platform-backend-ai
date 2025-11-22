@@ -1,12 +1,14 @@
 package com.capstone_project.elderly_platform.controllers;
 
-import com.capstone_project.elderly_platform.dtos.request.CreatePaymentLinkRequestBody;
+import com.capstone_project.elderly_platform.dtos.request.externals.CreatePaymentLinkRequestBody;
+import com.capstone_project.elderly_platform.dtos.request.externals.CreatePaymentSuccess;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
-import com.capstone_project.elderly_platform.dtos.response.PaymentLinkWithQRCodeResponse;
+import com.capstone_project.elderly_platform.dtos.response.externals.PaymentLinkWithQRCodeResponse;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.services.externals.payos.PayOSService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
@@ -42,10 +44,9 @@ public class PaymentController {
     // create payment link with QR code
     @PostMapping(path = "/create-payment-link")
     public ResponseEntity<ObjectResponse> createPaymentLinkWithQR(
-            @RequestBody(required = false) CreatePaymentLinkRequestBody requestBody,
-            HttpServletRequest request) {
+            @Valid @RequestBody(required = false) CreatePaymentLinkRequestBody requestBody) {
         try {
-          PaymentLinkWithQRCodeResponse response = payOSService.createPaymentLink(requestBody, request);
+          PaymentLinkWithQRCodeResponse response = payOSService.createPaymentLink(requestBody);
           return response != null ? ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Create link payment with QR Code successfully", response)) :
                   ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Create link payment with QR Code failed", null));
         } catch (Exception e) {
@@ -56,9 +57,9 @@ public class PaymentController {
 
     // check status for order
     @GetMapping(path = "/order/{orderId}")
-    public ResponseEntity<ObjectResponse> getOrderById(@PathVariable("orderId") long orderId) {
+    public ResponseEntity<ObjectResponse> getOrderById(@PathVariable("orderId") long orderId, CreatePaymentSuccess requestBody) {
         try {
-            PaymentLink response = payOSService.getOrderStatus(orderId);
+            PaymentLink response = payOSService.getOrderStatus(orderId, requestBody);
             return response != null ? ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Check status order successfully", response)) :
                   ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Check status order failed", null));
         } catch (Exception e) {

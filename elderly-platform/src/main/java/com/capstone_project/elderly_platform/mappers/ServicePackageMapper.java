@@ -19,10 +19,14 @@ public class ServicePackageMapper {
             return null;
         }
 
-        // Map nested serviceTasks
+        // Map nested serviceTasks (filter out deleted tasks)
         List<ServiceTaskResponseDTO> serviceTaskDTOs = null;
         if (servicePackage.getServiceTasks() != null) {
-            serviceTaskDTOs = serviceTaskMapper.toDTOList(servicePackage.getServiceTasks());
+            List<com.capstone_project.elderly_platform.pojos.ServiceTask> activeTasks = 
+                servicePackage.getServiceTasks().stream()
+                    .filter(task -> !task.isDeleted())
+                    .collect(java.util.stream.Collectors.toList());
+            serviceTaskDTOs = serviceTaskMapper.toDTOList(activeTasks);
         }
 
         return ServicePackageResponseDTO.builder()
