@@ -30,7 +30,7 @@ public class PublicController {
     private final ServicePackageService servicePackageService;
 
     @Operation(summary = "Get all active service packages", description = "Retrieve all active service packages")
-    @GetMapping("/active")
+    @GetMapping("/service-package/active")
     public ResponseEntity<ObjectResponse> getAllActiveServicePackages() {
         try {
             List<ServicePackageResponseDTO> response = servicePackageService.getAllActiveServicePackages();
@@ -45,7 +45,7 @@ public class PublicController {
     }
 
     @Operation(summary = "Get service package by ID", description = "Retrieve a service package by its ID")
-    @GetMapping("/{id}")
+    @GetMapping("/service-package/{id}")
     public ResponseEntity<ObjectResponse> getServicePackageById(@PathVariable("id") UUID id) {
         try {
             ServicePackageResponseDTO response = servicePackageService.getServicePackageById(id);
