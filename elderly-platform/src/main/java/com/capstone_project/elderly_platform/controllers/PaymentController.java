@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.PaymentLink;
@@ -43,6 +44,7 @@ public class PaymentController {
 
     // create payment link with QR code
     @PostMapping(path = "/create-payment-link")
+    @PreAuthorize("hasRole('CAREGIVER') or hasRole('CARE_SEEKER')")
     public ResponseEntity<ObjectResponse> createPaymentLinkWithQR(
             @Valid @RequestBody(required = false) CreatePaymentLinkRequestBody requestBody) {
         try {
@@ -57,6 +59,7 @@ public class PaymentController {
 
     // check status for order
     @GetMapping(path = "/order/{orderId}")
+    @PreAuthorize("hasRole('CAREGIVER') or hasRole('CARE_SEEKER')")
     public ResponseEntity<ObjectResponse> getOrderById(@PathVariable("orderId") long orderId, CreatePaymentSuccess requestBody) {
         try {
             PaymentLink response = payOSService.getOrderStatus(orderId, requestBody);
@@ -70,6 +73,7 @@ public class PaymentController {
 
     // cancel order
     @PutMapping(path = "/order/{orderId}")
+    @PreAuthorize("hasRole('CAREGIVER') or hasRole('CARE_SEEKER')")
     public ResponseEntity<ObjectResponse> cancelOrder(@PathVariable("orderId") long orderId) {
         try {
             PaymentLink response = payOSService.cancelOrderLink(orderId);

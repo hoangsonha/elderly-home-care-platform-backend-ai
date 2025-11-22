@@ -65,25 +65,8 @@ public class ServicePackageController {
         }
     }
 
-    @Operation(summary = "Get service package by ID", description = "Retrieve a service package by its ID")
-    @GetMapping("/{id}")
-    public ResponseEntity<ObjectResponse> getServicePackageById(@PathVariable("id") UUID id) {
-        try {
-            ServicePackageResponseDTO response = servicePackageService.getServicePackageById(id);
-            return ResponseEntity.status(HttpStatus.OK)
-                    .body(new ObjectResponse("Success", "Service package retrieved successfully", response));
-        } catch (ElementNotFoundException e) {
-            log.error("Service package not found", e);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ObjectResponse("Failed", e.getMessage(), null));
-        } catch (Exception e) {
-            log.error("Error getting service package", e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ObjectResponse("Failed", "Failed to get service package: " + e.getMessage(), null));
-        }
-    }
-
-    @Operation(summary = "Get all service packages", description = "Retrieve all service packages (not deleted)")
+    @Operation(summary = "Get all service packages", description = "Retrieve all service packages")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("")
     public ResponseEntity<ObjectResponse> getAllServicePackages() {
         try {
@@ -94,21 +77,6 @@ public class ServicePackageController {
             log.error("Error getting all service packages", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to get service packages: " + e.getMessage(), null));
-        }
-    }
-
-    @Operation(summary = "Get all active service packages", description = "Retrieve all active service packages")
-    @GetMapping("/active")
-    public ResponseEntity<ObjectResponse> getAllActiveServicePackages() {
-        try {
-            List<ServicePackageResponseDTO> response = servicePackageService.getAllActiveServicePackages();
-            return ResponseEntity.status(HttpStatus.OK)
-                    .body(new ObjectResponse("Success", "Active service packages retrieved successfully", response));
-        } catch (Exception e) {
-            log.error("Error getting active service packages", e);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ObjectResponse("Failed", "Failed to get active service packages: " + e.getMessage(),
-                            null));
         }
     }
 

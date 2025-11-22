@@ -1,5 +1,9 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
+import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
+import com.capstone_project.elderly_platform.services.ServicePackageService;
 import com.capstone_project.elderly_platform.services.externals.ai.AIMatchingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -10,7 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @RequestMapping("/api/v1/public")
 @RestController
@@ -21,6 +27,40 @@ import java.util.Map;
 public class PublicController {
 
     private final AIMatchingService aiMatchingService;
+    private final ServicePackageService servicePackageService;
+
+    @Operation(summary = "Get all active service packages", description = "Retrieve all active service packages")
+    @GetMapping("/active")
+    public ResponseEntity<ObjectResponse> getAllActiveServicePackages() {
+        try {
+            List<ServicePackageResponseDTO> response = servicePackageService.getAllActiveServicePackages();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Active service packages retrieved successfully", response));
+        } catch (Exception e) {
+            log.error("Error getting active service packages", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get active service packages: " + e.getMessage(),
+                            null));
+        }
+    }
+
+    @Operation(summary = "Get service package by ID", description = "Retrieve a service package by its ID")
+    @GetMapping("/{id}")
+    public ResponseEntity<ObjectResponse> getServicePackageById(@PathVariable("id") UUID id) {
+        try {
+            ServicePackageResponseDTO response = servicePackageService.getServicePackageById(id);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Service package retrieved successfully", response));
+        } catch (ElementNotFoundException e) {
+            log.error("Service package not found", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ObjectResponse("Failed", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error getting service package", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get service package: " + e.getMessage(), null));
+        }
+    }
 
     // private final AircraftService aircraftService;
     //
