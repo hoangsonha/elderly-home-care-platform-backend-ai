@@ -29,6 +29,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +37,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -465,6 +467,88 @@ public class CareServiceServiceImpl implements CareServiceService {
 
         // Calculate deadline: current time + response deadline hours
         return now.plusHours(responseDeadlineHours);
+    }
+
+    @Override
+    public CareServiceResponseDTO getCareServiceById(UUID careServiceId) {
+        log.info("Getting care service by ID: {}", careServiceId);
+        
+        CareService careService = careServiceRepository.findByCareServiceIdAndDeletedIsFalse(careServiceId);
+        if (careService == null) {
+            throw new ElementNotFoundException("Care service not found with ID: " + careServiceId);
+        }
+        
+        return careServiceMapper.toDTO(careService);
+    }
+
+    @Override
+    public CareServiceResponseDTO getCareServiceByBookingCode(String bookingCode) {
+        log.info("Getting care service by booking code: {}", bookingCode);
+        
+        CareService careService = careServiceRepository.findByBookingCodeAndDeletedIsFalse(bookingCode);
+        if (careService == null) {
+            throw new ElementNotFoundException("Care service not found with booking code: " + bookingCode);
+        }
+        
+        return careServiceMapper.toDTO(careService);
+    }
+
+    @Override
+    public List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status) {
+        log.info("Getting my care services with status filter: {}", status);
+        
+        CustomAccountDetail currentUser = SecurityUtils.getCurrentUser();
+        UUID accountId = currentUser.getId();
+        
+        // Default sort: newest first (descending by createdAt)
+        Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
+        
+        List<CareService> careServices = new ArrayList<>();
+        
+        // Check if user is CARE_SEEKER
+        if (SecurityUtils.hasRole("ROLE_CARE_SEEKER")) {
+            CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                    .findByAccount_AccountIdAndDeletedIsFalse(accountId);
+            
+            if (careSeekerProfile == null) {
+                throw new ElementNotFoundException("Care seeker profile not found for account ID: " + accountId);
+            }
+            
+            if (status != null) {
+                careServices = careServiceRepository.findByCareSeekerProfileAndStatusAndDeletedIsFalse(
+                        careSeekerProfile, status, sort);
+            } else {
+                careServices = careServiceRepository.findByCareSeekerProfileAndDeletedIsFalse(
+                        careSeekerProfile, sort);
+            }
+            
+            log.info("Found {} care services for care seeker with account ID: {}", careServices.size(), accountId);
+        }
+        // Check if user is CAREGIVER
+        else if (SecurityUtils.hasRole("ROLE_CAREGIVER")) {
+            CaregiverProfile caregiverProfile = caregiverProfileRepository
+                    .findByAccount_AccountIdAndDeletedIsFalse(accountId);
+            
+            if (caregiverProfile == null) {
+                throw new ElementNotFoundException("Caregiver profile not found for account ID: " + accountId);
+            }
+            
+            if (status != null) {
+                careServices = careServiceRepository.findByCaregiverProfileAndStatusAndDeletedIsFalse(
+                        caregiverProfile, status, sort);
+            } else {
+                careServices = careServiceRepository.findByCaregiverProfileAndDeletedIsFalse(
+                        caregiverProfile, sort);
+            }
+            
+            log.info("Found {} care services for caregiver with account ID: {}", careServices.size(), accountId);
+        } else {
+            throw new BadRequestException("User must have CARE_SEEKER or CAREGIVER role to view care services");
+        }
+        
+        return careServices.stream()
+                .map(careServiceMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
     // Inner class for snapshot - using DTOs instead of custom snapshot classes

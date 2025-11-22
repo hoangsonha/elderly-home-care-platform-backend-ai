@@ -2,6 +2,9 @@ package com.capstone_project.elderly_platform.repositories;
 
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.pojos.CareService;
+import com.capstone_project.elderly_platform.pojos.CareSeekerProfile;
+import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,9 +17,18 @@ import java.util.UUID;
 @Repository
 public interface CareServiceRepository extends JpaRepository<CareService, UUID> {
     CareService findByCareServiceIdAndDeletedIsFalse(UUID id);
+    CareService findByBookingCodeAndDeletedIsFalse(String bookingCode);
     CareService findByBookingCode(String bookingCode);
 
     boolean existsByBookingCode(String bookingCode);
+
+    // Find all care services by seeker (with optional status filter and sorting)
+    List<CareService> findByCareSeekerProfileAndDeletedIsFalse(CareSeekerProfile careSeekerProfile, Sort sort);
+    List<CareService> findByCareSeekerProfileAndStatusAndDeletedIsFalse(CareSeekerProfile careSeekerProfile, EnumCareServiceStatusType status, Sort sort);
+
+    // Find all care services by caregiver (with optional status filter and sorting)
+    List<CareService> findByCaregiverProfileAndDeletedIsFalse(CaregiverProfile caregiverProfile, Sort sort);
+    List<CareService> findByCaregiverProfileAndStatusAndDeletedIsFalse(CaregiverProfile caregiverProfile, EnumCareServiceStatusType status, Sort sort);
 
     /**
      * Finds all care services with status PENDING_CAREGIVER that have already passed their deadline.
