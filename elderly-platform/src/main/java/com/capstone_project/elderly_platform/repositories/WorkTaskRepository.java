@@ -6,10 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.UUID;
-
+import java.util.List;
 @Repository
 public interface WorkTaskRepository extends JpaRepository<WorkTask, UUID> {
     Optional<WorkTask> findByWorkTaskIdAndDeletedIsFalse(UUID id);
+    List<WorkTask> findByWorkSchedule_WorkScheduleId(UUID scheduleId);
 }
 
 

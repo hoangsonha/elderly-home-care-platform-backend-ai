@@ -7,16 +7,22 @@ server:
 spring:
   application:
     name: elderly-platform
+
   datasource:
-    url: jdbc:postgresql://${DB_HOSTNAME:localhost}:${DB_PORT:5432}/elderly_platform
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:123456789}
+    url: jdbc:postgresql://dpg-d4e1qrrgk3sc73be1png-a.singapore-postgres.render.com:5432/elderly_platform
+    username: elderly_platform_user
+    password: SlM5E9I2VmglmGFOGPvYiRBxhxyAkn7n
+    driver-class-name: org.postgresql.Driver
+
+  # ✅ Bật Redis
   data:
     redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      host: localhost   # Redis đang chạy trên máy của bạn
+      port: 6379        # port mặc định Redis
       timeout: 2000ms
+      password:          # nếu có password thì điền vào
+      enabled: true      # bật Redis
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -26,6 +32,7 @@ spring:
         show_sql: true
         format_sql: true
     show-sql: true
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -57,7 +64,6 @@ swagger:
   dev:
     url: http://localhost:8080/
   pro:
-#    url: https://elderlycareplatform.azurewebsites.net/
     url: http://34.134.211.231:8080/
 
 application:
