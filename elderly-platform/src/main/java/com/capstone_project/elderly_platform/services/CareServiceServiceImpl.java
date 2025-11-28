@@ -22,6 +22,7 @@ import com.capstone_project.elderly_platform.repositories.*;
 import com.capstone_project.elderly_platform.utils.SecurityUtils;
 import com.capstone_project.elderly_platform.utils.StringUtils;
 import com.capstone_project.elderly_platform.services.ExpiredCareServiceQueueService;
+import com.capstone_project.elderly_platform.events.CareServiceCreatedEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -29,6 +30,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -60,6 +62,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final NotificationService notificationService;
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
     private final WorkScheduleRepository workScheduleRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     @Override
@@ -207,6 +210,16 @@ public class CareServiceServiceImpl implements CareServiceService {
                 .build();
 
         CareService savedCareService = careServiceRepository.save(careService);
+
+        // Publish event for notification
+        try {
+            eventPublisher.publishEvent(new CareServiceCreatedEvent(this, savedCareService));
+            log.info("Published CareServiceCreatedEvent for care service {}", 
+                    savedCareService.getCareServiceId());
+        } catch (Exception e) {
+            log.error("Failed to publish CareServiceCreatedEvent: {}", e.getMessage(), e);
+            // Don't throw exception - care service is already saved
+        }
 
         // Schedule expiration in Redis queue
         try {

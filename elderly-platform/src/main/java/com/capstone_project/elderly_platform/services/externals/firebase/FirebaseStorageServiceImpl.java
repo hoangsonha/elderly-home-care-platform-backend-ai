@@ -2,13 +2,11 @@ package com.capstone_project.elderly_platform.services.externals.firebase;
 
 import com.capstone_project.elderly_platform.enums.EnumUploadType;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
-import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
-import com.google.auth.Credentials;
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.BlobInfo;
 import com.google.cloud.storage.Storage;
-import com.google.cloud.storage.StorageOptions;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,20 +16,19 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class FirebaseStorageServiceImpl implements FirebaseStorageService {
 
-    // Firebase
+    // Inject Storage bean from FirebaseConfiguration
+    private final Storage storage;
 
     @Value("${firebase.bucket.name}")
     private String bucketName;
-
-    @Value("${firebase.get.stream}")
-    private String fileConfigFirebase;
 
     @Value("${firebase.get.url}")
     private String urlFirebase;
@@ -176,80 +173,16 @@ public class FirebaseStorageServiceImpl implements FirebaseStorageService {
                 .setContentType(contentType)
                 .build();
 
-        Credentials credentials = getFirebaseCredentials();
-        Storage storage = StorageOptions.newBuilder().setCredentials(credentials).build().getService();
+        // Use injected Storage bean instead of creating new one
         storage.create(blobInfo, Files.readAllBytes(file.toPath()));
+
+        log.debug("Uploaded file to Firebase Storage: {}", folder);
 
         return String.format(urlFirebase, URLEncoder.encode(folder, StandardCharsets.UTF_8));
     }
 
-    /**
-     * Lấy Firebase credentials theo thứ tự ưu tiên:
-     * 1. Google Cloud default credentials (nếu chạy trên GCP với service account)
-     * 2. FIREBASE_KEY_BASE64 - Base64 encoded JSON key từ biến môi trường (bảo mật
-     * nhất)
-     * 3. FIREBASE_KEY_PATH - Đường dẫn đến file key từ biến môi trường
-     * 4. File key trong resources (fallback cho local dev)
-     */
-    private Credentials getFirebaseCredentials() throws IOException {
-        // 1. Thử dùng Google Cloud default credentials (tự động nếu chạy trên GCP)
-        try {
-            Credentials defaultCredentials = GoogleCredentials.getApplicationDefault();
-            System.out.println("*** Đang dùng Google Cloud Application Default Credentials");
-            return defaultCredentials;
-        } catch (IOException e) {
-            // Không có default credentials, tiếp tục các phương án khác
-            System.out.println("*** Không tìm thấy Application Default Credentials, thử các phương án khác...");
-        }
-
-        // 2. Thử lấy từ FIREBASE_KEY_BASE64 (Base64 encoded JSON)
-        String keyBase64 = System.getenv("FIREBASE_KEY_BASE64");
-        if (keyBase64 != null && !keyBase64.isBlank()) {
-            try {
-                System.out.println("*** Đang dùng FIREBASE_KEY_BASE64 từ biến môi trường");
-                byte[] decodedBytes = Base64.getDecoder().decode(keyBase64);
-                InputStream keyStream = new ByteArrayInputStream(decodedBytes);
-                return GoogleCredentials.fromStream(keyStream);
-            } catch (Exception e) {
-                System.out.println("*** Lỗi decode FIREBASE_KEY_BASE64: " + e.getMessage());
-                throw new ElementNotFoundException("Không thể decode FIREBASE_KEY_BASE64: " + e.getMessage());
-            }
-        }
-
-        // 3. Thử lấy từ FIREBASE_KEY_PATH (đường dẫn file)
-        String envPath = System.getenv("FIREBASE_KEY_PATH");
-        if (envPath != null && !envPath.isBlank()) {
-            try {
-                System.out.println("*** Đang dùng FIREBASE_KEY_PATH từ biến môi trường: " + envPath);
-                File keyFile = new File(envPath);
-                if (!keyFile.exists()) {
-                    throw new ElementNotFoundException("File key không tồn tại tại: " + envPath);
-                }
-                InputStream keyStream = new FileInputStream(keyFile);
-                return GoogleCredentials.fromStream(keyStream);
-            } catch (Exception e) {
-                System.out.println("*** Lỗi đọc file từ FIREBASE_KEY_PATH: " + e.getMessage());
-                throw new ElementNotFoundException("Không thể đọc file key từ FIREBASE_KEY_PATH: " + envPath);
-            }
-        }
-
-        // 4. Fallback: Thử lấy từ resources (local dev)
-        String fallbackPathInResources = "keys/key_firebase.json";
-        System.out.println("*** Không có biến môi trường, dùng file trong resources: " + fallbackPathInResources);
-        InputStream keyStream = FirebaseStorageServiceImpl.class.getClassLoader()
-                .getResourceAsStream(fallbackPathInResources);
-
-        if (keyStream == null) {
-            throw new ElementNotFoundException(
-                    "Không tìm thấy Firebase credentials. Vui lòng thiết lập một trong các cách sau:\n" +
-                            "1. Chạy trên Google Cloud với service account\n" +
-                            "2. Set biến môi trường FIREBASE_KEY_BASE64 (Base64 encoded JSON)\n" +
-                            "3. Set biến môi trường FIREBASE_KEY_PATH (đường dẫn đến file key)\n" +
-                            "4. Đặt file key_firebase.json trong resources/keys/");
-        }
-
-        return GoogleCredentials.fromStream(keyStream);
-    }
+    // getFirebaseCredentials() method removed
+    // Now using injected Storage bean from FirebaseConfiguration
 
     private EnumUploadType detectType(MultipartFile file) {
         String contentType = file.getContentType();

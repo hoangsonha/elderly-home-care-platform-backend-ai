@@ -71,7 +71,7 @@ public class AccountController {
         }
     }
 
-    @PostMapping("/refresh_token")
+    @PostMapping("/refresh-token")
     public ResponseEntity<TokenResponse> refreshToken(HttpServletRequest request) {
         String refreshToken = request.getHeader("RefreshToken");
         TokenResponse tokenResponse = accountService.refreshToken(refreshToken);

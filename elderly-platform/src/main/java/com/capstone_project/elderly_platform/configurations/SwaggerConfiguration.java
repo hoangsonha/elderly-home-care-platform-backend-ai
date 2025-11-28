@@ -16,12 +16,18 @@ import java.util.List;
 @Configuration
 public class SwaggerConfiguration {
 
-    @Value("${swagger.dev.url}") private String swaggerDevUrl;
-    @Value("${swagger.pro.url}") private String swaggerProUrl;
-    @Value("${swagger.app.name}") private String swaggerAppName;
-    @Value("${swagger.add.security.name}") private String swaggerAddSecurityName;
-    @Value("${swagger.scheme}") private String swaggerScheme;
-    @Value("${swagger.format}") private String swaggerFormat;
+    @Value("${swagger.dev.url}")
+    private String swaggerDevUrl;
+    @Value("${swagger.pro.url}")
+    private String swaggerProUrl;
+    @Value("${swagger.app.name}")
+    private String swaggerAppName;
+    @Value("${swagger.add.security.name}")
+    private String swaggerAddSecurityName;
+    @Value("${swagger.scheme}")
+    private String swaggerScheme;
+    @Value("${swagger.format}")
+    private String swaggerFormat;
 
     @Bean
     public OpenAPI customOpenAPI() {
@@ -48,7 +54,8 @@ public class SwaggerConfiguration {
         securityRequirement.addList(swaggerAddSecurityName);
 
         Components components = new Components();
-        components.addSecuritySchemes(swaggerAddSecurityName, new SecurityScheme().name(swaggerAddSecurityName).type(SecurityScheme.Type.HTTP).scheme(swaggerScheme).bearerFormat(swaggerFormat));
+        components.addSecuritySchemes(swaggerAddSecurityName, new SecurityScheme().name(swaggerAddSecurityName)
+                .type(SecurityScheme.Type.HTTP).scheme(swaggerScheme).bearerFormat(swaggerFormat));
 
         return new OpenAPI()
                 .info(info)

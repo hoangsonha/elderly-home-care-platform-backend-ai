@@ -99,9 +99,15 @@ payos:
 
 # Firebase
 firebase:
+  # Firebase Admin SDK credentials (Unified - dùng chung cho FCM & Storage)
+  credentials:
+    path: ${FIREBASE_CREDENTIALS_PATH:keys/key_firebase.json}
+  app:
+    name: ${FIREBASE_APP_NAME:elderly-platform-app}
+  
+  # Firebase Storage
   bucket:
     name: swp391-f046d.appspot.com
   get:
-    stream: ${FIREBASE_KEY_PATH:}
     url: https://firebasestorage.googleapis.com/v0/b/swp391-f046d.appspot.com/o/%s?alt=media
     folder: exe201_project
