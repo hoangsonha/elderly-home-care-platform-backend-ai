@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.controllers;
 
 import com.capstone_project.elderly_platform.dtos.request.CreateWorkTaskRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateWorkTaskStatusRequest;
 import com.capstone_project.elderly_platform.enums.EnumWorkTaskStatusType;
 import com.capstone_project.elderly_platform.pojos.WorkTask;
 import com.capstone_project.elderly_platform.services.WorkTaskService;
@@ -32,11 +33,18 @@ public class WorkTaskController {
     }
 
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<WorkTask> updateStatus(
-            @PathVariable UUID id,
-            @RequestParam EnumWorkTaskStatusType status
-    ) {
-        return ResponseEntity.ok(workTaskService.updateTaskStatus(id, status));
-    }
+//    @PutMapping("/{id}/status")
+//    public ResponseEntity<WorkTask> updateStatus(
+//            @PathVariable UUID id,
+//            @RequestParam EnumWorkTaskStatusType status
+//    ) {
+//        return ResponseEntity.ok(workTaskService.updateTaskStatus(id, status));
+//    }
+@PutMapping("/{taskId}/status")
+public WorkTask updateStatus(
+        @PathVariable UUID taskId,
+        @RequestBody UpdateWorkTaskStatusRequest request
+) {
+    return workTaskService.updateStatus(taskId, request);
+}
 }

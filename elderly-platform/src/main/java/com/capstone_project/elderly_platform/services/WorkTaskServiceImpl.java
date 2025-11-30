@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.request.CreateWorkTaskRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateWorkTaskStatusRequest;
 import com.capstone_project.elderly_platform.enums.EnumWorkTaskStatusType;
 import com.capstone_project.elderly_platform.pojos.WorkSchedule;
 import com.capstone_project.elderly_platform.pojos.WorkTask;
@@ -60,6 +61,26 @@ public class WorkTaskServiceImpl implements WorkTaskService {
 
         if (status == EnumWorkTaskStatusType.DONE) {
             task.setCompletedAt(LocalDateTime.now());
+        }
+
+        return workTaskRepo.save(task);
+    }
+
+    @Override
+    public WorkTask updateStatus(UUID taskId, UpdateWorkTaskStatusRequest request) {
+        WorkTask task = workTaskRepo.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("WorkTask not found"));
+
+        task.setStatus(request.getStatus());
+
+        // Nếu trạng thái là COMPLETED thì gán completedAt
+        if (request.getStatus() == EnumWorkTaskStatusType.DONE) {
+            task.setCompletedAt(LocalDateTime.now());
+        }
+
+        // Nếu reset trạng thái thì clear completedAt
+        if (request.getStatus() != EnumWorkTaskStatusType.DONE) {
+            task.setCompletedAt(null);
         }
 
         return workTaskRepo.save(task);
