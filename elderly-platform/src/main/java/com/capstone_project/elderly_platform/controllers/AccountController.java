@@ -3,6 +3,7 @@ package com.capstone_project.elderly_platform.controllers;
 import com.capstone_project.elderly_platform.dtos.request.AccountLoginRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.ResendCodeVerifyRequest;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
@@ -14,15 +15,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 @RequestMapping("/api/v1/accounts")
 @RestController
@@ -68,6 +64,22 @@ public class AccountController {
                             .message("Mã không trùng khớp")
                             .build()
             );
+        }
+    }
+
+    @PostMapping("/resend-code-verify")
+    public ResponseEntity<ObjectResponse> resendCodeVerify(@Valid @RequestBody ResendCodeVerifyRequest request) {
+        try {
+            boolean success = accountService.resendCodeVerify(request);
+            return success
+                    ? ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Đã gửi lại mã xác thực thành công", null))
+                    : ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Gửi lại mã xác thực thất bại do không gửi được email", null));
+        } catch (BadRequestException e) {
+            log.error("Error resend code verify: {}", e.toString());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Failed", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error resend code verify", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", "Gửi lại mã xác thực thất bại", null));
         }
     }
 

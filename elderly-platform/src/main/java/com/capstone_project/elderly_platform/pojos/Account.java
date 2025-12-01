@@ -10,6 +10,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -47,6 +48,9 @@ public class Account extends BaseEntity {
 
     @Column(length = 6)
     String codeVerify;
+
+    @Column(name = "code_verify_expires_at")
+    LocalDateTime codeVerifyExpiresAt;
 
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     String avatarUrl;

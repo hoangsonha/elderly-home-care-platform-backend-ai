@@ -9,6 +9,7 @@ import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import com.capstone_project.elderly_platform.pojos.Role;
 import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.ResendCodeVerifyRequest;
 import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
 import com.capstone_project.elderly_platform.enums.EnumRoleType;
 import com.capstone_project.elderly_platform.enums.EnumTokenType;
@@ -40,6 +41,7 @@ import org.springframework.util.StringUtils;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
+import java.time.LocalDateTime;
 import java.util.Random;
 import java.util.UUID;
 
@@ -86,6 +88,9 @@ public class AccountServiceImpl implements AccountService {
             throw new BadRequestException("Vai trò không hợp lệ");
         }
 
+        String codeVerify = generateSixDigitCode();
+        LocalDateTime codeVerifyExpiresAt = LocalDateTime.now().plusMinutes(10);
+
         Account account = Account.builder()
                 .email(accountRegisterRequest.getEmail())
                 .password(bCryptPasswordEncoder.encode(accountRegisterRequest.getPassword()))
@@ -94,7 +99,8 @@ public class AccountServiceImpl implements AccountService {
                 .enabled(false)
                 .nonLocked(false)
                 .role(role)
-                .codeVerify(generateSixDigitCode())
+                .codeVerify(codeVerify)
+                .codeVerifyExpiresAt(codeVerifyExpiresAt)
                 .build();
 
         Account accountSave = accountRepository.save(account);
@@ -111,8 +117,20 @@ public class AccountServiceImpl implements AccountService {
             throw new BadRequestException("Tài khoản không tồn tại");
         }
 
+        // Kiểm tra mã verify có tồn tại không
+        if (account.getCodeVerify() == null) {
+            throw new BadRequestException("Mã xác thực không tồn tại. Vui lòng yêu cầu mã mới");
+        }
+
+        // Kiểm tra mã verify đã hết hạn chưa
+        if (account.getCodeVerifyExpiresAt() == null ||
+                LocalDateTime.now().isAfter(account.getCodeVerifyExpiresAt())) {
+            throw new BadRequestException("Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới");
+        }
+
         if (request.getVerificationCode().equals(account.getCodeVerify())) {
             account.setCodeVerify(null);
+            account.setCodeVerifyExpiresAt(null);
             account.setEnabled(true);
             account.setNonLocked(true);
 
@@ -165,6 +183,33 @@ public class AccountServiceImpl implements AccountService {
                     .build();
         }
         throw new BadRequestException("Mã xác thực không đúng. Vui lòng thử lại");
+    }
+
+    @Override
+    @Transactional
+    public boolean resendCodeVerify(ResendCodeVerifyRequest request) {
+        Account account = accountRepository.getAccountByEmail(request.getEmail());
+
+        if (account == null) {
+            throw new BadRequestException("Tài khoản không tồn tại");
+        }
+
+        // Kiểm tra account đã được verify chưa
+        if (account.getEnabled()) {
+            throw new BadRequestException("Tài khoản đã được xác thực. Không cần gửi lại mã");
+        }
+
+        // Tạo mã verify mới và set expiration time (10 phút)
+        String newCodeVerify = generateSixDigitCode();
+        LocalDateTime codeVerifyExpiresAt = LocalDateTime.now().plusMinutes(10);
+
+        account.setCodeVerify(newCodeVerify);
+        account.setCodeVerifyExpiresAt(codeVerifyExpiresAt);
+        accountRepository.save(account);
+
+        // Gửi email với mã verify mới
+        String roleName = account.getRole() != null ? account.getRole().getRoleName().name() : null;
+        return sendVerificationEmail(account.getEmail(), roleName, newCodeVerify);
     }
 
     public String generateSixDigitCode() {
