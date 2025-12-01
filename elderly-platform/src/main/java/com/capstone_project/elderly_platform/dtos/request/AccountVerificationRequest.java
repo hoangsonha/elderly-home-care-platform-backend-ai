@@ -12,12 +12,12 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AccountVerificationRequest {
 
-    @Email(message = "Email không hợp lệ")
-    @NotBlank(message = "Vui lòng nhập email")
-    @Size(min = 10, max = 255, message = "Email phải từ 10 tới 255 kí tự bao gồm cả @gmail.com")
+    @Email(message = "Invalid email")
+    @NotBlank(message = "Please enter email")
+    @Size(min = 10, max = 255, message = "Email must be between 10 and 255 characters including @gmail.com")
     private String email;
 
-    @NotBlank(message = "Vui lòng nhập mật khẩu")
-    @Size(min = 6, max = 6, message = "Mật khẩu phải từ 6 tới 100 kí tự")
+    @NotBlank(message = "Please enter verification code")
+    @Size(min = 6, max = 6, message = "Verification code must be 6 characters")
     private String verificationCode;
 }

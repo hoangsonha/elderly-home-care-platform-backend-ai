@@ -82,7 +82,8 @@ public class PayOSServiceImpl implements PayOSService {
     public PaymentLinkWithQRCodeResponse createPaymentLink(CreatePaymentLinkRequestBody requestBody) {
         try {
 
-            CareService careService = careServiceRepository.findByCareServiceIdAndDeletedIsFalse(requestBody.getCareServiceId());
+            CareService careService = careServiceRepository
+                    .findByCareServiceIdAndDeletedIsFalse(requestBody.getCareServiceId());
 
             if (careService == null) {
                 throw new BadRequestException("CareService not found");
@@ -98,7 +99,7 @@ public class PayOSServiceImpl implements PayOSService {
                     CareServiceSnapshot snapshot = mapper.readValue(
                             careService.getCareServiceSnapshot(),
                             CareServiceSnapshot.class);
-                    
+
                     if (snapshot.getServicePackage() != null) {
                         if (snapshot.getServicePackage().getPackageName() != null) {
                             packageName = snapshot.getServicePackage().getPackageName();
@@ -194,8 +195,9 @@ public class PayOSServiceImpl implements PayOSService {
                 payment.setPaidAt(now);
                 paymentRepository.save(payment);
 
-                CareService careService = careServiceRepository.findByCareServiceIdAndDeletedIsFalse(requestBody.getCareServiceId());
-                
+                CareService careService = careServiceRepository
+                        .findByCareServiceIdAndDeletedIsFalse(requestBody.getCareServiceId());
+
                 if (careService == null) {
                     throw new BadRequestException("CareService not found");
                 }
@@ -204,7 +206,8 @@ public class PayOSServiceImpl implements PayOSService {
                 PayoutBatch payoutBatch = getOrCreatePayoutBatch(careService.getCaregiverProfile(), now);
 
                 // Create Payout and link to PayoutBatch
-                com.capstone_project.elderly_platform.pojos.Payout payout = com.capstone_project.elderly_platform.pojos.Payout.builder()
+                com.capstone_project.elderly_platform.pojos.Payout payout = com.capstone_project.elderly_platform.pojos.Payout
+                        .builder()
                         .payoutCode("payout_" + careService.getCareServiceId())
                         .caregiverEarnings(careService.getCaregiverEarnings())
                         .serviceDate(now.toLocalDate())
@@ -216,15 +219,15 @@ public class PayOSServiceImpl implements PayOSService {
                         .caregiverProfile(careService.getCaregiverProfile())
                         .payoutBatch(payoutBatch)
                         .build();
-                
+
                 // Set timestamps manually
                 payout.setCreatedAt(now);
                 payout.setUpdatedAt(now);
                 payout.setDeleted(false);
-                
+
                 // Save payout
                 com.capstone_project.elderly_platform.pojos.Payout savedPayout = payoutRepository.save(payout);
-                
+
                 // Update PayoutBatch totals
                 updatePayoutBatchTotals(payoutBatch, savedPayout);
             }
@@ -235,27 +238,28 @@ public class PayOSServiceImpl implements PayOSService {
             return null;
         }
     }
-    
+
     /**
      * Get existing PayoutBatch or create new one for caregiver's current month
      */
     private PayoutBatch getOrCreatePayoutBatch(CaregiverProfile caregiverProfile, LocalDateTime now) {
         int month = now.getMonthValue();
         int year = now.getYear();
-        
+
         // Try to find existing batch for this caregiver and month
-        String batchCode = "batch_" + caregiverProfile.getCaregiverProfileId() + "_" + year + "_" + String.format("%02d", month);
-        
+        String batchCode = "batch_" + caregiverProfile.getCaregiverProfileId() + "_" + year + "_"
+                + String.format("%02d", month);
+
         PayoutBatch existingBatch = payoutBatchRepository.findByBatchCode(batchCode);
-        
+
         if (existingBatch != null && !existingBatch.isDeleted()) {
             return existingBatch;
         }
-        
+
         // Create new batch
         LocalDate firstDayOfMonth = LocalDate.of(year, month, 1);
         LocalDate lastDayOfMonth = firstDayOfMonth.plusMonths(1).minusDays(1);
-        
+
         PayoutBatch newBatch = PayoutBatch.builder()
                 .batchCode(batchCode)
                 .payoutMonth(month)
@@ -270,28 +274,29 @@ public class PayOSServiceImpl implements PayOSService {
                 .scheduledAt(lastDayOfMonth.plusDays(5)) // Schedule payout 5 days after month end
                 .caregiverProfile(caregiverProfile)
                 .build();
-        
+
         // Set timestamps manually
         newBatch.setCreatedAt(now);
         newBatch.setUpdatedAt(now);
         newBatch.setDeleted(false);
-        
+
         return payoutBatchRepository.save(newBatch);
     }
-    
+
     /**
      * Update PayoutBatch totals when new Payout is added
      */
-    private void updatePayoutBatchTotals(PayoutBatch payoutBatch, com.capstone_project.elderly_platform.pojos.Payout payout) {
+    private void updatePayoutBatchTotals(PayoutBatch payoutBatch,
+            com.capstone_project.elderly_platform.pojos.Payout payout) {
         // Increment totals
         payoutBatch.setTotalBookings(payoutBatch.getTotalBookings() + 1);
         payoutBatch.setTotalServiceAmount(payoutBatch.getTotalServiceAmount() + payout.getTotalAmount());
         payoutBatch.setTotalSystemFeeAmount(payoutBatch.getTotalSystemFeeAmount() + payout.getSystemRevenue());
         payoutBatch.setTotalCaregiverEarnings(payoutBatch.getTotalCaregiverEarnings() + payout.getCaregiverEarnings());
-        
+
         // Update timestamp
         payoutBatch.setUpdatedAt(LocalDateTime.now());
-        
+
         payoutBatchRepository.save(payoutBatch);
     }
 
@@ -311,7 +316,8 @@ public class PayOSServiceImpl implements PayOSService {
     public CreatePaymentLinkResponse createOrderLink(CreatePaymentLinkRequestBody requestBody) {
         try {
 
-            CareService careService = careServiceRepository.findByCareServiceIdAndDeletedIsFalse(requestBody.getCareServiceId());
+            CareService careService = careServiceRepository
+                    .findByCareServiceIdAndDeletedIsFalse(requestBody.getCareServiceId());
 
             if (careService == null) {
                 throw new BadRequestException("CareService not found");
@@ -349,18 +355,16 @@ public class PayOSServiceImpl implements PayOSService {
             final long price = pricePackage;
             final long orderCode = System.currentTimeMillis() / 1000;
 
-            PaymentLinkItem item =
-                    PaymentLinkItem.builder().name(productName).quantity(1).price(price).build();
+            PaymentLinkItem item = PaymentLinkItem.builder().name(productName).quantity(1).price(price).build();
 
-            CreatePaymentLinkRequest paymentData =
-                    CreatePaymentLinkRequest.builder()
-                            .orderCode(orderCode)
-                            .description(description)
-                            .amount(price)
-                            .item(item)
-                            .returnUrl(returnUrl)
-                            .cancelUrl(cancelUrl)
-                            .build();
+            CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
+                    .orderCode(orderCode)
+                    .description(description)
+                    .amount(price)
+                    .item(item)
+                    .returnUrl(returnUrl)
+                    .cancelUrl(cancelUrl)
+                    .build();
 
             CreatePaymentLinkResponse data = payOS.paymentRequests().create(paymentData);
             return data;
@@ -406,33 +410,31 @@ public class PayOSServiceImpl implements PayOSService {
     @Override
     public ResponseEntity<?> downloadInvoice(long orderId, String invoiceId) {
         try {
-            FileDownloadResponse invoiceFile =
-                    payOS.paymentRequests().invoices().download(invoiceId, orderId);
+            FileDownloadResponse invoiceFile = payOS.paymentRequests().invoices().download(invoiceId, orderId);
 
             if (invoiceFile == null || invoiceFile.getData() == null) {
-              return ResponseEntity.status(404).body(ApiResponse.error("invoice not found or empty"));
+                return ResponseEntity.status(404).body(ApiResponse.error("invoice not found or empty"));
             }
 
             ByteArrayResource resource = new ByteArrayResource(invoiceFile.getData());
 
             HttpHeaders headers = new HttpHeaders();
-            String contentType =
-                    invoiceFile.getContentType() == null
-                            ? MediaType.APPLICATION_PDF_VALUE
-                            : invoiceFile.getContentType();
+            String contentType = invoiceFile.getContentType() == null
+                    ? MediaType.APPLICATION_PDF_VALUE
+                    : invoiceFile.getContentType();
             headers.set(HttpHeaders.CONTENT_TYPE, contentType);
             headers.set(
                     HttpHeaders.CONTENT_DISPOSITION,
                     "attachment; filename=\"" + invoiceFile.getFilename() + "\"");
             if (invoiceFile.getSize() != null) {
-              headers.setContentLength(invoiceFile.getSize());
+                headers.setContentLength(invoiceFile.getSize());
             }
 
             return ResponseEntity.ok().headers(headers).body(resource);
         } catch (APIException e) {
             e.printStackTrace();
             return ResponseEntity.status(500)
-                .body(ApiResponse.error(e.getErrorDesc().orElse(e.getMessage())));
+                    .body(ApiResponse.error(e.getErrorDesc().orElse(e.getMessage())));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body(ApiResponse.error(e.getMessage()));
@@ -452,14 +454,14 @@ public class PayOSServiceImpl implements PayOSService {
     }
 
     @Override
-    public List<Payout> getAllPayouts(String referenceId, String approvalState, List<String> category, String fromDate, String toDate, Integer limit, Integer offset) {
+    public List<Payout> getAllPayouts(String referenceId, String approvalState, List<String> category, String fromDate,
+            String toDate, Integer limit, Integer offset) {
         try {
-            GetPayoutListParams.GetPayoutListParamsBuilder paramsBuilder =
-                    GetPayoutListParams.builder()
-                            .referenceId(referenceId)
-                            .category(category)
-                            .limit(limit)
-                            .offset(offset);
+            GetPayoutListParams.GetPayoutListParamsBuilder paramsBuilder = GetPayoutListParams.builder()
+                    .referenceId(referenceId)
+                    .category(category)
+                    .limit(limit)
+                    .offset(offset);
             if (fromDate != null && !fromDate.isEmpty()) {
                 paramsBuilder.fromDate(fromDate);
             }
@@ -527,7 +529,8 @@ public class PayOSServiceImpl implements PayOSService {
             payoutData.put("amount", request.getAmount());
             payoutData.put("toAccountNumber", request.getAccountNumber().trim());
             payoutData.put("toBin", request.getBankCode().trim());
-            payoutData.put("description", request.getDescription() != null ? request.getDescription().trim() : "Chuyển tiền");
+            payoutData.put("description",
+                    request.getDescription() != null ? request.getDescription().trim() : "Chuyển tiền");
 
             // Set referenceId
             if (request.getReferenceId() != null && !request.getReferenceId().isEmpty()) {
@@ -553,7 +556,7 @@ public class PayOSServiceImpl implements PayOSService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            String errorMessage = e.getMessage() != null ? e.getMessage() : "Tạo payout thất bại";
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to create payout";
             System.err.println("=== Lỗi khi tạo payout ===");
             System.err.println("Error: " + errorMessage);
             if (e.getCause() != null) {
@@ -721,7 +724,7 @@ public class PayOSServiceImpl implements PayOSService {
 
         } catch (Exception e) {
             e.printStackTrace();
-            String errorMessage = e.getMessage() != null ? e.getMessage() : "Ước tính chi phí thất bại";
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "Failed to estimate cost";
             System.err.println("=== Lỗi khi estimate payout ===");
             System.err.println("Error: " + errorMessage);
             if (e.getCause() != null) {
@@ -730,7 +733,6 @@ public class PayOSServiceImpl implements PayOSService {
             return null;
         }
     }
-
 
     // private methods
 

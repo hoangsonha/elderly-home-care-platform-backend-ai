@@ -42,6 +42,6 @@ public class RatingServiceImpl implements RatingService {
 
     public Account getAccountById(UUID accountId) {
         return accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account không tồn tại"));
+                .orElseThrow(() -> new RuntimeException("Account does not exist"));
     }
 }

@@ -12,8 +12,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ResendCodeVerifyRequest {
 
-    @Email(message = "Email không hợp lệ")
-    @NotBlank(message = "Vui lòng nhập email")
-    @Size(min = 10, max = 255, message = "Email phải từ 10 tới 255 kí tự bao gồm cả @gmail.com")
+    @Email(message = "Invalid email")
+    @NotBlank(message = "Please enter email")
+    @Size(min = 10, max = 255, message = "Email must be between 10 and 255 characters including @gmail.com")
     private String email;
 }

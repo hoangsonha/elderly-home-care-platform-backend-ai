@@ -74,7 +74,7 @@ public class AccountServiceImpl implements AccountService {
     public boolean registerAccount(AccountRegisterRequest accountRegisterRequest) {
         Account checkExistingAccount = accountRepository.getAccountByEmail(accountRegisterRequest.getEmail());
         if (checkExistingAccount != null) {
-            throw new ElementExistException("Tài khoản đã tồn tại");
+            throw new ElementExistException("Account already exists");
         }
 
         Role role = null;
@@ -85,7 +85,7 @@ public class AccountServiceImpl implements AccountService {
                 && accountRegisterRequest.getRole().equals("ROLE_CAREGIVER")) {
             role = roleService.getRoleByRoleName(EnumRoleType.ROLE_CAREGIVER);
         } else {
-            throw new BadRequestException("Vai trò không hợp lệ");
+            throw new BadRequestException("Invalid role");
         }
 
         String codeVerify = generateSixDigitCode();
@@ -114,18 +114,18 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.getAccountByEmail(request.getEmail());
 
         if (account == null) {
-            throw new BadRequestException("Tài khoản không tồn tại");
+            throw new BadRequestException("Account does not exist");
         }
 
-        // Kiểm tra mã verify có tồn tại không
+        // Check if verification code exists
         if (account.getCodeVerify() == null) {
-            throw new BadRequestException("Mã xác thực không tồn tại. Vui lòng yêu cầu mã mới");
+            throw new BadRequestException("Verification code does not exist. Please request a new code");
         }
 
-        // Kiểm tra mã verify đã hết hạn chưa
+        // Check if verification code has expired
         if (account.getCodeVerifyExpiresAt() == null ||
                 LocalDateTime.now().isAfter(account.getCodeVerifyExpiresAt())) {
-            throw new BadRequestException("Mã xác thực đã hết hạn. Vui lòng yêu cầu mã mới");
+            throw new BadRequestException("Verification code has expired. Please request a new code");
         }
 
         if (request.getVerificationCode().equals(account.getCodeVerify())) {
@@ -169,7 +169,7 @@ public class AccountServiceImpl implements AccountService {
 
             return TokenResponse.builder()
                     .code("Success")
-                    .message("Xác thực thành công")
+                    .message("Verification successful")
                     .accountId(account.getAccountId())
                     .email(account.getEmail())
                     .token(token)
@@ -182,7 +182,7 @@ public class AccountServiceImpl implements AccountService {
                     .profile(profileData)
                     .build();
         }
-        throw new BadRequestException("Mã xác thực không đúng. Vui lòng thử lại");
+        throw new BadRequestException("Invalid verification code. Please try again");
     }
 
     @Override
@@ -191,12 +191,12 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.getAccountByEmail(request.getEmail());
 
         if (account == null) {
-            throw new BadRequestException("Tài khoản không tồn tại");
+            throw new BadRequestException("Account does not exist");
         }
 
-        // Kiểm tra account đã được verify chưa
+        // Check if account is already verified
         if (account.getEnabled()) {
-            throw new BadRequestException("Tài khoản đã được xác thực. Không cần gửi lại mã");
+            throw new BadRequestException("Account is already verified. No need to resend code");
         }
 
         // Tạo mã verify mới và set expiration time (10 phút)
@@ -234,7 +234,7 @@ public class AccountServiceImpl implements AccountService {
 
             String mailne = templateEngine.process(content, context);
 
-            String title = "Mã xác nhận tài khoản";
+            String title = "Account Verification Code";
             String senderName = "ELDERLY PLATFORM";
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -260,7 +260,7 @@ public class AccountServiceImpl implements AccountService {
     public TokenResponse refreshToken(String refreshToken) {
         TokenResponse tokenResponse = TokenResponse.builder()
                 .code("Failed")
-                .message("Làm mới token thất bại")
+                .message("Token refresh failed")
                 .build();
         String email = jwtTokenConfiguration.getEmailFromJwt(refreshToken, EnumTokenType.REFRESH_TOKEN);
         Account account = accountRepository.getAccountByEmail(email);
@@ -300,7 +300,7 @@ public class AccountServiceImpl implements AccountService {
 
                         tokenResponse = TokenResponse.builder()
                                 .code("Success")
-                                .message("Làm mới token thành công")
+                                .message("Token refreshed successfully")
                                 .accountId(account.getAccountId())
                                 .token(newToken)
                                 .refreshToken(refreshToken)
@@ -391,7 +391,7 @@ public class AccountServiceImpl implements AccountService {
         String email = jwtTokenConfiguration.getEmailFromJwt(token, EnumTokenType.TOKEN);
         Account account = accountRepository.getAccountByEmail(email);
         if (account == null) {
-            throw new ElementNotFoundException("Không tìm thấy tài khoản");
+            throw new ElementNotFoundException("Account not found");
         }
         account.setAccessToken(null);
         account.setRefreshToken(null);
@@ -403,7 +403,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public Account getAccountById(UUID id) {
         return accountRepository.findByAccountIdAndDeletedIsFalse(id).orElseThrow(
-                () -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                () -> new EntityNotFoundException("User not found"));
     }
 
     // @Override

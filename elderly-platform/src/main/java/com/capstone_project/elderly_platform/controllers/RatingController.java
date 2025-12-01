@@ -31,7 +31,7 @@ public class RatingController {
         ServiceTask task = null;
         if (request.getServiceTaskId() != null) {
             task = serviceTaskRepository.findById(request.getServiceTaskId())
-                    .orElseThrow(() -> new RuntimeException("ServiceTask không tồn tại"));
+                    .orElseThrow(() -> new RuntimeException("ServiceTask does not exist"));
         }
 
         // Build Rating object

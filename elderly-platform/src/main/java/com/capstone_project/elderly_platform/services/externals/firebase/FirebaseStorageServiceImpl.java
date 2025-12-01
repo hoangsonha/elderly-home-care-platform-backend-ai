@@ -51,7 +51,7 @@ public class FirebaseStorageServiceImpl implements FirebaseStorageService {
             return url;
         } catch (Exception e) {
             e.printStackTrace();
-            return "Video upload thất bại";
+            return "Video upload failed";
         }
     }
 
@@ -149,8 +149,8 @@ public class FirebaseStorageServiceImpl implements FirebaseStorageService {
             return url;
         } catch (Exception e) {
             e.printStackTrace();
-            return "File upload thất bại: "
-                    + (file.getOriginalFilename() != null ? file.getOriginalFilename() : "file không xác định");
+            return "File upload failed: "
+                    + (file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown file");
         }
     }
 
