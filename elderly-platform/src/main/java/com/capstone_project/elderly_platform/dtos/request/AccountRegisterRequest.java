@@ -14,15 +14,15 @@ import lombok.experimental.FieldDefaults;
 @AllArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class AccountRegisterRequest {
-    @Email(message = "Email không hợp lệ")
-    @NotBlank(message = "Vui lòng nhập email")
-    @Size(min = 10, max = 255, message = "Email phải từ 10 tới 255 kí tự bao gồm cả @gmail.com")
+    @Email(message = "Invalid email")
+    @NotBlank(message = "Please enter email")
+    @Size(min = 10, max = 255, message = "Email must be between 10 and 255 characters including @gmail.com")
     String email;
 
-    @NotBlank(message = "Vui lòng nhập mật khẩu")
-    @Size(min = 6, max = 100, message = "Mật khẩu phải từ 6 tới 100 kí tự")
+    @NotBlank(message = "Please enter password")
+    @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
     String password;
 
-    @NotBlank(message = "Vui lòng chọn vai trò")
+    @NotBlank(message = "Please select role")
     String role;
 }

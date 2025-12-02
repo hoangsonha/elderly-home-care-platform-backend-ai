@@ -24,6 +24,7 @@ import com.capstone_project.elderly_platform.utils.SecurityUtils;
 import com.capstone_project.elderly_platform.utils.StringUtils;
 import com.capstone_project.elderly_platform.services.ExpiredCareServiceQueueService;
 import com.capstone_project.elderly_platform.events.CareServiceCreatedEvent;
+import com.capstone_project.elderly_platform.services.externals.firebase.PushNotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -60,7 +61,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final CareSeekerProfileMapper careSeekerProfileMapper;
     private final CaregiverProfileMapper caregiverProfileMapper;
     private final ServicePackageMapper servicePackageMapper;
-    private final NotificationService notificationService;
+    private final PushNotificationService pushNotificationService;
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
     private final WorkScheduleRepository workScheduleRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -215,7 +216,7 @@ public class CareServiceServiceImpl implements CareServiceService {
         // Publish event for notification
         try {
             eventPublisher.publishEvent(new CareServiceCreatedEvent(this, savedCareService));
-            log.info("Published CareServiceCreatedEvent for care service {}", 
+            log.info("Published CareServiceCreatedEvent for care service {}",
                     savedCareService.getCareServiceId());
         } catch (Exception e) {
             log.error("Failed to publish CareServiceCreatedEvent: {}", e.getMessage(), e);
@@ -338,9 +339,46 @@ public class CareServiceServiceImpl implements CareServiceService {
         log.info("Created work schedule with {} tasks for care service {}",
                 workTaskList.size(), savedCareService.getCareServiceId());
 
-        // Send notification to both parties
-        notificationService.sendCareServiceStatusChangeNotification(savedCareService,
-                EnumCareServiceStatusType.CAREGIVER_APPROVED.name());
+        // Send notification to seeker (caregiver đã accept)
+        try {
+            UUID seekerAccountId = savedCareService.getCareSeekerProfile() != null
+                    && savedCareService.getCareSeekerProfile().getAccount() != null
+                            ? savedCareService.getCareSeekerProfile().getAccount().getAccountId()
+                            : null;
+
+            UUID caregiverAccountId = savedCareService.getCaregiverProfile() != null
+                    && savedCareService.getCaregiverProfile().getAccount() != null
+                            ? savedCareService.getCaregiverProfile().getAccount().getAccountId()
+                            : null;
+
+            if (seekerAccountId != null) {
+                Map<String, Object> notificationData = new HashMap<>();
+                notificationData.put("careServiceId", savedCareService.getCareServiceId().toString());
+                notificationData.put("bookingCode", savedCareService.getBookingCode());
+                notificationData.put("status", EnumCareServiceStatusType.CAREGIVER_APPROVED.name());
+
+                pushNotificationService.sendNotification(
+                        seekerAccountId, // recipient: seeker
+                        caregiverAccountId, // sender: caregiver
+                        "Yêu cầu chăm sóc đã được chấp nhận",
+                        String.format(
+                                "Yêu cầu chăm sóc #%s đã được caregiver chấp nhận. Dịch vụ sẽ được thực hiện vào ngày %s.",
+                                savedCareService.getBookingCode(),
+                                savedCareService.getWorkDate()),
+                        EnumNotificationType.CARE_SERVICE_ACCEPTED,
+                        "CARE_SERVICE",
+                        savedCareService.getCareServiceId(),
+                        notificationData,
+                        null);
+
+                log.info("Notification sent to seeker {} for accepted care service {}",
+                        seekerAccountId, savedCareService.getCareServiceId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send notification for accepted care service {}: {}",
+                    savedCareService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - care service is already saved
+        }
 
         return careServiceMapper.toDTO(savedCareService);
     }
@@ -358,7 +396,7 @@ public class CareServiceServiceImpl implements CareServiceService {
         expiredCareServiceQueueService.cancelExpiration(careService.getCareServiceId());
 
         CustomAccountDetail currentUser = SecurityUtils.getCurrentUser();
-        UUID caregiverAccountId = currentUser.getId();
+        UUID currentUserAccountId = currentUser.getId();
 
         if (!SecurityUtils.hasRole("ROLE_CAREGIVER") && !SecurityUtils.hasRole("ROLE_CARE_SEEKER")) {
             throw new BadRequestException("Only caregiver or care seeker can decline this service");
@@ -374,7 +412,7 @@ public class CareServiceServiceImpl implements CareServiceService {
                 .careService(careService)
                 .oldStatus(careService.getStatus())
                 .newStatus(EnumCareServiceStatusType.CANCELLED)
-                .note("Decline by " + title + " with account ID: " + caregiverAccountId + " for care service ID: "
+                .note("Decline by " + title + " with account ID: " + currentUserAccountId + " for care service ID: "
                         + careService.getCareServiceId())
                 .build();
 
@@ -383,9 +421,65 @@ public class CareServiceServiceImpl implements CareServiceService {
         careService.setStatus(EnumCareServiceStatusType.CANCELLED);
         CareService savedCareService = careServiceRepository.save(careService);
 
-        // Send notification to both parties
-        notificationService.sendCareServiceStatusChangeNotification(savedCareService,
-                EnumCareServiceStatusType.CANCELLED.name());
+        // Send notification to the other party (người còn lại)
+        try {
+            UUID caregiverAccountId = savedCareService.getCaregiverProfile() != null
+                    && savedCareService.getCaregiverProfile().getAccount() != null
+                            ? savedCareService.getCaregiverProfile().getAccount().getAccountId()
+                            : null;
+
+            UUID seekerAccountId = savedCareService.getCareSeekerProfile() != null
+                    && savedCareService.getCareSeekerProfile().getAccount() != null
+                            ? savedCareService.getCareSeekerProfile().getAccount().getAccountId()
+                            : null;
+            UUID recipientAccountId = null;
+            UUID senderAccountId = null;
+            String notificationTitle = "";
+            String notificationBody = "";
+
+            // Xác định người nhận: nếu caregiver decline thì gửi tới seeker, nếu seeker
+            // decline thì gửi tới caregiver
+            if (SecurityUtils.hasRole("ROLE_CAREGIVER")) {
+                // Caregiver decline → gửi tới seeker
+                recipientAccountId = seekerAccountId;
+                senderAccountId = caregiverAccountId;
+                notificationTitle = "Yêu cầu chăm sóc đã bị từ chối";
+                notificationBody = String.format("Yêu cầu chăm sóc #%s đã bị caregiver từ chối.",
+                        savedCareService.getBookingCode());
+            } else if (SecurityUtils.hasRole("ROLE_CARE_SEEKER")) {
+                // Seeker decline → gửi tới caregiver
+                recipientAccountId = caregiverAccountId;
+                senderAccountId = seekerAccountId;
+                notificationTitle = "Yêu cầu chăm sóc đã bị hủy";
+                notificationBody = String.format("Yêu cầu chăm sóc #%s đã bị care seeker hủy.",
+                        savedCareService.getBookingCode());
+            }
+
+            if (recipientAccountId != null) {
+                Map<String, Object> notificationData = new HashMap<>();
+                notificationData.put("careServiceId", savedCareService.getCareServiceId().toString());
+                notificationData.put("bookingCode", savedCareService.getBookingCode());
+                notificationData.put("status", EnumCareServiceStatusType.CANCELLED.name());
+
+                pushNotificationService.sendNotification(
+                        recipientAccountId, // recipient: người còn lại
+                        senderAccountId, // sender: người decline
+                        notificationTitle,
+                        notificationBody,
+                        EnumNotificationType.CARE_SERVICE_REJECTED,
+                        "CARE_SERVICE",
+                        savedCareService.getCareServiceId(),
+                        notificationData,
+                        null);
+
+                log.info("Notification sent to {} for declined care service {}",
+                        recipientAccountId, savedCareService.getCareServiceId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send notification for declined care service {}: {}",
+                    savedCareService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - care service is already saved
+        }
 
         return careServiceMapper.toDTO(savedCareService);
     }
@@ -486,48 +580,48 @@ public class CareServiceServiceImpl implements CareServiceService {
     @Override
     public CareServiceResponseDTO getCareServiceById(UUID careServiceId) {
         log.info("Getting care service by ID: {}", careServiceId);
-        
+
         CareService careService = careServiceRepository.findByCareServiceIdAndDeletedIsFalse(careServiceId);
         if (careService == null) {
             throw new ElementNotFoundException("Care service not found with ID: " + careServiceId);
         }
-        
+
         return careServiceMapper.toDTO(careService);
     }
 
     @Override
     public CareServiceResponseDTO getCareServiceByBookingCode(String bookingCode) {
         log.info("Getting care service by booking code: {}", bookingCode);
-        
+
         CareService careService = careServiceRepository.findByBookingCodeAndDeletedIsFalse(bookingCode);
         if (careService == null) {
             throw new ElementNotFoundException("Care service not found with booking code: " + bookingCode);
         }
-        
+
         return careServiceMapper.toDTO(careService);
     }
 
     @Override
     public List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status) {
         log.info("Getting my care services with status filter: {}", status);
-        
+
         CustomAccountDetail currentUser = SecurityUtils.getCurrentUser();
         UUID accountId = currentUser.getId();
-        
+
         // Default sort: newest first (descending by createdAt)
         Sort sort = Sort.by(Sort.Direction.DESC, "createdAt");
-        
+
         List<CareService> careServices = new ArrayList<>();
-        
+
         // Check if user is CARE_SEEKER
         if (SecurityUtils.hasRole("ROLE_CARE_SEEKER")) {
             CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
                     .findByAccount_AccountIdAndDeletedIsFalse(accountId);
-            
+
             if (careSeekerProfile == null) {
                 throw new ElementNotFoundException("Care seeker profile not found for account ID: " + accountId);
             }
-            
+
             if (status != null) {
                 careServices = careServiceRepository.findByCareSeekerProfileAndStatusAndDeletedIsFalse(
                         careSeekerProfile, status, sort);
@@ -535,18 +629,18 @@ public class CareServiceServiceImpl implements CareServiceService {
                 careServices = careServiceRepository.findByCareSeekerProfileAndDeletedIsFalse(
                         careSeekerProfile, sort);
             }
-            
+
             log.info("Found {} care services for care seeker with account ID: {}", careServices.size(), accountId);
         }
         // Check if user is CAREGIVER
         else if (SecurityUtils.hasRole("ROLE_CAREGIVER")) {
             CaregiverProfile caregiverProfile = caregiverProfileRepository
                     .findByAccount_AccountIdAndDeletedIsFalse(accountId);
-            
+
             if (caregiverProfile == null) {
                 throw new ElementNotFoundException("Caregiver profile not found for account ID: " + accountId);
             }
-            
+
             if (status != null) {
                 careServices = careServiceRepository.findByCaregiverProfileAndStatusAndDeletedIsFalse(
                         caregiverProfile, status, sort);
@@ -554,12 +648,12 @@ public class CareServiceServiceImpl implements CareServiceService {
                 careServices = careServiceRepository.findByCaregiverProfileAndDeletedIsFalse(
                         caregiverProfile, sort);
             }
-            
+
             log.info("Found {} care services for caregiver with account ID: {}", careServices.size(), accountId);
         } else {
             throw new BadRequestException("User must have CARE_SEEKER or CAREGIVER role to view care services");
         }
-        
+
         return careServices.stream()
                 .map(careServiceMapper::toDTO)
                 .collect(Collectors.toList());

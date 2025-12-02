@@ -2,6 +2,7 @@ package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.ResendCodeVerifyRequest;
 import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
 import com.capstone_project.elderly_platform.pojos.Account;
 import jakarta.servlet.http.HttpServletRequest;
@@ -13,6 +14,8 @@ public interface AccountService {
     boolean registerAccount(AccountRegisterRequest accountRegisterRequest);
 
     TokenResponse verificationUser(AccountVerificationRequest request);
+
+    boolean resendCodeVerify(ResendCodeVerifyRequest request);
 
     TokenResponse refreshToken(String refreshToken);
 

@@ -28,13 +28,13 @@ public class NotificationServiceImpl implements NotificationService {
             // Example Firebase implementation (uncomment when ready):
             // FirebaseMessaging firebaseMessaging = FirebaseMessaging.getInstance();
             // Message message = Message.builder()
-            //     .setToken(getUserFcmToken(userId))
-            //     .setNotification(Notification.builder()
-            //         .setTitle(title)
-            //         .setBody(body)
-            //         .build())
-            //     .putAllData(data != null ? data : new HashMap<>())
-            //     .build();
+            // .setToken(getUserFcmToken(userId))
+            // .setNotification(Notification.builder()
+            // .setTitle(title)
+            // .setBody(body)
+            // .build())
+            // .putAllData(data != null ? data : new HashMap<>())
+            // .build();
             // firebaseMessaging.send(message);
 
         } catch (Exception e) {
@@ -54,13 +54,13 @@ public class NotificationServiceImpl implements NotificationService {
             // Get account IDs
             UUID caregiverAccountId = careService.getCaregiverProfile() != null
                     && careService.getCaregiverProfile().getAccount() != null
-                    ? careService.getCaregiverProfile().getAccount().getAccountId()
-                    : null;
+                            ? careService.getCaregiverProfile().getAccount().getAccountId()
+                            : null;
 
             UUID seekerAccountId = careService.getCareSeekerProfile() != null
                     && careService.getCareSeekerProfile().getAccount() != null
-                    ? careService.getCareSeekerProfile().getAccount().getAccountId()
-                    : null;
+                            ? careService.getCareSeekerProfile().getAccount().getAccountId()
+                            : null;
 
             // Prepare notification data
             Map<String, String> data = new HashMap<>();
@@ -72,8 +72,8 @@ public class NotificationServiceImpl implements NotificationService {
             if (caregiverAccountId != null) {
                 sendPushNotification(
                         caregiverAccountId,
-                        "Yêu cầu chăm sóc đã hết hạn",
-                        String.format("Yêu cầu chăm sóc #%s đã hết hạn do không phản hồi kịp thời.",
+                        "Care service request expired",
+                        String.format("Care service request #%s has expired due to no timely response.",
                                 careService.getBookingCode()),
                         data);
             }
@@ -82,8 +82,8 @@ public class NotificationServiceImpl implements NotificationService {
             if (seekerAccountId != null) {
                 sendPushNotification(
                         seekerAccountId,
-                        "Yêu cầu chăm sóc đã hết hạn",
-                        String.format("Yêu cầu chăm sóc #%s đã hết hạn. Vui lòng đặt lại dịch vụ mới.",
+                        "Care service request expired",
+                        String.format("Care service request #%s has expired. Please book a new service.",
                                 careService.getBookingCode()),
                         data);
             }
@@ -106,13 +106,13 @@ public class NotificationServiceImpl implements NotificationService {
             // Get account IDs
             UUID caregiverAccountId = careService.getCaregiverProfile() != null
                     && careService.getCaregiverProfile().getAccount() != null
-                    ? careService.getCaregiverProfile().getAccount().getAccountId()
-                    : null;
+                            ? careService.getCaregiverProfile().getAccount().getAccountId()
+                            : null;
 
             UUID seekerAccountId = careService.getCareSeekerProfile() != null
                     && careService.getCareSeekerProfile().getAccount() != null
-                    ? careService.getCareSeekerProfile().getAccount().getAccountId()
-                    : null;
+                            ? careService.getCareSeekerProfile().getAccount().getAccountId()
+                            : null;
 
             // Prepare notification data
             Map<String, String> data = new HashMap<>();
@@ -128,38 +128,38 @@ public class NotificationServiceImpl implements NotificationService {
             // Customize message based on status
             switch (EnumCareServiceStatusType.valueOf(newStatus)) {
                 case CAREGIVER_APPROVED:
-                    title = "Yêu cầu chăm sóc đã được chấp nhận";
-                    caregiverMessage = String.format("Bạn đã chấp nhận yêu cầu chăm sóc #%s",
+                    title = "Care service request accepted";
+                    caregiverMessage = String.format("You have accepted care service request #%s",
                             careService.getBookingCode());
-                    seekerMessage = String.format("Yêu cầu chăm sóc #%s đã được caregiver chấp nhận",
+                    seekerMessage = String.format("Care service request #%s has been accepted by caregiver",
                             careService.getBookingCode());
                     break;
                 case CANCELLED:
-                    title = "Yêu cầu chăm sóc đã bị hủy";
-                    caregiverMessage = String.format("Yêu cầu chăm sóc #%s đã bị hủy",
+                    title = "Care service request cancelled";
+                    caregiverMessage = String.format("Care service request #%s has been cancelled",
                             careService.getBookingCode());
-                    seekerMessage = String.format("Yêu cầu chăm sóc #%s đã bị hủy",
+                    seekerMessage = String.format("Care service request #%s has been cancelled",
                             careService.getBookingCode());
                     break;
                 case IN_PROGRESS:
-                    title = "Dịch vụ chăm sóc đã bắt đầu";
-                    caregiverMessage = String.format("Dịch vụ chăm sóc #%s đã bắt đầu",
+                    title = "Care service started";
+                    caregiverMessage = String.format("Care service #%s has started",
                             careService.getBookingCode());
-                    seekerMessage = String.format("Dịch vụ chăm sóc #%s đã bắt đầu",
+                    seekerMessage = String.format("Care service #%s has started",
                             careService.getBookingCode());
                     break;
                 case COMPLETED:
-                    title = "Dịch vụ chăm sóc đã hoàn thành";
-                    caregiverMessage = String.format("Dịch vụ chăm sóc #%s đã hoàn thành",
+                    title = "Care service completed";
+                    caregiverMessage = String.format("Care service #%s has been completed",
                             careService.getBookingCode());
-                    seekerMessage = String.format("Dịch vụ chăm sóc #%s đã hoàn thành. Vui lòng đánh giá dịch vụ.",
+                    seekerMessage = String.format("Care service #%s has been completed. Please rate the service.",
                             careService.getBookingCode());
                     break;
                 default:
-                    title = "Trạng thái yêu cầu chăm sóc đã thay đổi";
-                    caregiverMessage = String.format("Trạng thái yêu cầu chăm sóc #%s đã thay đổi thành %s",
+                    title = "Care service status changed";
+                    caregiverMessage = String.format("Care service request #%s status has changed to %s",
                             careService.getBookingCode(), newStatus);
-                    seekerMessage = String.format("Trạng thái yêu cầu chăm sóc #%s đã thay đổi thành %s",
+                    seekerMessage = String.format("Care service request #%s status has changed to %s",
                             careService.getBookingCode(), newStatus);
             }
 
@@ -191,8 +191,8 @@ public class NotificationServiceImpl implements NotificationService {
         try {
             UUID caregiverAccountId = careService.getCaregiverProfile() != null
                     && careService.getCaregiverProfile().getAccount() != null
-                    ? careService.getCaregiverProfile().getAccount().getAccountId()
-                    : null;
+                            ? careService.getCaregiverProfile().getAccount().getAccountId()
+                            : null;
 
             if (caregiverAccountId == null) {
                 return;
@@ -206,8 +206,8 @@ public class NotificationServiceImpl implements NotificationService {
 
             sendPushNotification(
                     caregiverAccountId,
-                    "Nhắc nhở phản hồi yêu cầu chăm sóc",
-                    String.format("Bạn còn %d giờ để phản hồi yêu cầu chăm sóc #%s",
+                    "Care service response reminder",
+                    String.format("You have %d hours left to respond to care service request #%s",
                             hoursBefore, careService.getBookingCode()),
                     data);
 
@@ -219,4 +219,3 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 }
-

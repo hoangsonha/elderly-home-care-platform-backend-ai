@@ -9,6 +9,7 @@ import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import com.capstone_project.elderly_platform.pojos.Role;
 import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.ResendCodeVerifyRequest;
 import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
 import com.capstone_project.elderly_platform.enums.EnumRoleType;
 import com.capstone_project.elderly_platform.enums.EnumTokenType;
@@ -40,6 +41,7 @@ import org.springframework.util.StringUtils;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
+import java.time.LocalDateTime;
 import java.util.Random;
 import java.util.UUID;
 
@@ -72,7 +74,7 @@ public class AccountServiceImpl implements AccountService {
     public boolean registerAccount(AccountRegisterRequest accountRegisterRequest) {
         Account checkExistingAccount = accountRepository.getAccountByEmail(accountRegisterRequest.getEmail());
         if (checkExistingAccount != null) {
-            throw new ElementExistException("Tài khoản đã tồn tại");
+            throw new ElementExistException("Account already exists");
         }
 
         Role role = null;
@@ -83,8 +85,11 @@ public class AccountServiceImpl implements AccountService {
                 && accountRegisterRequest.getRole().equals("ROLE_CAREGIVER")) {
             role = roleService.getRoleByRoleName(EnumRoleType.ROLE_CAREGIVER);
         } else {
-            throw new BadRequestException("Vai trò không hợp lệ");
+            throw new BadRequestException("Invalid role");
         }
+
+        String codeVerify = generateSixDigitCode();
+        LocalDateTime codeVerifyExpiresAt = LocalDateTime.now().plusMinutes(10);
 
         Account account = Account.builder()
                 .email(accountRegisterRequest.getEmail())
@@ -94,7 +99,8 @@ public class AccountServiceImpl implements AccountService {
                 .enabled(false)
                 .nonLocked(false)
                 .role(role)
-                .codeVerify(generateSixDigitCode())
+                .codeVerify(codeVerify)
+                .codeVerifyExpiresAt(codeVerifyExpiresAt)
                 .build();
 
         Account accountSave = accountRepository.save(account);
@@ -108,11 +114,23 @@ public class AccountServiceImpl implements AccountService {
         Account account = accountRepository.getAccountByEmail(request.getEmail());
 
         if (account == null) {
-            throw new BadRequestException("Tài khoản không tồn tại");
+            throw new BadRequestException("Account does not exist");
+        }
+
+        // Check if verification code exists
+        if (account.getCodeVerify() == null) {
+            throw new BadRequestException("Verification code does not exist. Please request a new code");
+        }
+
+        // Check if verification code has expired
+        if (account.getCodeVerifyExpiresAt() == null ||
+                LocalDateTime.now().isAfter(account.getCodeVerifyExpiresAt())) {
+            throw new BadRequestException("Verification code has expired. Please request a new code");
         }
 
         if (request.getVerificationCode().equals(account.getCodeVerify())) {
             account.setCodeVerify(null);
+            account.setCodeVerifyExpiresAt(null);
             account.setEnabled(true);
             account.setNonLocked(true);
 
@@ -151,7 +169,7 @@ public class AccountServiceImpl implements AccountService {
 
             return TokenResponse.builder()
                     .code("Success")
-                    .message("Xác thực thành công")
+                    .message("Verification successful")
                     .accountId(account.getAccountId())
                     .email(account.getEmail())
                     .token(token)
@@ -164,7 +182,34 @@ public class AccountServiceImpl implements AccountService {
                     .profile(profileData)
                     .build();
         }
-        throw new BadRequestException("Mã xác thực không đúng. Vui lòng thử lại");
+        throw new BadRequestException("Invalid verification code. Please try again");
+    }
+
+    @Override
+    @Transactional
+    public boolean resendCodeVerify(ResendCodeVerifyRequest request) {
+        Account account = accountRepository.getAccountByEmail(request.getEmail());
+
+        if (account == null) {
+            throw new BadRequestException("Account does not exist");
+        }
+
+        // Check if account is already verified
+        if (account.getEnabled()) {
+            throw new BadRequestException("Account is already verified. No need to resend code");
+        }
+
+        // Tạo mã verify mới và set expiration time (10 phút)
+        String newCodeVerify = generateSixDigitCode();
+        LocalDateTime codeVerifyExpiresAt = LocalDateTime.now().plusMinutes(10);
+
+        account.setCodeVerify(newCodeVerify);
+        account.setCodeVerifyExpiresAt(codeVerifyExpiresAt);
+        accountRepository.save(account);
+
+        // Gửi email với mã verify mới
+        String roleName = account.getRole() != null ? account.getRole().getRoleName().name() : null;
+        return sendVerificationEmail(account.getEmail(), roleName, newCodeVerify);
     }
 
     public String generateSixDigitCode() {
@@ -189,7 +234,7 @@ public class AccountServiceImpl implements AccountService {
 
             String mailne = templateEngine.process(content, context);
 
-            String title = "Mã xác nhận tài khoản";
+            String title = "Account Verification Code";
             String senderName = "ELDERLY PLATFORM";
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -215,7 +260,7 @@ public class AccountServiceImpl implements AccountService {
     public TokenResponse refreshToken(String refreshToken) {
         TokenResponse tokenResponse = TokenResponse.builder()
                 .code("Failed")
-                .message("Làm mới token thất bại")
+                .message("Token refresh failed")
                 .build();
         String email = jwtTokenConfiguration.getEmailFromJwt(refreshToken, EnumTokenType.REFRESH_TOKEN);
         Account account = accountRepository.getAccountByEmail(email);
@@ -255,7 +300,7 @@ public class AccountServiceImpl implements AccountService {
 
                         tokenResponse = TokenResponse.builder()
                                 .code("Success")
-                                .message("Làm mới token thành công")
+                                .message("Token refreshed successfully")
                                 .accountId(account.getAccountId())
                                 .token(newToken)
                                 .refreshToken(refreshToken)
@@ -346,7 +391,7 @@ public class AccountServiceImpl implements AccountService {
         String email = jwtTokenConfiguration.getEmailFromJwt(token, EnumTokenType.TOKEN);
         Account account = accountRepository.getAccountByEmail(email);
         if (account == null) {
-            throw new ElementNotFoundException("Không tìm thấy tài khoản");
+            throw new ElementNotFoundException("Account not found");
         }
         account.setAccessToken(null);
         account.setRefreshToken(null);
@@ -358,7 +403,7 @@ public class AccountServiceImpl implements AccountService {
     @Override
     public Account getAccountById(UUID id) {
         return accountRepository.findByAccountIdAndDeletedIsFalse(id).orElseThrow(
-                () -> new EntityNotFoundException("Không tìm thấy người dùng"));
+                () -> new EntityNotFoundException("User not found"));
     }
 
     // @Override
