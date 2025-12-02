@@ -2,12 +2,14 @@ package com.capstone_project.elderly_platform.controllers;
 
 import com.capstone_project.elderly_platform.dtos.request.ConfirmationCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateCareServiceRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCareServiceStatusRequest;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementExistException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
+import com.capstone_project.elderly_platform.pojos.CareService;
 import com.capstone_project.elderly_platform.services.CareServiceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -183,6 +185,12 @@ public class CareServiceController {
             log.error("Error getting my care services", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail", e.getMessage(), null));
         }
+    }
+
+    @PatchMapping("/{id}/status")
+    public CareService updateStatus(@PathVariable UUID id,
+                                    @RequestBody UpdateCareServiceStatusRequest request) {
+        return careServiceService.updateStatus(id, request);
     }
 
 }

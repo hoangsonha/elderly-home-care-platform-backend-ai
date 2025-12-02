@@ -3,6 +3,7 @@ package com.capstone_project.elderly_platform.services;
 import com.capstone_project.elderly_platform.configurations.CustomAccountDetail;
 import com.capstone_project.elderly_platform.dtos.request.ConfirmationCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateCareServiceRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCareServiceStatusRequest;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
@@ -63,7 +64,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
     private final WorkScheduleRepository workScheduleRepository;
     private final ApplicationEventPublisher eventPublisher;
-
+    private static final EnumSet<EnumCareServiceStatusType> ALLOWED_STATUS = EnumSet.allOf(EnumCareServiceStatusType.class);
     @Transactional
     @Override
     public CareServiceResponseDTO createCareService(CreateCareServiceRequest request) {
@@ -562,6 +563,54 @@ public class CareServiceServiceImpl implements CareServiceService {
         return careServices.stream()
                 .map(careServiceMapper::toDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public CareService updateStatus(UUID careServiceId, UpdateCareServiceStatusRequest request) {
+        CareService careService = careServiceRepository.findById(careServiceId)
+                .orElseThrow(() -> new RuntimeException("CareService not found"));
+
+        EnumCareServiceStatusType oldStatus = careService.getStatus();
+        EnumCareServiceStatusType newStatus = request.getStatus();
+
+        // Validate status
+        if (!ALLOWED_STATUS.contains(newStatus)) {
+            throw new RuntimeException("Invalid status: " + newStatus);
+        }
+
+        validateStatusTransition(oldStatus, newStatus);
+
+        careService.setStatus(newStatus);
+
+        if (newStatus == EnumCareServiceStatusType.COMPLETED) {
+            careService.setCompletedAt(LocalDateTime.now());
+        }
+
+        careServiceRepository.save(careService);
+
+        CareServiceStatusLog logEntry = CareServiceStatusLog.builder()
+                .careService(careService)
+                .oldStatus(oldStatus)
+                .newStatus(newStatus)
+                .note(request.getNote())
+                .build();
+
+        careServiceStatusLogRepository.save(logEntry);
+
+        return careService;
+    }
+
+    private void validateStatusTransition(EnumCareServiceStatusType oldStatus,
+                                          EnumCareServiceStatusType newStatus) {
+
+        if (oldStatus == EnumCareServiceStatusType.CANCELLED ||
+                oldStatus == EnumCareServiceStatusType.EXPIRED ||
+                oldStatus == EnumCareServiceStatusType.COMPLETED) {
+
+            throw new RuntimeException("Cannot change status from final state: " + oldStatus);
+        }
+
+
     }
 
     // Inner class for snapshot - using DTOs instead of custom snapshot classes
