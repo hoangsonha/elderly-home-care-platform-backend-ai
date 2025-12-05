@@ -2,8 +2,10 @@ package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.request.ConfirmationCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateCareServiceRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCareServiceStatusRequest;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDTO;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
+import com.capstone_project.elderly_platform.pojos.CareService;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,4 +25,6 @@ public interface CareServiceService {
 
     // Get all care services for current user (seeker or caregiver) with optional status filter
     List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status);
+
+    CareService updateStatus(UUID careServiceId, UpdateCareServiceStatusRequest request);
 }
