@@ -11,6 +11,8 @@ public interface CaregiverProfileRepository extends JpaRepository<CaregiverProfi
     CaregiverProfile findByCaregiverProfileIdAndDeletedIsFalse(UUID id);
     
     CaregiverProfile findByAccount_AccountIdAndDeletedIsFalse(UUID accountId);
+    
+    java.util.List<CaregiverProfile> findByDeletedFalse();
 }
 
 

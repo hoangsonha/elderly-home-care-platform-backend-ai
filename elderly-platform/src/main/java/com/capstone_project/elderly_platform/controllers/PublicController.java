@@ -1,8 +1,10 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
+import com.capstone_project.elderly_platform.services.ProfileService;
 import com.capstone_project.elderly_platform.services.ServicePackageService;
 import com.capstone_project.elderly_platform.services.externals.ai.AIMatchingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -28,6 +30,7 @@ public class PublicController {
 
     private final AIMatchingService aiMatchingService;
     private final ServicePackageService servicePackageService;
+    private final ProfileService profileService;
 
     @Operation(summary = "Get all active service packages", description = "Retrieve all active service packages")
     @GetMapping("/service-package/active")
@@ -170,6 +173,20 @@ public class PublicController {
                     .body(Map.of(
                             "status", "error",
                             "message", "Failed to match caregivers: " + e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Get all caregivers", description = "Retrieve all active caregiver profiles")
+    @GetMapping("/caregivers")
+    public ResponseEntity<ObjectResponse> getAllCaregivers() {
+        try {
+            List<CaregiverProfileResponseDTO> caregivers = profileService.getAllCaregivers();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Caregivers retrieved successfully", caregivers));
+        } catch (Exception e) {
+            log.error("Error getting caregivers", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get caregivers: " + e.getMessage(), null));
         }
     }
 

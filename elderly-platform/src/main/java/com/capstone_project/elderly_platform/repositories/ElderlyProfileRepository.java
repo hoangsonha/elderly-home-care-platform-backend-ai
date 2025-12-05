@@ -12,27 +12,8 @@ import java.util.UUID;
 @Repository
 public interface ElderlyProfileRepository extends JpaRepository<ElderlyProfile, UUID> {
     ElderlyProfile findByElderlyProfileIdAndDeletedIsFalse(UUID id);
+
+    java.util.List<ElderlyProfile> findByDeletedFalse();
+
+    java.util.List<ElderlyProfile> findByCareSeekerProfile_CareSeekerProfileIdAndDeletedFalse(UUID careSeekerProfileId);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
