@@ -10,24 +10,15 @@ import java.util.UUID;
 @Repository
 public interface CaregiverProfileRepository extends JpaRepository<CaregiverProfile, UUID> {
     CaregiverProfile findByCaregiverProfileIdAndDeletedIsFalse(UUID id);
-    
+
     CaregiverProfile findByAccount_AccountIdAndDeletedIsFalse(UUID accountId);
-    
+
     java.util.List<CaregiverProfile> findByDeletedFalse();
-    
+
     @Query("SELECT COUNT(c) FROM CaregiverProfile c WHERE c.deleted = false")
     Long countTotalCaregivers();
-    
+
     @Query("SELECT COUNT(c) FROM CaregiverProfile c WHERE c.deleted = false " +
-           "AND (c.isVerified = false OR c.isVerified IS NULL)")
+            "AND (c.isVerified = false OR c.isVerified IS NULL)")
     Long countPendingVerificationCaregivers();
 }
-
-
-
-
-
-
-
-
-

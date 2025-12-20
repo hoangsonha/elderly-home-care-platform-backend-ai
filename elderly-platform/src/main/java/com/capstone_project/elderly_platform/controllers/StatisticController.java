@@ -28,22 +28,13 @@ public class StatisticController {
 
     private final StatisticService statisticService;
 
-    @Operation(
-        summary = "Get user statistics", 
-        description = "Get total registered users and total unverified users within a date range. Only accessible by ADMIN role"
-    )
+    @Operation(summary = "Get user statistics", description = "Get total registered users and total unverified users within a date range. Only accessible by ADMIN role")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
     public ResponseEntity<ObjectResponse> getUserStatistics(
-            @Parameter(description = "Start date (optional). Format: yyyy-MM-ddTHH:mm:ss")
-            @RequestParam(required = false) 
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) 
-            LocalDateTime startDate,
-            
-            @Parameter(description = "End date (optional). Format: yyyy-MM-ddTHH:mm:ss")
-            @RequestParam(required = false) 
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) 
-            LocalDateTime endDate) {
+            @Parameter(description = "Start date (optional). Format: yyyy-MM-ddTHH:mm:ss") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+
+            @Parameter(description = "End date (optional). Format: yyyy-MM-ddTHH:mm:ss") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         try {
             UserStatisticsResponse statistics = statisticService.getUserStatistics(startDate, endDate);
             return ResponseEntity.status(HttpStatus.OK)
@@ -55,10 +46,7 @@ public class StatisticController {
         }
     }
 
-    @Operation(
-        summary = "Get caregiver statistics", 
-        description = "Get total caregivers and pending verification caregivers. Only accessible by ADMIN role"
-    )
+    @Operation(summary = "Get caregiver statistics", description = "Get total caregivers and pending verification caregivers. Only accessible by ADMIN role")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/caregivers")
     public ResponseEntity<ObjectResponse> getCaregiverStatistics() {
@@ -73,7 +61,3 @@ public class StatisticController {
         }
     }
 }
-
-
-
-
