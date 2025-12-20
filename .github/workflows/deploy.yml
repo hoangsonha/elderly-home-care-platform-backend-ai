@@ -32,42 +32,147 @@ jobs:
             echo "╚══════════════════════════════════════════════════════════════╝"
             echo ""
             
-            # Detect docker-compose command (v1 or v2)
-            echo "🔍 [STEP 1/8] Detecting Docker Compose version..."
+            # Setup project directory path
+            PROJECT_DIR="${PROJECT_DIR:-~/elderly-home-care-platform-backend-ai}"
+            PROJECT_DIR="${PROJECT_DIR/#\~/$HOME}"  # Expand ~ to home directory
+            GIT_REPO_URL="${GIT_REPO_URL:-https://github.com/${{ github.repository }}.git}"
+            GIT_BRANCH="${GIT_BRANCH:-${{ github.ref_name }}}"
+            
+            # Check and install Docker if not present
+            echo "🐳 [STEP 1/11] Checking Docker installation..."
+            if ! command -v docker &> /dev/null; then
+              echo "⚠️  Docker not found. Installing Docker..."
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sh get-docker.sh
+              rm get-docker.sh
+              # Add current user to docker group (if not root)
+              if [ "$USER" != "root" ]; then
+                sudo usermod -aG docker $USER || true
+              fi
+              echo "✅ Docker installed successfully"
+            else
+              echo "✅ Docker is already installed"
+            fi
+            docker --version
+            echo ""
+            
+            # Check and install Docker Compose if not present
+            echo "🔍 [STEP 2/11] Checking Docker Compose installation..."
             if command -v docker-compose &> /dev/null; then
               DOCKER_COMPOSE="docker-compose"
             elif docker compose version &> /dev/null; then
               DOCKER_COMPOSE="docker compose"
             else
-              echo "❌ Error: docker-compose not found!"
-              exit 1
+              echo "⚠️  Docker Compose not found. Installing..."
+              # Install docker compose plugin
+              if [ "$USER" = "root" ]; then
+                mkdir -p /usr/local/lib/docker/cli-plugins
+                curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+                chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+              else
+                sudo mkdir -p /usr/local/lib/docker/cli-plugins
+                sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+                sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+              fi
+              DOCKER_COMPOSE="docker compose"
+              echo "✅ Docker Compose installed successfully"
             fi
             echo "✅ Using: $DOCKER_COMPOSE"
+            $DOCKER_COMPOSE version
+            echo ""
+            
+            # Check Git installation
+            echo "📦 [STEP 3/11] Checking Git installation..."
+            if ! command -v git &> /dev/null; then
+              echo "⚠️  Git not found. Installing Git..."
+              if command -v apt-get &> /dev/null; then
+                sudo apt-get update && sudo apt-get install -y git
+              elif command -v yum &> /dev/null; then
+                sudo yum install -y git
+              else
+                echo "❌ Cannot install Git automatically. Please install Git manually."
+                exit 1
+              fi
+              echo "✅ Git installed successfully"
+            else
+              echo "✅ Git is already installed"
+            fi
+            git --version
+            echo ""
+            
+            # Check if project directory exists, if not clone the repository
+            echo "📂 [STEP 4/11] Checking project directory..."
+            if [ ! -d "$PROJECT_DIR" ]; then
+              echo "⚠️  Project directory not found: $PROJECT_DIR"
+              echo "📥 Cloning repository from GitHub..."
+              mkdir -p "$(dirname "$PROJECT_DIR")"
+              # Try to clone with SSH first, fallback to HTTPS
+              if git clone "git@github.com:${{ github.repository }}.git" "$PROJECT_DIR" 2>/dev/null || \
+                 git clone "$GIT_REPO_URL" "$PROJECT_DIR"; then
+                echo "✅ Repository cloned successfully"
+              else
+                echo "❌ Failed to clone repository"
+                echo "   Please ensure:"
+                echo "   1. Repository is accessible (public or SSH key configured)"
+                echo "   2. Git is properly installed"
+                exit 1
+              fi
+            else
+              echo "✅ Project directory exists: $PROJECT_DIR"
+            fi
             echo ""
             
             # Navigate to project directory
-            echo "📂 [STEP 2/8] Navigating to project directory..."
-            cd ~/elderly-home-care-platform-backend-ai || { echo "❌ Directory not found!"; exit 1; }
+            echo "📂 [STEP 5/11] Navigating to project directory..."
+            cd "$PROJECT_DIR" || { echo "❌ Cannot access directory: $PROJECT_DIR"; exit 1; }
             echo "✅ Current directory: $(pwd)"
             echo ""
             
             # Determine current branch (if exists) or use default
-            CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "main")
-            echo "🌿 Git Branch: $CURRENT_BRANCH"
+            echo "🌿 [STEP 6/11] Checking Git branch..."
+            if [ -d .git ]; then
+              CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "$GIT_BRANCH")
+              echo "✅ Current branch: $CURRENT_BRANCH"
+              
+              # Pull latest code from GitHub
+              echo "⬇️  Pulling latest code from GitHub..."
+              git fetch origin
+              if git pull origin "$CURRENT_BRANCH" || git pull origin main || git pull origin master; then
+                echo "✅ Code updated successfully"
+              else
+                echo "⚠️  Git pull failed, continuing with existing code..."
+              fi
+            else
+              echo "⚠️  Not a git repository, skipping git operations"
+            fi
             echo ""
             
-            # Pull latest code from GitHub
-            echo "⬇️  [STEP 3/8] Pulling latest code from GitHub..."
-            git fetch origin
-            if git pull origin $CURRENT_BRANCH || git pull origin main || git pull origin master; then
-              echo "✅ Code updated successfully"
+            # Check for .env file
+            echo "⚙️  [STEP 7/11] Checking environment configuration..."
+            if [ ! -f "$PROJECT_DIR/.env" ]; then
+              echo "⚠️  WARNING: .env file not found!"
+              echo "   📝 Creating a template .env file..."
+              echo "   ⚠️  You MUST edit .env file with your actual configuration before deployment!"
+              echo ""
+              echo "   Required environment variables:"
+              echo "   - DB_PASSWORD"
+              echo "   - REDIS_PASSWORD"
+              echo "   - JWT_SECRET"
+              echo "   - JWT_REFRESH_SECRET"
+              echo "   - FIREBASE_KEY_BASE64 (or key_firebase.json file)"
+              echo "   - MAIL_USERNAME, MAIL_PASSWORD"
+              echo "   - PAYOS_* credentials"
+              echo ""
+              echo "   Please create .env file manually or the deployment will fail!"
+              echo "   You can copy from application-local.template.yml if available."
+              # Don't exit here, let user know but continue (they might have env vars set another way)
             else
-              echo "⚠️  Git pull failed, continuing with existing code..."
+              echo "✅ .env file found"
             fi
             echo ""
             
             # Backup database before deployment
-            echo "💾 [STEP 4/8] Creating Database Backup..."
+            echo "💾 [STEP 8/11] Creating Database Backup..."
             BACKUP_DIR="$PWD/backups"
             mkdir -p "$BACKUP_DIR"
             echo "📁 Backup directory: $BACKUP_DIR"
@@ -116,7 +221,7 @@ jobs:
             echo ""
             
             # Stop existing containers (gracefully, don't remove volumes)
-            echo "🛑 [STEP 5/8] Stopping existing containers..."
+            echo "🛑 [STEP 9/11] Stopping existing containers..."
             echo "   ℹ️  Note: Volumes will be preserved (database data safe)"
             if $DOCKER_COMPOSE down; then
               echo "✅ Containers stopped successfully"
@@ -126,7 +231,7 @@ jobs:
             echo ""
             
             # Rebuild and start containers
-            echo "🔨 [STEP 6/8] Building containers..."
+            echo "🔨 [STEP 10/11] Building containers..."
             echo "   ℹ️  Building only changed services (using cache when possible)..."
             echo "   ⏳ This may take several minutes if dependencies changed..."
             if $DOCKER_COMPOSE build; then
@@ -137,7 +242,7 @@ jobs:
             fi
             echo ""
             
-            echo "🚀 [STEP 7/8] Starting containers..."
+            echo "🚀 [STEP 11/11] Starting containers..."
             if $DOCKER_COMPOSE up -d; then
               echo "✅ Containers started successfully"
             else
@@ -153,7 +258,7 @@ jobs:
             echo ""
             
             # Check container status
-            echo "📊 [STEP 8/8] Checking deployment status..."
+            echo "📊 Checking deployment status..."
             echo ""
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "📦 CONTAINER STATUS"

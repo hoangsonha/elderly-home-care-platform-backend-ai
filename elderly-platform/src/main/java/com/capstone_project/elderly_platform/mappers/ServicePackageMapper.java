@@ -46,6 +46,7 @@ public class ServicePackageMapper {
                         ? servicePackage.getStatus().name()
                         : null)
                 .serviceTasks(serviceTaskDTOs)
+                .totalCareServices(null) // Will be set in service layer
                 .build();
     }
 }

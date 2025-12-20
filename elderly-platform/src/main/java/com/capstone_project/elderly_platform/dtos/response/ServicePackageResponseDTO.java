@@ -21,4 +21,5 @@ public class ServicePackageResponseDTO {
     String serviceIncluded;
     String status;
     List<ServiceTaskResponseDTO> serviceTasks;
+    Long totalCareServices;
 }

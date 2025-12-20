@@ -3,7 +3,9 @@ package com.capstone_project.elderly_platform.controllers;
 import com.capstone_project.elderly_platform.dtos.request.CreateServicePackageRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateServicePackageRequest;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageListResponse;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageUsageResponse;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.services.ServicePackageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,12 +67,12 @@ public class ServicePackageController {
         }
     }
 
-    @Operation(summary = "Get all service packages", description = "Retrieve all service packages")
+    @Operation(summary = "Get all service packages", description = "Retrieve all service packages with statistics (total packages, active packages, total bookings, total revenue)")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("")
     public ResponseEntity<ObjectResponse> getAllServicePackages() {
         try {
-            List<ServicePackageResponseDTO> response = servicePackageService.getAllServicePackages();
+            ServicePackageListResponse response = servicePackageService.getAllServicePackages();
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Service packages retrieved successfully", response));
         } catch (Exception e) {
@@ -115,6 +117,25 @@ public class ServicePackageController {
             log.error("Error restoring service package", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to restore service package: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Get service package usage", description = "Get the number of care services registered using this service package. Only accessible by ADMIN role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/{id}/usage")
+    public ResponseEntity<ObjectResponse> getServicePackageUsage(@PathVariable("id") UUID id) {
+        try {
+            ServicePackageUsageResponse response = servicePackageService.getServicePackageUsage(id);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Service package usage retrieved successfully", response));
+        } catch (ElementNotFoundException e) {
+            log.error("Service package not found", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ObjectResponse("Failed", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error getting service package usage", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get service package usage: " + e.getMessage(), null));
         }
     }
 }

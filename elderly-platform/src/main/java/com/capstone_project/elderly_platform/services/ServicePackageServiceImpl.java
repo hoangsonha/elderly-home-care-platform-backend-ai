@@ -3,12 +3,15 @@ package com.capstone_project.elderly_platform.services;
 import com.capstone_project.elderly_platform.dtos.request.CreateServicePackageRequest;
 import com.capstone_project.elderly_platform.dtos.request.ServiceTaskItemRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateServicePackageRequest;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageListResponse;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageUsageResponse;
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.mappers.ServicePackageMapper;
 import com.capstone_project.elderly_platform.pojos.ServicePackage;
 import com.capstone_project.elderly_platform.pojos.ServiceTask;
+import com.capstone_project.elderly_platform.repositories.CareServiceRepository;
 import com.capstone_project.elderly_platform.repositories.ServicePackageRepository;
 import com.capstone_project.elderly_platform.repositories.ServiceTaskRepository;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     private final ServicePackageRepository servicePackageRepository;
     private final ServiceTaskRepository serviceTaskRepository;
+    private final CareServiceRepository careServiceRepository;
     private final ServicePackageMapper servicePackageMapper;
 
     @Transactional
@@ -167,8 +171,8 @@ public class ServicePackageServiceImpl implements ServicePackageService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<ServicePackageResponseDTO> getAllServicePackages() {
-        log.info("Getting all service packages");
+    public ServicePackageListResponse getAllServicePackages() {
+        log.info("Getting all service packages with statistics");
 
         List<ServicePackage> packages = servicePackageRepository.findAll()
                 .stream()
@@ -186,9 +190,40 @@ public class ServicePackageServiceImpl implements ServicePackageService {
             pkg.setServiceTasks(tasks);
         }
 
-        return packages.stream()
-                .map(servicePackageMapper::toDTO)
+        // Map to DTOs and add care service count
+        List<ServicePackageResponseDTO> packageDTOs = packages.stream()
+                .map(pkg -> {
+                    ServicePackageResponseDTO dto = servicePackageMapper.toDTO(pkg);
+                    // Count care services for this package
+                    Long totalCareServices = careServiceRepository.countByServicePackageIdAndDeletedFalse(
+                            pkg.getServicePackageId());
+                    dto.setTotalCareServices(totalCareServices);
+                    return dto;
+                })
                 .collect(Collectors.toList());
+
+        // Calculate statistics
+        Long totalPackages = (long) packages.size();
+        Long totalActivePackages = packages.stream()
+                .filter(pkg -> pkg.getStatus() == EnumActivationStatusType.ACTIVE)
+                .count();
+        Long totalBookings = careServiceRepository.countTotalBookings();
+        Double totalRevenue = careServiceRepository.sumTotalRevenue();
+        
+        if (totalRevenue == null) {
+            totalRevenue = 0.0;
+        }
+
+        log.info("Statistics - Total packages: {}, Active packages: {}, Total bookings: {}, Total revenue: {}",
+                totalPackages, totalActivePackages, totalBookings, totalRevenue);
+
+        return ServicePackageListResponse.builder()
+                .totalPackages(totalPackages)
+                .totalActivePackages(totalActivePackages)
+                .totalBookings(totalBookings)
+                .totalRevenue(totalRevenue)
+                .packages(packageDTOs)
+                .build();
     }
 
     @Transactional(readOnly = true)
@@ -323,5 +358,26 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         }
 
         log.info("Service tasks update completed for package ID: {}", servicePackage.getServicePackageId());
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public ServicePackageUsageResponse getServicePackageUsage(UUID id) {
+        log.info("Getting care service usage for service package with ID: {}", id);
+
+        ServicePackage servicePackage = servicePackageRepository.findByServicePackageIdAndDeletedIsFalse(id);
+        if (servicePackage == null) {
+            throw new ElementNotFoundException("Service package not found with ID: " + id);
+        }
+
+        Long totalCareServices = careServiceRepository.countByServicePackageIdAndDeletedFalse(id);
+        
+        log.info("Service package {} has {} care services", id, totalCareServices);
+
+        return ServicePackageUsageResponse.builder()
+                .servicePackageId(servicePackage.getServicePackageId())
+                .packageName(servicePackage.getPackageName())
+                .totalCareServices(totalCareServices)
+                .build();
     }
 }

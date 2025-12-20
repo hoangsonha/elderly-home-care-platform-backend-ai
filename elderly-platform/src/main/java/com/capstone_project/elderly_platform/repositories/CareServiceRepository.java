@@ -67,6 +67,16 @@ public interface CareServiceRepository extends JpaRepository<CareService, UUID> 
             "AND cs.deleted = false")
     List<CareService> findPendingCareServicesForRecovery(@Param("status") EnumCareServiceStatusType status,
                                                           @Param("now") LocalDateTime now);
+
+    @Query("SELECT COUNT(cs) FROM CareService cs WHERE cs.servicePackage.servicePackageId = :servicePackageId " +
+            "AND cs.deleted = false")
+    Long countByServicePackageIdAndDeletedFalse(@Param("servicePackageId") UUID servicePackageId);
+
+    @Query("SELECT COUNT(cs) FROM CareService cs WHERE cs.deleted = false")
+    Long countTotalBookings();
+
+    @Query("SELECT COALESCE(SUM(cs.totalPrice), 0) FROM CareService cs WHERE cs.deleted = false")
+    Double sumTotalRevenue();
 }
 
 
