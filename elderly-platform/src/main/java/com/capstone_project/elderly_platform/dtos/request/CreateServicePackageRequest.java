@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.dtos.request;
 
+import com.capstone_project.elderly_platform.dtos.QualificationRequirements;
 import com.capstone_project.elderly_platform.enums.EnumServicePackageType;
 import com.capstone_project.elderly_platform.validators.ValidDurationHours;
 import jakarta.validation.Valid;
@@ -35,6 +36,9 @@ public class CreateServicePackageRequest {
     Double price;
 
     String note;
+
+    @Valid
+    QualificationRequirements qualification;
 
     @Valid
     List<ServiceTaskItemRequest> serviceTasks;

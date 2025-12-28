@@ -66,4 +66,7 @@ public class CaregiverProfile extends BaseEntity {
     @OneToMany(mappedBy = "caregiverProfile")
     List<PayoutBatch> payoutBatches;
 
+    @OneToMany(mappedBy = "caregiverProfile")
+    List<Qualification> qualifications;
+
 }

@@ -34,10 +34,10 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
   mail:
-    host: smtp.gmail.com
+    host: smtp.sendgrid.net
     port: 587
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    username: apikey
+    password: ${SENDGRID_API_KEY:}
     properties:
       mail:
         smtp:

@@ -66,9 +66,6 @@ public class AccountServiceImpl implements AccountService {
     private final CareSeekerProfileMapper careSeekerProfileMapper;
     private final CaregiverProfileMapper caregiverProfileMapper;
 
-    @Value("${spring.mail.username}")
-    private String from;
-
     @Transactional
     @Override
     public boolean registerAccount(AccountRegisterRequest accountRegisterRequest) {
@@ -238,7 +235,7 @@ public class AccountServiceImpl implements AccountService {
             String senderName = "ELDERLY PLATFORM";
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
-            helper.setFrom(from, senderName);
+            helper.setFrom("hoangsonhadev@gmail.com", senderName);
 
             if (email.contains(",")) {
                 helper.setTo(InternetAddress.parse(email));

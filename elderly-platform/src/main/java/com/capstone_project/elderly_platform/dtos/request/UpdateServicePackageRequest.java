@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.dtos.request;
 
+import com.capstone_project.elderly_platform.dtos.QualificationRequirements;
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
 import com.capstone_project.elderly_platform.enums.EnumServicePackageType;
 import com.capstone_project.elderly_platform.validators.ValidDurationHours;
@@ -30,6 +31,9 @@ public class UpdateServicePackageRequest {
     Double price;
     
     String note;
+    
+    @Valid
+    QualificationRequirements qualification;
     
     EnumActivationStatusType status;
     

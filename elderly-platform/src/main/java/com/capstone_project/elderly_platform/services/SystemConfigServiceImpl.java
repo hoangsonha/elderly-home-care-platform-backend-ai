@@ -61,7 +61,6 @@ public class SystemConfigServiceImpl implements SystemConfigService {
     @Override
     public Map<EnumSystemConfigKey, Integer> getAllConfigVersions() {
         // Lấy tất cả versions của configs đang active
-        // Dùng để lưu vào CareService khi booking để track version đã dùng
         Map<EnumSystemConfigKey, Integer> versions = new HashMap<>();
         List<SystemConfig> activeConfigs = systemConfigRepository.findByActiveIsTrueAndDeletedIsFalse();
         for (SystemConfig config : activeConfigs) {

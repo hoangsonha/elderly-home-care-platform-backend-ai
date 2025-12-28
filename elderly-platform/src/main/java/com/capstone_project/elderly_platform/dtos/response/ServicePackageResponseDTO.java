@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.dtos.response;
 
+import com.capstone_project.elderly_platform.dtos.QualificationRequirements;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 
@@ -18,7 +19,7 @@ public class ServicePackageResponseDTO {
     String packageType;
     Double price;
     String note;
-    String serviceIncluded;
+    QualificationRequirements qualification;
     String status;
     List<ServiceTaskResponseDTO> serviceTasks;
     Long totalCareServices;

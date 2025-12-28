@@ -2,9 +2,11 @@ package com.capstone_project.elderly_platform.controllers;
 
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
+import com.capstone_project.elderly_platform.dtos.response.QualificationTypeResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.services.ProfileService;
+import com.capstone_project.elderly_platform.services.QualificationTypeService;
 import com.capstone_project.elderly_platform.services.ServicePackageService;
 import com.capstone_project.elderly_platform.services.externals.ai.AIMatchingService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,6 +33,7 @@ public class PublicController {
     private final AIMatchingService aiMatchingService;
     private final ServicePackageService servicePackageService;
     private final ProfileService profileService;
+    private final QualificationTypeService qualificationTypeService;
 
     @Operation(summary = "Get all active service packages", description = "Retrieve all active service packages")
     @GetMapping("/service-package/active")
@@ -187,6 +190,20 @@ public class PublicController {
             log.error("Error getting caregivers", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to get caregivers: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Get all active qualification types", description = "Retrieve all active qualification types (certificate types)")
+    @GetMapping("/qualification-types")
+    public ResponseEntity<ObjectResponse> getAllActiveQualificationTypes() {
+        try {
+            List<QualificationTypeResponseDTO> qualificationTypes = qualificationTypeService.getAllActiveQualificationTypes();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Qualification types retrieved successfully", qualificationTypes));
+        } catch (Exception e) {
+            log.error("Error getting qualification types", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get qualification types: " + e.getMessage(), null));
         }
     }
 

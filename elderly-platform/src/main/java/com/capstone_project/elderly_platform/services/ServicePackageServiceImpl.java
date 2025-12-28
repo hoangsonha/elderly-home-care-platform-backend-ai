@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.dtos.QualificationRequirements;
 import com.capstone_project.elderly_platform.dtos.request.CreateServicePackageRequest;
 import com.capstone_project.elderly_platform.dtos.request.ServiceTaskItemRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateServicePackageRequest;
@@ -14,6 +15,8 @@ import com.capstone_project.elderly_platform.pojos.ServiceTask;
 import com.capstone_project.elderly_platform.repositories.CareServiceRepository;
 import com.capstone_project.elderly_platform.repositories.ServicePackageRepository;
 import com.capstone_project.elderly_platform.repositories.ServiceTaskRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -34,11 +37,15 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     private final ServiceTaskRepository serviceTaskRepository;
     private final CareServiceRepository careServiceRepository;
     private final ServicePackageMapper servicePackageMapper;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     @Override
     public ServicePackageResponseDTO createServicePackage(CreateServicePackageRequest request) {
         log.info("Creating service package with name: {}", request.getPackageName());
+
+        // Convert qualification to JSON string
+        String qualificationJson = convertQualificationToJson(request.getQualification());
 
         ServicePackage servicePackage = ServicePackage.builder()
                 .packageName(request.getPackageName())
@@ -47,7 +54,7 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .packageType(request.getPackageType())
                 .price(request.getPrice())
                 .note(request.getNote())
-                .serviceIncluded(null) // Set to null for now, not used
+                .qualification(qualificationJson)
                 .status(EnumActivationStatusType.ACTIVE)
                 .build();
 
@@ -114,6 +121,10 @@ public class ServicePackageServiceImpl implements ServicePackageService {
         }
         if (request.getNote() != null) {
             servicePackage.setNote(request.getNote());
+        }
+        if (request.getQualification() != null) {
+            String qualificationJson = convertQualificationToJson(request.getQualification());
+            servicePackage.setQualification(qualificationJson);
         }
         if (request.getStatus() != null) {
             servicePackage.setStatus(request.getStatus());
@@ -379,5 +390,20 @@ public class ServicePackageServiceImpl implements ServicePackageService {
                 .packageName(servicePackage.getPackageName())
                 .totalCareServices(totalCareServices)
                 .build();
+    }
+
+    /**
+     * Convert QualificationRequirements object to JSON string
+     */
+    private String convertQualificationToJson(QualificationRequirements qualification) {
+        if (qualification == null) {
+            return null;
+        }
+        try {
+            return objectMapper.writeValueAsString(qualification);
+        } catch (JsonProcessingException e) {
+            log.error("Error converting qualification to JSON", e);
+            return null;
+        }
     }
 }

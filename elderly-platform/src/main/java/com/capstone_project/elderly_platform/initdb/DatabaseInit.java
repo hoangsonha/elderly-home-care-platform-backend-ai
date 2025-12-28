@@ -11,6 +11,8 @@ import com.capstone_project.elderly_platform.pojos.CareSeekerProfile;
 import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import com.capstone_project.elderly_platform.pojos.ElderlyProfile;
 import com.capstone_project.elderly_platform.pojos.Role;
+import com.capstone_project.elderly_platform.dtos.QualificationRequirements;
+import com.capstone_project.elderly_platform.pojos.QualificationType;
 import com.capstone_project.elderly_platform.pojos.ServicePackage;
 import com.capstone_project.elderly_platform.pojos.ServiceTask;
 import com.capstone_project.elderly_platform.pojos.SystemConfig;
@@ -22,6 +24,7 @@ import com.capstone_project.elderly_platform.repositories.RoleRepository;
 import com.capstone_project.elderly_platform.repositories.ServicePackageRepository;
 import com.capstone_project.elderly_platform.repositories.ServiceTaskRepository;
 import com.capstone_project.elderly_platform.repositories.SystemConfigRepository;
+import com.capstone_project.elderly_platform.repositories.QualificationTypeRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +49,7 @@ public class DatabaseInit implements CommandLineRunner {
         private final ElderlyProfileRepository elderlyProfileRepository;
         private final ServicePackageRepository servicePackageRepository;
         private final ServiceTaskRepository serviceTaskRepository;
+        private final QualificationTypeRepository qualificationTypeRepository;
         private final ObjectMapper objectMapper;
 
         @Override
@@ -53,6 +57,7 @@ public class DatabaseInit implements CommandLineRunner {
                 initRoles();
                 Account adminAccount = initAccounts();
                 initSystemConfigs(adminAccount != null ? adminAccount.getAccountId() : null);
+                initQualificationTypes();
                 initProfiles();
                 initServicePackages();
         }
@@ -336,20 +341,101 @@ public class DatabaseInit implements CommandLineRunner {
                 }
         }
 
+        private void initQualificationTypes() {
+                if (qualificationTypeRepository.count() == 0) {
+                        log.info("Initializing qualification types...");
+
+                        // Chứng chỉ điều dưỡng
+                        QualificationType nursingCertificate = QualificationType.builder()
+                                        .typeName("Chứng chỉ điều dưỡng")
+                                        .description("Chứng chỉ chuyên môn về điều dưỡng và chăm sóc sức khỏe")
+                                        .isActive(true)
+                                        .build();
+                        qualificationTypeRepository.save(nursingCertificate);
+                        log.info("QualificationType created: {}", nursingCertificate.getTypeName());
+
+                        // Bằng vật lý trị liệu
+                        QualificationType physicalTherapyDegree = QualificationType.builder()
+                                        .typeName("Bằng vật lý trị liệu")
+                                        .description("Bằng cấp chuyên môn về vật lý trị liệu và phục hồi chức năng")
+                                        .isActive(true)
+                                        .build();
+                        qualificationTypeRepository.save(physicalTherapyDegree);
+                        log.info("QualificationType created: {}", physicalTherapyDegree.getTypeName());
+
+                        // Chứng chỉ sơ cấp cứu
+                        QualificationType firstAidCertificate = QualificationType.builder()
+                                        .typeName("Chứng chỉ sơ cấp cứu")
+                                        .description("Chứng chỉ về kỹ năng sơ cấp cứu và xử lý tình huống khẩn cấp")
+                                        .isActive(true)
+                                        .build();
+                        qualificationTypeRepository.save(firstAidCertificate);
+                        log.info("QualificationType created: {}", firstAidCertificate.getTypeName());
+
+                        // Chứng chỉ chăm sóc người cao tuổi
+                        QualificationType elderlyCareCertificate = QualificationType.builder()
+                                        .typeName("Chứng chỉ chăm sóc người cao tuổi")
+                                        .description("Chứng chỉ chuyên môn về chăm sóc và hỗ trợ người cao tuổi")
+                                        .isActive(true)
+                                        .build();
+                        qualificationTypeRepository.save(elderlyCareCertificate);
+                        log.info("QualificationType created: {}", elderlyCareCertificate.getTypeName());
+
+                        // Bằng cấp y khoa
+                        QualificationType medicalDegree = QualificationType.builder()
+                                        .typeName("Bằng cấp y khoa")
+                                        .description("Bằng cấp y khoa về y học và điều trị bệnh")
+                                        .isActive(true)
+                                        .build();
+                        qualificationTypeRepository.save(medicalDegree);
+                        log.info("QualificationType created: {}", medicalDegree.getTypeName());
+
+                        // Chứng chỉ/giấy xác nhận tập huấn kiến thức an toàn thực phẩm
+                        QualificationType foodSafetyCertificate = QualificationType.builder()
+                                        .typeName("Giấy xác nhận tập huấn kiến thức an toàn thực phẩm")
+                                        .description("Giấy xác nhận đã được tập huấn kiến thức an toàn thực phẩm cho chủ cơ sở và người trực tiếp nấu")
+                                        .isActive(true)
+                                        .build();
+                        qualificationTypeRepository.save(foodSafetyCertificate);
+                        log.info("QualificationType created: {}", foodSafetyCertificate.getTypeName());
+
+                        log.info("Qualification types initialized successfully");
+                }
+        }
+
         private void initServicePackages() {
                 if (servicePackageRepository.count() == 0) {
                         log.info("Initializing service packages...");
 
-                        // Gói Cơ Bản (Basic Care)
-                        String basicServiceIncluded = "[\"Tắm rửa vệ sinh cá nhân\",\"Cho ăn uống\",\"Massage cơ bản\",\"Trò chuyện, đọc báo, sinh hoạt tinh thần\"]";
+                        // Lấy các qualification types để tạo requirements
+                        QualificationType physicalTherapyType = qualificationTypeRepository
+                                        .findByTypeNameAndDeletedIsFalse("Bằng vật lý trị liệu");
+                        QualificationType nursingType = qualificationTypeRepository
+                                        .findByTypeNameAndDeletedIsFalse("Chứng chỉ điều dưỡng");
+                        QualificationType foodSafetyType = qualificationTypeRepository
+                                        .findByTypeNameAndDeletedIsFalse(
+                                                        "Giấy xác nhận tập huấn kiến thức an toàn thực phẩm");
+
+                        // Gói Cơ Bản (Basic Care) - BR-PACKAGE-001
+                        // Requirements: ≥3 skills, Rating ≥4.0/5.0
+                        QualificationRequirements basicQualification = QualificationRequirements.builder()
+                                        .skills(java.util.Arrays.asList(
+                                                        "Kỹ năng chăm sóc cá nhân",
+                                                        "Kỹ năng giao tiếp",
+                                                        "Kỹ năng hỗ trợ ăn uống",
+                                                        "Kỹ năng massage cơ bản"))
+                                        .certificateGroups(null) // Không yêu cầu chứng chỉ
+                                        .build();
+                        String basicQualificationJson = convertQualificationToJson(basicQualification);
+
                         ServicePackage basicPackage = ServicePackage.builder()
                                         .packageName("Gói Cơ Bản")
-                                        .description("Gói chăm sóc cơ bản cho người cao tuổi, bao gồm các dịch vụ thiết yếu hàng ngày")
+                                        .description("Gói chăm sóc cơ bản cho người cao tuổi, bao gồm các dịch vụ thiết yếu hàng ngày. Yêu cầu: ≥3 skills, Rating ≥4.0/5.0")
                                         .durationHours(4)
                                         .packageType(EnumServicePackageType.BASIC)
                                         .price(400000.0)
-                                        .note("Phù hợp cho người cao tuổi cần hỗ trợ sinh hoạt hàng ngày")
-                                        .serviceIncluded(basicServiceIncluded)
+                                        .note("Phù hợp cho người cao tuổi cần hỗ trợ sinh hoạt hàng ngày. Phải đặt trước tối thiểu 12 giờ. Working hours: 7:00 AM - 5:00 PM")
+                                        .qualification(basicQualificationJson)
                                         .status(EnumActivationStatusType.ACTIVE)
                                         .build();
                         basicPackage = servicePackageRepository.save(basicPackage);
@@ -365,16 +451,31 @@ public class DatabaseInit implements CommandLineRunner {
                         createServiceTask(basicPackage, "Trò chuyện, đọc báo, sinh hoạt tinh thần",
                                         "Trò chuyện, đọc báo, tham gia các hoạt động tinh thần");
 
-                        // Gói Chuyên Nghiệp (Professional Care)
-                        String professionalServiceIncluded = "[\"Tập vật lý trị liệu\",\"Massage phục hồi chức năng\",\"Theo dõi tiến trình sức khỏe\"]";
+                        // Gói Chuyên Nghiệp (Professional Care) - BR-PACKAGE-002
+                        // Requirements: Chứng chỉ vật lý trị liệu HOẶC điều dưỡng, Rating ≥4.3/5.0
+                        java.util.List<java.util.UUID> professionalCertGroup = new java.util.ArrayList<>();
+                        if (physicalTherapyType != null) {
+                                professionalCertGroup.add(physicalTherapyType.getQualificationTypeId());
+                        }
+                        if (nursingType != null) {
+                                professionalCertGroup.add(nursingType.getQualificationTypeId());
+                        }
+                        QualificationRequirements professionalQualification = QualificationRequirements.builder()
+                                        .skills(null) // Không yêu cầu skills cụ thể
+                                        .certificateGroups(java.util.Arrays.asList(professionalCertGroup)) // Vật lý trị
+                                                                                                           // liệu HOẶC
+                                                                                                           // điều dưỡng
+                                        .build();
+                        String professionalQualificationJson = convertQualificationToJson(professionalQualification);
+
                         ServicePackage professionalPackage = ServicePackage.builder()
                                         .packageName("Gói Chuyên Nghiệp")
-                                        .description("Gói chăm sóc chuyên nghiệp với các dịch vụ phục hồi chức năng và theo dõi sức khỏe")
+                                        .description("Gói chăm sóc chuyên nghiệp với các dịch vụ phục hồi chức năng và theo dõi sức khỏe. Yêu cầu: Chứng chỉ vật lý trị liệu HOẶC điều dưỡng, Rating ≥4.3/5.0")
                                         .durationHours(8)
                                         .packageType(EnumServicePackageType.PROFESSIONAL)
                                         .price(750000.0)
-                                        .note("Phù hợp cho người cao tuổi cần phục hồi chức năng và theo dõi sức khỏe")
-                                        .serviceIncluded(professionalServiceIncluded)
+                                        .note("Phù hợp cho người cao tuổi cần phục hồi chức năng và theo dõi sức khỏe. Phải đặt trước tối thiểu 24 giờ. Working hours: 7:00 AM - 5:00 PM")
+                                        .qualification(professionalQualificationJson)
                                         .status(EnumActivationStatusType.ACTIVE)
                                         .build();
                         professionalPackage = servicePackageRepository.save(professionalPackage);
@@ -388,16 +489,37 @@ public class DatabaseInit implements CommandLineRunner {
                         createServiceTask(professionalPackage, "Theo dõi tiến trình sức khỏe",
                                         "Theo dõi và ghi chép tiến trình sức khỏe hàng ngày");
 
-                        // Gói Nâng Cao (Premium Care)
-                        String advancedServiceIncluded = "[\"Tất cả tasks của Gói Cơ Bản\",\"Tất cả tasks của Gói Chuyên Nghiệp\",\"Nấu ăn theo chế độ\",\"Dọn dẹp vệ sinh nhà cửa\"]";
+                        // Gói Nâng Cao (Premium Care) - BR-PACKAGE-003
+                        // Requirements: ≥2 chứng chỉ (1 trong nhóm vật lý trị liệu/điều dưỡng + 1 về
+                        // dinh dưỡng), Rating ≥4.5/5.0
+                        java.util.List<java.util.UUID> professionalCertGroupForAdvanced = new java.util.ArrayList<>();
+                        if (physicalTherapyType != null) {
+                                professionalCertGroupForAdvanced.add(physicalTherapyType.getQualificationTypeId());
+                        }
+                        if (nursingType != null) {
+                                professionalCertGroupForAdvanced.add(nursingType.getQualificationTypeId());
+                        }
+                        java.util.List<java.util.UUID> foodSafetyCertGroup = new java.util.ArrayList<>();
+                        if (foodSafetyType != null) {
+                                foodSafetyCertGroup.add(foodSafetyType.getQualificationTypeId());
+                        }
+                        QualificationRequirements advancedQualification = QualificationRequirements.builder()
+                                        .skills(null) // Không yêu cầu skills cụ thể
+                                        .certificateGroups(java.util.Arrays.asList(
+                                                        professionalCertGroupForAdvanced, // 1 trong nhóm vật lý trị
+                                                                                          // liệu/điều dưỡng
+                                                        foodSafetyCertGroup)) // VÀ 1 về dinh dưỡng/an toàn thực phẩm
+                                        .build();
+                        String advancedQualificationJson = convertQualificationToJson(advancedQualification);
+
                         ServicePackage advancedPackage = ServicePackage.builder()
                                         .packageName("Gói Nâng Cao")
-                                        .description("Gói chăm sóc toàn diện bao gồm tất cả dịch vụ cơ bản, chuyên nghiệp và thêm dịch vụ nấu ăn, dọn dẹp")
+                                        .description("Gói chăm sóc toàn diện bao gồm tất cả dịch vụ cơ bản, chuyên nghiệp và thêm dịch vụ nấu ăn, dọn dẹp. Yêu cầu: ≥2 chứng chỉ (1 trong nhóm vật lý trị liệu/điều dưỡng + 1 về dinh dưỡng), Rating ≥4.5/5.0")
                                         .durationHours(8)
                                         .packageType(EnumServicePackageType.ADVANCED)
                                         .price(1100000.0)
-                                        .note("Gói chăm sóc toàn diện nhất, phù hợp cho người cao tuổi cần hỗ trợ toàn bộ")
-                                        .serviceIncluded(advancedServiceIncluded)
+                                        .note("Gói chăm sóc toàn diện nhất, phù hợp cho người cao tuổi cần hỗ trợ toàn bộ. Phải đặt trước tối thiểu 48 giờ. Working hours: 7:00 AM - 5:00 PM")
+                                        .qualification(advancedQualificationJson)
                                         .status(EnumActivationStatusType.ACTIVE)
                                         .build();
                         advancedPackage = servicePackageRepository.save(advancedPackage);
@@ -429,6 +551,21 @@ public class DatabaseInit implements CommandLineRunner {
                                         "Dọn dẹp và vệ sinh không gian sống");
 
                         log.info("Service packages initialized successfully");
+                }
+        }
+
+        /**
+         * Convert QualificationRequirements to JSON string
+         */
+        private String convertQualificationToJson(QualificationRequirements qualification) {
+                if (qualification == null) {
+                        return null;
+                }
+                try {
+                        return objectMapper.writeValueAsString(qualification);
+                } catch (Exception e) {
+                        log.error("Error converting qualification to JSON", e);
+                        return null;
                 }
         }
 

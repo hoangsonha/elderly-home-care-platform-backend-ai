@@ -43,8 +43,8 @@ public class ServicePackage extends BaseEntity {
     String note;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "service_included", columnDefinition = "jsonb")
-    String serviceIncluded;
+    @Column(name = "qualification", columnDefinition = "jsonb")
+    String qualification;
 
     @Enumerated(EnumType.STRING)
     EnumActivationStatusType status;
