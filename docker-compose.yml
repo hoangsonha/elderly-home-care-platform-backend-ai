@@ -57,8 +57,7 @@ services:
       # Firebase credentials - ưu tiên FIREBASE_KEY_BASE64, fallback về file
       FIREBASE_KEY_BASE64: ${FIREBASE_KEY_BASE64:-}
       # Email
-      MAIL_USERNAME: ${MAIL_USERNAME:-}
-      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       # JWT
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_EXPIRATION: ${JWT_EXPIRATION:-}
