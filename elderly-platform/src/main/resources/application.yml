@@ -35,7 +35,7 @@ spring:
       max-request-size: 100MB
   mail:
     host: smtp.sendgrid.net
-    port: 587
+    port: 2525
     username: apikey
     password: ${SENDGRID_API_KEY:}
     properties:
