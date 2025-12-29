@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -65,32 +66,36 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
     private final WorkScheduleRepository workScheduleRepository;
     private final ApplicationEventPublisher eventPublisher;
-    private static final EnumSet<EnumCareServiceStatusType> ALLOWED_STATUS = EnumSet.allOf(EnumCareServiceStatusType.class);
+    private static final EnumSet<EnumCareServiceStatusType> ALLOWED_STATUS = EnumSet
+            .allOf(EnumCareServiceStatusType.class);
+
     @Transactional
     @Override
     public CareServiceResponseDTO createCareService(CreateCareServiceRequest request) {
         ElderlyProfile elderlyProfile = elderlyProfileRepository
                 .findByElderlyProfileIdAndDeletedIsFalse(request.getElderlyProfileId());
         if (elderlyProfile == null) {
-            throw new ElementNotFoundException("Elderly profile not found");
+            throw new ElementNotFoundException("Không tìm thấy hồ sơ người cao tuổi");
         }
 
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
         CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
-                .findByCareSeekerProfileIdAndDeletedIsFalse(request.getCareSeekerProfileId());
+                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+
         if (careSeekerProfile == null) {
-            throw new ElementNotFoundException("Care seeker profile not found");
+            throw new ElementNotFoundException("Không tìm thấy hồ sơ người tìm kiếm chăm sóc");
         }
 
         CaregiverProfile caregiverProfile = caregiverProfileRepository
                 .findByCaregiverProfileIdAndDeletedIsFalse(request.getCaregiverProfileId());
         if (caregiverProfile == null) {
-            throw new ElementNotFoundException("Caregiver profile not found");
+            throw new ElementNotFoundException("Không tìm thấy hồ sơ người chăm sóc");
         }
 
         ServicePackage servicePackage = servicePackageRepository
                 .findByServicePackageIdAndDeletedIsFalse(request.getServicePackageId());
         if (servicePackage == null) {
-            throw new ElementNotFoundException("Service package not found");
+            throw new ElementNotFoundException("Không tìm thấy gói dịch vụ");
         }
 
         // create snapshot using DTOs
@@ -106,7 +111,7 @@ public class CareServiceServiceImpl implements CareServiceService {
         try {
             careServiceSnapshotJson = objectMapper.writeValueAsString(snapshot);
         } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize care service snapshot to JSON", e);
+            throw new RuntimeException("Không thể serialize care service snapshot sang JSON", e);
         }
 
         LocalDate workDate = request.getWorkDate();
@@ -116,22 +121,22 @@ public class CareServiceServiceImpl implements CareServiceService {
         Integer startMinute = request.getStartMinute();
 
         if (startHour == null) {
-            throw new BadRequestException("Start hour is required");
+            throw new BadRequestException("Bạn phải cung cấp giờ bắt đầu");
         }
         if (startMinute == null) {
-            throw new BadRequestException("Start minute is required");
+            throw new BadRequestException("Bạn phải cung cấp phút bắt đầu");
         }
         if (startHour < 0 || startHour > 23) {
-            throw new BadRequestException("Start hour must be between 0 and 23");
+            throw new BadRequestException("Giờ bắt đầu phải từ 0 đến 23");
         }
         if (startMinute < 0 || startMinute > 59) {
-            throw new BadRequestException("Start minute must be between 0 and 59");
+            throw new BadRequestException("Phút bắt đầu phải từ 0 đến 59");
         }
 
         LocalTime startTime = LocalTime.of(startHour, startMinute);
 
         if (servicePackage.getDurationHours() == null) {
-            throw new BadRequestException("Service package duration hours is required");
+            throw new BadRequestException("Cần có số giờ thời lượng của gói dịch vụ");
         }
         LocalTime endTime = startTime.plusHours(servicePackage.getDurationHours());
 
@@ -153,7 +158,7 @@ public class CareServiceServiceImpl implements CareServiceService {
                 locationJson = objectMapper.writeValueAsString(request.getLocation());
             } catch (Exception e) {
                 log.error("Failed to serialize location to JSON", e);
-                throw new BadRequestException("Invalid location data");
+                throw new BadRequestException("Dữ liệu địa điểm không hợp lệ");
             }
         }
 
@@ -246,12 +251,13 @@ public class CareServiceServiceImpl implements CareServiceService {
         CareService careService = careServiceRepository
                 .findByCareServiceIdAndDeletedIsFalse(request.getCareServiceId());
         if (careService == null) {
-            throw new ElementNotFoundException("Care service not found");
+            throw new ElementNotFoundException("Không tìm thấy dịch vụ chăm sóc");
         }
 
         if (!careService.getStatus().equals(EnumCareServiceStatusType.PENDING_CAREGIVER)) {
-            throw new BadRequestException("Care service status is not PENDING_CAREGIVER. Current status: "
-                    + careService.getStatus());
+            throw new BadRequestException(
+                    "Trạng thái dịch vụ chăm sóc không phải PENDING_CAREGIVER. Trạng thái hiện tại: "
+                            + careService.getStatus());
         }
 
         // Cancel scheduled expiration from Redis queue
@@ -263,7 +269,8 @@ public class CareServiceServiceImpl implements CareServiceService {
                 .findByAccount_AccountIdAndDeletedIsFalse(currentUser.getId());
 
         if (caregiverProfile == null) {
-            throw new ElementNotFoundException("Caregiver profile not found for account ID: " + currentUser.getId());
+            throw new ElementNotFoundException(
+                    "Không tìm thấy hồ sơ người chăm sóc cho account ID: " + currentUser.getId());
         }
 
         CareServiceStatusLog careServiceStatusLog = CareServiceStatusLog.builder()
@@ -315,7 +322,7 @@ public class CareServiceServiceImpl implements CareServiceService {
         } catch (Exception e) {
             log.error("Failed to deserialize care service snapshot or create work tasks for care service {}: {}",
                     careService.getCareServiceId(), e.getMessage(), e);
-            throw new RuntimeException("Failed to create work tasks from snapshot", e);
+            throw new RuntimeException("Không thể tạo work tasks từ snapshot", e);
         }
 
         // Create WorkSchedule
@@ -389,7 +396,7 @@ public class CareServiceServiceImpl implements CareServiceService {
         CareService careService = careServiceRepository
                 .findByCareServiceIdAndDeletedIsFalse(request.getCareServiceId());
         if (careService == null) {
-            throw new ElementNotFoundException("Care service not found");
+            throw new ElementNotFoundException("Không tìm thấy dịch vụ chăm sóc");
         }
 
         // Cancel scheduled expiration from Redis queue
@@ -399,10 +406,10 @@ public class CareServiceServiceImpl implements CareServiceService {
         UUID currentUserAccountId = currentUser.getId();
 
         if (!SecurityUtils.hasRole("ROLE_CAREGIVER") && !SecurityUtils.hasRole("ROLE_CARE_SEEKER")) {
-            throw new BadRequestException("Only caregiver or care seeker can decline this service");
+            throw new BadRequestException("Chỉ có caregiver hoặc care seeker mới có thể từ chối dịch vụ này");
         }
 
-        String title = SecurityUtils.hasRole("ROLE_CAREGIVER") ? "caregiver" : "care seeker";
+        String title = SecurityUtils.hasRole("ROLE_CAREGIVER") ? "người chăm sóc" : "người thuê";
 
         EnumActorType actorType = SecurityUtils.hasRole("ROLE_CAREGIVER") ? EnumActorType.CAREGIVER
                 : EnumActorType.CARE_SEEKER;
@@ -412,8 +419,7 @@ public class CareServiceServiceImpl implements CareServiceService {
                 .careService(careService)
                 .oldStatus(careService.getStatus())
                 .newStatus(EnumCareServiceStatusType.CANCELLED)
-                .note("Decline by " + title + " with account ID: " + currentUserAccountId + " for care service ID: "
-                        + careService.getCareServiceId())
+                .note("Đã bị hủy bởi " + title + " với lí do: " + request.getNote())
                 .build();
 
         careServiceStatusLogRepository.save(careServiceStatusLog);
@@ -498,7 +504,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private void validateMinimumAdvanceBookingTime(LocalDate workDate, LocalTime startTime,
             ServicePackage servicePackage, Map<EnumSystemConfigKey, String> activeConfigs) {
         if (servicePackage.getPackageType() == null) {
-            throw new BadRequestException("Service package type is required");
+            throw new BadRequestException("Cần có loại gói dịch vụ");
         }
 
         int minimumAdvanceHours = getMinimumAdvanceHours(servicePackage.getPackageType(), activeConfigs);
@@ -509,11 +515,15 @@ public class CareServiceServiceImpl implements CareServiceService {
         long hoursUntilBooking = java.time.Duration.between(now, bookingDateTime).toHours();
 
         if (hoursUntilBooking < minimumAdvanceHours) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+            String formattedBookingDateTime = bookingDateTime.format(formatter);
+            String formattedNow = now.format(formatter);
             throw new BadRequestException(
-                    String.format("Must be booked at least %d hours in advance. Booking time: %s, Current time: %s",
+                    String.format(
+                            "Bạn phải đặt lịch trước ít nhất %d giờ. Thời gian đặt lịch: %s, Thời gian hiện tại: %s",
                             minimumAdvanceHours,
-                            bookingDateTime,
-                            now));
+                            formattedBookingDateTime,
+                            formattedNow));
         }
     }
 
@@ -583,7 +593,7 @@ public class CareServiceServiceImpl implements CareServiceService {
 
         CareService careService = careServiceRepository.findByCareServiceIdAndDeletedIsFalse(careServiceId);
         if (careService == null) {
-            throw new ElementNotFoundException("Care service not found with ID: " + careServiceId);
+            throw new ElementNotFoundException("Không tìm thấy dịch vụ chăm sóc với ID: " + careServiceId);
         }
 
         return careServiceMapper.toDTO(careService);
@@ -595,7 +605,7 @@ public class CareServiceServiceImpl implements CareServiceService {
 
         CareService careService = careServiceRepository.findByBookingCodeAndDeletedIsFalse(bookingCode);
         if (careService == null) {
-            throw new ElementNotFoundException("Care service not found with booking code: " + bookingCode);
+            throw new ElementNotFoundException("Không tìm thấy dịch vụ chăm sóc với mã booking: " + bookingCode);
         }
 
         return careServiceMapper.toDTO(careService);
@@ -619,7 +629,8 @@ public class CareServiceServiceImpl implements CareServiceService {
                     .findByAccount_AccountIdAndDeletedIsFalse(accountId);
 
             if (careSeekerProfile == null) {
-                throw new ElementNotFoundException("Care seeker profile not found for account ID: " + accountId);
+                throw new ElementNotFoundException(
+                        "Không tìm thấy hồ sơ người tìm kiếm chăm sóc cho account ID: " + accountId);
             }
 
             if (status != null) {
@@ -638,7 +649,7 @@ public class CareServiceServiceImpl implements CareServiceService {
                     .findByAccount_AccountIdAndDeletedIsFalse(accountId);
 
             if (caregiverProfile == null) {
-                throw new ElementNotFoundException("Caregiver profile not found for account ID: " + accountId);
+                throw new ElementNotFoundException("Không tìm thấy hồ sơ người chăm sóc cho account ID: " + accountId);
             }
 
             if (status != null) {
@@ -651,7 +662,8 @@ public class CareServiceServiceImpl implements CareServiceService {
 
             log.info("Found {} care services for caregiver with account ID: {}", careServices.size(), accountId);
         } else {
-            throw new BadRequestException("User must have CARE_SEEKER or CAREGIVER role to view care services");
+            throw new BadRequestException(
+                    "Người dùng phải có vai trò CARE_SEEKER hoặc CAREGIVER để xem dịch vụ chăm sóc");
         }
 
         return careServices.stream()
@@ -662,14 +674,14 @@ public class CareServiceServiceImpl implements CareServiceService {
     @Override
     public CareService updateStatus(UUID careServiceId, UpdateCareServiceStatusRequest request) {
         CareService careService = careServiceRepository.findById(careServiceId)
-                .orElseThrow(() -> new RuntimeException("CareService not found"));
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dịch vụ chăm sóc"));
 
         EnumCareServiceStatusType oldStatus = careService.getStatus();
         EnumCareServiceStatusType newStatus = request.getStatus();
 
         // Validate status
         if (!ALLOWED_STATUS.contains(newStatus)) {
-            throw new RuntimeException("Invalid status: " + newStatus);
+            throw new RuntimeException("Trạng thái không hợp lệ: " + newStatus);
         }
 
         validateStatusTransition(oldStatus, newStatus);
@@ -695,15 +707,14 @@ public class CareServiceServiceImpl implements CareServiceService {
     }
 
     private void validateStatusTransition(EnumCareServiceStatusType oldStatus,
-                                          EnumCareServiceStatusType newStatus) {
+            EnumCareServiceStatusType newStatus) {
 
         if (oldStatus == EnumCareServiceStatusType.CANCELLED ||
                 oldStatus == EnumCareServiceStatusType.EXPIRED ||
                 oldStatus == EnumCareServiceStatusType.COMPLETED) {
 
-            throw new RuntimeException("Cannot change status from final state: " + oldStatus);
+            throw new RuntimeException("Không thể thay đổi trạng thái từ trạng thái cuối cùng: " + oldStatus);
         }
-
 
     }
 

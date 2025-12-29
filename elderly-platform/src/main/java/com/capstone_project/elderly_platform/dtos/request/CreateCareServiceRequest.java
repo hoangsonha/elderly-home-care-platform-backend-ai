@@ -21,9 +21,6 @@ public class CreateCareServiceRequest {
     @NotNull(message = "Please enter caregiver id")
     UUID caregiverProfileId;
 
-    @NotNull(message = "Please enter care seeker id")
-    UUID careSeekerProfileId;
-
     LocationRequest location;
 
     @NotNull(message = "Please enter work date")

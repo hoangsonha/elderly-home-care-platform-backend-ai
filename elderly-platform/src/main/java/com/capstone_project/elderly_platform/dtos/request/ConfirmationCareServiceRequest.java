@@ -16,4 +16,6 @@ import java.util.UUID;
 public class ConfirmationCareServiceRequest {
     @NotNull(message = "Please enter care service id")
     UUID careServiceId;
+
+    String note;
 }
