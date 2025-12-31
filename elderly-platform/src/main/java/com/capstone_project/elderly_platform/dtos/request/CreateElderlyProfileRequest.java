@@ -10,9 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
-import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 @Getter
 @Setter
@@ -20,68 +18,114 @@ import java.util.Map;
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class CreateElderlyProfileRequest {
-    
+
     @NotBlank(message = "Name is required")
     String name;
-    
-    Integer age;
-    
+
+    @JsonProperty("birth_year")
+    Integer birthYear;
+
     @NotBlank(message = "Gender is required")
     String gender;
-    
-    @NotNull(message = "Date of birth is required")
-    @JsonProperty("date_of_birth")
-    LocalDate dateOfBirth;
-    
-    @NotBlank(message = "Phone is required")
-    String phone;
-    
+
     @NotNull(message = "Location is required")
     LocationRequest location;
-    
-    @JsonProperty("blood_type")
-    String bloodType;
-    
+
     Double weight;
-    
+
     Double height;
-    
-    @JsonProperty("underlying_diseases")
-    List<String> underlyingDiseases;
-    
-    @JsonProperty("special_conditions")
-    List<String> specialConditions;
-    
-    List<String> allergies;
-    
-    List<MedicationRequest> medications;
-    
+
+    @JsonProperty("medical_conditions")
+    MedicalCondition medicalConditions;
+
     @JsonProperty("independence_level")
-    Map<String, String> independenceLevel;
-    
+    List<IndependenceActivity> independenceLevel;
+
     @JsonProperty("care_needs")
-    List<String> careNeeds;
-    
+    CareNeed careNeeds;
+
     List<String> hobbies;
-    
+
     @JsonProperty("favorite_activities")
     List<String> favoriteActivities;
-    
-    @JsonProperty("music_preference")
-    String musicPreference;
-    
-    @JsonProperty("tv_shows")
-    List<String> tvShows;
-    
-    @JsonProperty("food_preferences")
-    List<String> foodPreferences;
-    
-    @JsonProperty("living_environment")
-    LivingEnvironmentRequest livingEnvironment;
-    
-    @JsonProperty("emergency_contact")
-    EmergencyContactRequest emergencyContact;
-    
+
+    @JsonProperty("favorite_food")
+    List<String> favoriteFood;
+
+    @JsonProperty("emergency_contacts")
+    List<EmergencyContactRequest> emergencyContacts;
+
+    @JsonProperty("health_status")
+    String healthStatus;
+
+    @JsonProperty("health_note")
+    String healthNote;
+
+    String note;
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @FieldDefaults(level = AccessLevel.PRIVATE)
+    public static class CareNeed {
+        @JsonProperty("level_of_care")
+        String levelOfCare; // Mức độ chăm sóc cần thiết (ví dụ: "Nâng cao")
+
+        Skills skills;
+
+        @JsonProperty("age")
+        List<Integer> age; // [minAge, maxAge] ví dụ: [18, 28]
+
+        String gender;
+
+        Integer experience;
+
+        Double rating;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @FieldDefaults(level = AccessLevel.PRIVATE)
+    public static class Skills {
+        @JsonProperty("kĩ năng bắt buộc")
+        List<String> requiredSkills;
+
+        @JsonProperty("kĩ năng ưu tiên")
+        List<String> prioritySkills;
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @FieldDefaults(level = AccessLevel.PRIVATE)
+    public static class MedicalCondition {
+        @JsonProperty("underlying_diseases")
+        List<String> underlyingDiseases; // bệnh nền
+
+        @JsonProperty("special_conditions")
+        List<String> specialConditions; // tình trạng đặc biệt
+
+        @JsonProperty("allergies")
+        List<String> allergies; // dị ứng
+
+        @JsonProperty("medications")
+        List<MedicationRequest> medications; // thuốc đang sử dụng
+    }
+
+    @Getter
+    @Setter
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @FieldDefaults(level = AccessLevel.PRIVATE)
+    public static class IndependenceActivity {
+        String activity; // "ăn uống", "tắm rửa", "vệ sinh", "di chuyển", "mặc quần áo"
+        String level; // "Tự lập", "Cần hỗ trợ", "Phụ thuộc"
+    }
+
     @Getter
     @Setter
     @AllArgsConstructor
@@ -92,22 +136,7 @@ public class CreateElderlyProfileRequest {
         String dosage;
         String frequency;
     }
-    
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @FieldDefaults(level = AccessLevel.PRIVATE)
-    public static class LivingEnvironmentRequest {
-        @JsonProperty("houseType")
-        String houseType;
-        
-        @JsonProperty("livingWith")
-        List<String> livingWith;
-        
-        List<String> accessibility;
-    }
-    
+
     @Getter
     @Setter
     @AllArgsConstructor
@@ -119,4 +148,3 @@ public class CreateElderlyProfileRequest {
         String phone;
     }
 }
-

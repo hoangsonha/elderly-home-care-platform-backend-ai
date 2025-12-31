@@ -1,7 +1,9 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
 import com.capstone_project.elderly_platform.enums.EnumGenderType;
@@ -9,9 +11,12 @@ import com.capstone_project.elderly_platform.enums.EnumHealthStatusType;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.mappers.CaregiverProfileMapper;
+import com.capstone_project.elderly_platform.mappers.CareSeekerProfileMapper;
 import com.capstone_project.elderly_platform.mappers.ElderlyProfileMapper;
+import com.capstone_project.elderly_platform.pojos.Account;
 import com.capstone_project.elderly_platform.pojos.CareSeekerProfile;
 import com.capstone_project.elderly_platform.pojos.ElderlyProfile;
+import com.capstone_project.elderly_platform.repositories.AccountRepository;
 import com.capstone_project.elderly_platform.repositories.CareSeekerProfileRepository;
 import com.capstone_project.elderly_platform.repositories.CaregiverProfileRepository;
 import com.capstone_project.elderly_platform.repositories.ElderlyProfileRepository;
@@ -24,8 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
-import java.time.Period;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +43,9 @@ public class ProfileServiceImpl implements ProfileService {
     private final CaregiverProfileRepository caregiverProfileRepository;
     private final ElderlyProfileRepository elderlyProfileRepository;
     private final CareSeekerProfileRepository careSeekerProfileRepository;
+    private final AccountRepository accountRepository;
     private final CaregiverProfileMapper caregiverProfileMapper;
+    private final CareSeekerProfileMapper careSeekerProfileMapper;
     private final ElderlyProfileMapper elderlyProfileMapper;
     private final FirebaseStorageService firebaseStorageService;
     private final ObjectMapper objectMapper;
@@ -121,69 +126,72 @@ public class ProfileServiceImpl implements ProfileService {
         // Build profileData JSON with all fields not in entity
         Map<String, Object> profileDataMap = new HashMap<>();
 
-        // Calculate age from date of birth
-        if (request.getDateOfBirth() != null) {
-            int age = Period.between(request.getDateOfBirth(), LocalDate.now()).getYears();
-            profileDataMap.put("age", age);
-        } else if (request.getAge() != null) {
-            profileDataMap.put("age", request.getAge());
+        // Create LocalDate from birthYear if provided (age will be calculated in mapper)
+        java.time.LocalDate birthDate = null;
+        if (request.getBirthYear() != null) {
+            // Create LocalDate from birthYear (set to January 1st of that year)
+            birthDate = java.time.LocalDate.of(request.getBirthYear(), 1, 1);
+            // Note: age is not stored in profileData, it will be calculated from birthDate in mapper
         }
 
-        if (request.getBloodType() != null) {
-            profileDataMap.put("blood_type", request.getBloodType());
-        }
         if (request.getWeight() != null) {
             profileDataMap.put("weight", request.getWeight());
         }
         if (request.getHeight() != null) {
             profileDataMap.put("height", request.getHeight());
         }
-        if (request.getUnderlyingDiseases() != null) {
-            profileDataMap.put("underlying_diseases", request.getUnderlyingDiseases());
+        
+        // Add medical conditions to profileData
+        if (request.getMedicalConditions() != null) {
+            Map<String, Object> medicalConditionsMap = new HashMap<>();
+            if (request.getMedicalConditions().getUnderlyingDiseases() != null) {
+                medicalConditionsMap.put("underlying_diseases", request.getMedicalConditions().getUnderlyingDiseases());
+            }
+            if (request.getMedicalConditions().getSpecialConditions() != null) {
+                medicalConditionsMap.put("special_conditions", request.getMedicalConditions().getSpecialConditions());
+            }
+            if (request.getMedicalConditions().getAllergies() != null) {
+                medicalConditionsMap.put("allergies", request.getMedicalConditions().getAllergies());
+            }
+            if (request.getMedicalConditions().getMedications() != null) {
+                medicalConditionsMap.put("medications", request.getMedicalConditions().getMedications());
+            }
+            if (!medicalConditionsMap.isEmpty()) {
+                profileDataMap.put("medical_conditions", medicalConditionsMap);
+            }
         }
-        if (request.getSpecialConditions() != null) {
-            profileDataMap.put("special_conditions", request.getSpecialConditions());
+        
+        // Add independence level to profileData
+        if (request.getIndependenceLevel() != null && !request.getIndependenceLevel().isEmpty()) {
+            Map<String, String> independenceLevelMap = new HashMap<>();
+            for (CreateElderlyProfileRequest.IndependenceActivity activity : request.getIndependenceLevel()) {
+                independenceLevelMap.put(activity.getActivity(), activity.getLevel());
+            }
+            profileDataMap.put("independence_level", independenceLevelMap);
         }
-        if (request.getAllergies() != null) {
-            profileDataMap.put("allergies", request.getAllergies());
-        }
-        if (request.getMedications() != null) {
-            profileDataMap.put("medications", request.getMedications());
-        }
-        if (request.getIndependenceLevel() != null) {
-            profileDataMap.put("independence_level", request.getIndependenceLevel());
-        }
-        if (request.getCareNeeds() != null) {
-            profileDataMap.put("care_needs", request.getCareNeeds());
-        }
+        
         if (request.getHobbies() != null) {
             profileDataMap.put("hobbies", request.getHobbies());
         }
         if (request.getFavoriteActivities() != null) {
             profileDataMap.put("favorite_activities", request.getFavoriteActivities());
         }
-        if (request.getMusicPreference() != null) {
-            profileDataMap.put("music_preference", request.getMusicPreference());
+
+        if (request.getFavoriteFood() != null) {
+            profileDataMap.put("favorite_food", request.getFavoriteFood());
         }
-        if (request.getTvShows() != null) {
-            profileDataMap.put("tv_shows", request.getTvShows());
-        }
-        if (request.getFoodPreferences() != null) {
-            profileDataMap.put("food_preferences", request.getFoodPreferences());
-        }
-        if (request.getLivingEnvironment() != null) {
-            Map<String, Object> livingEnvMap = new HashMap<>();
-            livingEnvMap.put("houseType", request.getLivingEnvironment().getHouseType());
-            livingEnvMap.put("livingWith", request.getLivingEnvironment().getLivingWith());
-            livingEnvMap.put("accessibility", request.getLivingEnvironment().getAccessibility());
-            profileDataMap.put("living_environment", livingEnvMap);
-        }
-        if (request.getEmergencyContact() != null) {
-            Map<String, Object> emergencyContactMap = new HashMap<>();
-            emergencyContactMap.put("name", request.getEmergencyContact().getName());
-            emergencyContactMap.put("relationship", request.getEmergencyContact().getRelationship());
-            emergencyContactMap.put("phone", request.getEmergencyContact().getPhone());
-            profileDataMap.put("emergency_contact", emergencyContactMap);
+
+        if (request.getEmergencyContacts() != null && !request.getEmergencyContacts().isEmpty()) {
+            List<Map<String, Object>> emergencyContactsList = request.getEmergencyContacts().stream()
+                    .map(contact -> {
+                        Map<String, Object> contactMap = new HashMap<>();
+                        contactMap.put("name", contact.getName());
+                        contactMap.put("relationship", contact.getRelationship());
+                        contactMap.put("phone", contact.getPhone());
+                        return contactMap;
+                    })
+                    .collect(Collectors.toList());
+            profileDataMap.put("emergency_contacts", emergencyContactsList);
         }
 
         // Convert profileData to JSON string
@@ -197,6 +205,47 @@ public class ProfileServiceImpl implements ProfileService {
             }
         }
 
+        // Build careRequirement JSON from careNeeds
+        String careRequirementJson = null;
+        if (request.getCareNeeds() != null) {
+            try {
+                Map<String, Object> careRequirementMap = new HashMap<>();
+                if (request.getCareNeeds().getLevelOfCare() != null) {
+                    careRequirementMap.put("level_of_care", request.getCareNeeds().getLevelOfCare());
+                }
+                if (request.getCareNeeds().getSkills() != null) {
+                    Map<String, Object> skillsMap = new HashMap<>();
+                    if (request.getCareNeeds().getSkills().getRequiredSkills() != null) {
+                        skillsMap.put("kĩ năng bắt buộc", request.getCareNeeds().getSkills().getRequiredSkills());
+                    }
+                    if (request.getCareNeeds().getSkills().getPrioritySkills() != null) {
+                        skillsMap.put("kĩ năng ưu tiên", request.getCareNeeds().getSkills().getPrioritySkills());
+                    }
+                    if (!skillsMap.isEmpty()) {
+                        careRequirementMap.put("skills", skillsMap);
+                    }
+                }
+                if (request.getCareNeeds().getAge() != null && !request.getCareNeeds().getAge().isEmpty()) {
+                    careRequirementMap.put("age", request.getCareNeeds().getAge());
+                }
+                if (request.getCareNeeds().getGender() != null) {
+                    careRequirementMap.put("gender", request.getCareNeeds().getGender());
+                }
+                if (request.getCareNeeds().getExperience() != null) {
+                    careRequirementMap.put("experience", request.getCareNeeds().getExperience());
+                }
+                if (request.getCareNeeds().getRating() != null) {
+                    careRequirementMap.put("rating", request.getCareNeeds().getRating());
+                }
+                if (!careRequirementMap.isEmpty()) {
+                    careRequirementJson = objectMapper.writeValueAsString(careRequirementMap);
+                }
+            } catch (Exception e) {
+                log.error("Failed to convert careRequirement to JSON: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to process care requirement data");
+            }
+        }
+
         // Convert gender string to enum
         EnumGenderType gender;
         try {
@@ -205,17 +254,29 @@ public class ProfileServiceImpl implements ProfileService {
             throw new BadRequestException("Invalid gender: " + request.getGender());
         }
 
+        // Convert healthStatus string to enum
+        EnumHealthStatusType healthStatus = EnumHealthStatusType.GOOD; // Default value
+        if (request.getHealthStatus() != null && !request.getHealthStatus().isEmpty()) {
+            try {
+                healthStatus = EnumHealthStatusType.valueOf(request.getHealthStatus().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid health status: " + request.getHealthStatus() + ". Valid values: GOOD, WEAK, MODERATE");
+            }
+        }
+
         // Create ElderlyProfile entity
         ElderlyProfile elderlyProfile = ElderlyProfile.builder()
                 .fullName(request.getName())
-                .phoneNumber(request.getPhone())
-                .birthDate(request.getDateOfBirth())
+                .birthDate(birthDate)
                 .location(locationJson)
                 .gender(gender)
                 .avatarUrl(avatarUrl)
                 .profileData(profileDataJson)
+                .careRequirement(careRequirementJson)
                 .status(EnumActivationStatusType.ACTIVE)
-                .healthStatus(EnumHealthStatusType.GOOD) // Default value
+                .healthStatus(healthStatus)
+                .healthNote(request.getHealthNote())
+                .note(request.getNote())
                 .careSeekerProfile(careSeekerProfile)
                 .build();
 
@@ -225,5 +286,87 @@ public class ProfileServiceImpl implements ProfileService {
 
         // Convert to DTO and return
         return elderlyProfileMapper.toDTO(savedProfile);
+    }
+
+    @Override
+    @Transactional
+    public CareSeekerProfileResponseDTO createCareSeekerProfile(CreateCareSeekerProfileRequest request,
+            MultipartFile avatarFile) {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Creating care seeker profile for account ID: {}", currentAccountId);
+
+        // Get account
+        Account account = accountRepository.findByAccountIdAndDeletedIsFalse(currentAccountId)
+                .orElseThrow(() -> new ElementNotFoundException("Account not found for current user"));
+
+        // Check if profile already exists
+        CareSeekerProfile existingProfile = careSeekerProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+        if (existingProfile != null) {
+            throw new BadRequestException("Care seeker profile already exists for this account");
+        }
+
+        // Upload avatar to Firebase if provided
+        String avatarUrl = null;
+        if (avatarFile != null && !avatarFile.isEmpty()) {
+            try {
+                avatarUrl = firebaseStorageService.uploadSingleImages(avatarFile);
+                log.info("Avatar uploaded successfully: {}", avatarUrl);
+                
+                // Update avatarUrl in Account
+                account.setAvatarUrl(avatarUrl);
+                accountRepository.save(account);
+            } catch (Exception e) {
+                log.error("Failed to upload avatar: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to upload avatar: " + e.getMessage());
+            }
+        }
+
+        // Convert location to JSON string
+        String locationJson = null;
+        if (request.getLocation() != null) {
+            try {
+                Map<String, Object> locationMap = new HashMap<>();
+                locationMap.put("address", request.getLocation().getAddress());
+                locationMap.put("latitude", request.getLocation().getLatitude());
+                locationMap.put("longitude", request.getLocation().getLongitude());
+                locationJson = objectMapper.writeValueAsString(locationMap);
+            } catch (Exception e) {
+                log.error("Failed to convert location to JSON: {}", e.getMessage(), e);
+                throw new BadRequestException("Invalid location data");
+            }
+        }
+
+        // Convert gender string to enum
+        EnumGenderType gender;
+        try {
+            gender = EnumGenderType.valueOf(request.getGender().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid gender: " + request.getGender());
+        }
+
+        // Create LocalDate from birthYear (set to January 1st of that year)
+        // Age will be calculated from birthDate in mapper
+        java.time.LocalDate birthDate = null;
+        if (request.getBirthYear() != null) {
+            birthDate = java.time.LocalDate.of(request.getBirthYear(), 1, 1);
+        }
+
+        // Create CareSeekerProfile entity
+        CareSeekerProfile careSeekerProfile = CareSeekerProfile.builder()
+                .fullName(request.getFullName())
+                .phoneNumber(request.getPhone())
+                .birthDate(birthDate)
+                .gender(gender)
+                .location(locationJson)
+                .account(account)
+                .build();
+
+        // Save to database
+        CareSeekerProfile savedProfile = careSeekerProfileRepository.save(careSeekerProfile);
+        log.info("Care seeker profile created successfully with ID: {}", savedProfile.getCareSeekerProfileId());
+
+        // Convert to DTO and return
+        return careSeekerProfileMapper.toDTO(savedProfile);
     }
 }

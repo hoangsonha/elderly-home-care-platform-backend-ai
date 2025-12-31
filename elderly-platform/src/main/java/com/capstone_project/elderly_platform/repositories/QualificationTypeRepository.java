@@ -22,3 +22,5 @@ public interface QualificationTypeRepository extends JpaRepository<Qualification
 
 
 
+
+

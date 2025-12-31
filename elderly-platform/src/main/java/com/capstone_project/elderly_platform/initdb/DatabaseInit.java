@@ -166,7 +166,7 @@ public class DatabaseInit implements CommandLineRunner {
                         // Admin account
                         Account adminAccount = Account.builder()
                                         .email("admin@elderlycare.com")
-                                        .password(bCryptPasswordEncoder.encode("Admin@123"))
+                                         .password(bCryptPasswordEncoder.encode("Admin@123"))
                                         .enabled(true)
                                         .nonLocked(true)
                                         .role(adminRoleList)

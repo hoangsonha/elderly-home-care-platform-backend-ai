@@ -1,10 +1,14 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
+import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.services.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,12 +48,12 @@ public class CareSeekerController {
         }
     }
 
-    @Operation(summary = "Create elderly profile", description = "Create a new elderly profile for the current care seeker. Only accessible by CARE_SEEKER role")
+    @Operation(summary = "Create elderly profile (with avatar)", description = "Create a new elderly profile for the current care seeker with optional avatar. Only accessible by CARE_SEEKER role. Use multipart/form-data when uploading avatar. Note: In Swagger UI, for the 'data' part, you must manually set Content-Type to 'application/json' in the request.")
     @PreAuthorize("hasRole('CARE_SEEKER')")
     @PostMapping(value = "/elderly-profiles", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ObjectResponse> createElderlyProfile(
-            @RequestPart("data") @Valid CreateElderlyProfileRequest request,
-            @RequestPart(value = "avatar", required = false) MultipartFile avatarFile) {
+            @Parameter(description = "JSON data containing elderly profile information. IMPORTANT: Set Content-Type to 'application/json' in Swagger UI", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)) @RequestPart(value = "data", required = true) @Valid CreateElderlyProfileRequest request,
+            @Parameter(description = "Avatar image file (optional)", content = @Content(mediaType = MediaType.IMAGE_JPEG_VALUE)) @RequestPart(value = "avatar", required = false) MultipartFile avatarFile) {
         try {
             ElderlyProfileResponseDTO createdProfile = profileService.createElderlyProfile(request, avatarFile);
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -58,6 +62,57 @@ public class CareSeekerController {
             log.error("Error creating elderly profile", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to create elderly profile: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Create elderly profile (without avatar)", description = "Create a new elderly profile for the current care seeker without avatar. Only accessible by CARE_SEEKER role. Use application/json when no avatar is needed.")
+    @PreAuthorize("hasRole('CARE_SEEKER')")
+    @PostMapping(value = "/elderly-profiles/json", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ObjectResponse> createElderlyProfileWithoutAvatar(
+            @Valid @RequestBody CreateElderlyProfileRequest request) {
+        try {
+            ElderlyProfileResponseDTO createdProfile = profileService.createElderlyProfile(request, null);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ObjectResponse("Success", "Elderly profile created successfully", createdProfile));
+        } catch (Exception e) {
+            log.error("Error creating elderly profile", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to create elderly profile: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Create care seeker profile (with avatar)", description = "Create a new care seeker profile for the current user with optional avatar. Only accessible by CARE_SEEKER role. Use multipart/form-data when uploading avatar.")
+    @PreAuthorize("hasRole('CARE_SEEKER')")
+    @PostMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ObjectResponse> createCareSeekerProfile(
+            @RequestPart("data") @Valid CreateCareSeekerProfileRequest request,
+            @RequestPart(value = "avatar", required = false) MultipartFile avatarFile) {
+        try {
+            CareSeekerProfileResponseDTO createdProfile = profileService.createCareSeekerProfile(request, avatarFile);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ObjectResponse("Success", "Care seeker profile created successfully", createdProfile));
+        } catch (Exception e) {
+            log.error("Error creating care seeker profile", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to create care seeker profile: " + e.getMessage(),
+                            null));
+        }
+    }
+
+    @Operation(summary = "Create care seeker profile (without avatar)", description = "Create a new care seeker profile for the current user without avatar. Only accessible by CARE_SEEKER role. Use application/json when no avatar is needed.")
+    @PreAuthorize("hasRole('CARE_SEEKER')")
+    @PostMapping(value = "/profile/json", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ObjectResponse> createCareSeekerProfileWithoutAvatar(
+            @Valid @RequestBody CreateCareSeekerProfileRequest request) {
+        try {
+            CareSeekerProfileResponseDTO createdProfile = profileService.createCareSeekerProfile(request, null);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ObjectResponse("Success", "Care seeker profile created successfully", createdProfile));
+        } catch (Exception e) {
+            log.error("Error creating care seeker profile", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to create care seeker profile: " + e.getMessage(),
+                            null));
         }
     }
 }
