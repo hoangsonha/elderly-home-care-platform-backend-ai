@@ -3,7 +3,10 @@ package com.capstone_project.elderly_platform.controllers;
 import com.capstone_project.elderly_platform.dtos.request.AccountLoginRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.ForgotPasswordRequest;
 import com.capstone_project.elderly_platform.dtos.request.ResendCodeVerifyRequest;
+import com.capstone_project.elderly_platform.dtos.request.ResetPasswordRequest;
+import com.capstone_project.elderly_platform.dtos.request.VerifyForgotPasswordCodeRequest;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
@@ -151,6 +154,77 @@ public class AccountController {
                         log.error("Error logout : {}", e.toString());
                         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                                         .body(new ObjectResponse("Failed", "Logout failed", null));
+                }
+        }
+
+        // Forgot Password APIs
+        @PostMapping("/forgot-password")
+        public ResponseEntity<ObjectResponse> sendForgotPasswordCode(
+                        @Valid @RequestBody ForgotPasswordRequest request) {
+                try {
+                        boolean success = accountService.sendForgotPasswordCode(request);
+                        return success
+                                        ? ResponseEntity.status(HttpStatus.OK)
+                                                        .body(new ObjectResponse("Success",
+                                                                        "Reset password code sent to your email successfully",
+                                                                        null))
+                                        : ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                                        .body(new ObjectResponse("Fail",
+                                                                        "Failed to send reset password code due to email sending error",
+                                                                        null));
+                } catch (BadRequestException e) {
+                        log.error("Error sending forgot password code: {}", e.toString());
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                        .body(new ObjectResponse("Failed", e.getMessage(), null));
+                } catch (Exception e) {
+                        log.error("Error sending forgot password code", e);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                        .body(new ObjectResponse("Fail", "Failed to send reset password code", null));
+                }
+        }
+
+        @PostMapping("/forgot-password/verify-code")
+        public ResponseEntity<ObjectResponse> verifyForgotPasswordCode(
+                        @Valid @RequestBody VerifyForgotPasswordCodeRequest request) {
+                try {
+                        boolean success = accountService.verifyForgotPasswordCode(request);
+                        return success
+                                        ? ResponseEntity.status(HttpStatus.OK)
+                                                        .body(new ObjectResponse("Success",
+                                                                        "Verification code is valid. You can now reset your password",
+                                                                        null))
+                                        : ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                                        .body(new ObjectResponse("Fail", "Invalid verification code", null));
+                } catch (BadRequestException e) {
+                        log.error("Error verifying forgot password code: {}", e.toString());
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                        .body(new ObjectResponse("Failed", e.getMessage(), null));
+                } catch (Exception e) {
+                        log.error("Error verifying forgot password code", e);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                        .body(new ObjectResponse("Fail", "Failed to verify reset password code", null));
+                }
+        }
+
+        @PostMapping("/forgot-password/reset")
+        public ResponseEntity<ObjectResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+                try {
+                        boolean success = accountService.resetPassword(request);
+                        return success
+                                        ? ResponseEntity.status(HttpStatus.OK)
+                                                        .body(new ObjectResponse("Success",
+                                                                        "Password reset successfully. Please login with your new password",
+                                                                        null))
+                                        : ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                                        .body(new ObjectResponse("Fail", "Failed to reset password", null));
+                } catch (BadRequestException e) {
+                        log.error("Error resetting password: {}", e.toString());
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                        .body(new ObjectResponse("Failed", e.getMessage(), null));
+                } catch (Exception e) {
+                        log.error("Error resetting password", e);
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                        .body(new ObjectResponse("Fail", "Failed to reset password", null));
                 }
         }
 

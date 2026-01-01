@@ -9,7 +9,10 @@ import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import com.capstone_project.elderly_platform.pojos.Role;
 import com.capstone_project.elderly_platform.dtos.request.AccountRegisterRequest;
 import com.capstone_project.elderly_platform.dtos.request.AccountVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.ForgotPasswordRequest;
 import com.capstone_project.elderly_platform.dtos.request.ResendCodeVerifyRequest;
+import com.capstone_project.elderly_platform.dtos.request.ResetPasswordRequest;
+import com.capstone_project.elderly_platform.dtos.request.VerifyForgotPasswordCodeRequest;
 import com.capstone_project.elderly_platform.dtos.response.TokenResponse;
 import com.capstone_project.elderly_platform.enums.EnumRoleType;
 import com.capstone_project.elderly_platform.enums.EnumTokenType;
@@ -27,7 +30,6 @@ import jakarta.mail.internet.MimeMessage;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -401,6 +403,139 @@ public class AccountServiceImpl implements AccountService {
     public Account getAccountById(UUID id) {
         return accountRepository.findByAccountIdAndDeletedIsFalse(id).orElseThrow(
                 () -> new EntityNotFoundException("User not found"));
+    }
+
+    // Forgot Password APIs Implementation
+    @Override
+    @Transactional
+    public boolean sendForgotPasswordCode(ForgotPasswordRequest request) {
+        Account account = accountRepository.getAccountByEmail(request.getEmail());
+
+        if (account == null) {
+            throw new BadRequestException("Account does not exist with this email");
+        }
+
+        // Check if account is enabled
+        if (!account.getEnabled()) {
+            throw new BadRequestException("Account is not verified yet. Please verify your account first");
+        }
+
+        // Generate forgot password code and set expiration time (10 minutes)
+        String forgotPasswordCode = generateSixDigitCode();
+        LocalDateTime forgotPasswordCodeExpiresAt = LocalDateTime.now().plusMinutes(10);
+
+        account.setForgotPasswordCode(forgotPasswordCode);
+        account.setForgotPasswordCodeExpiresAt(forgotPasswordCodeExpiresAt);
+        accountRepository.save(account);
+
+        // Send email with forgot password code
+        return sendForgotPasswordEmail(account.getEmail(), forgotPasswordCode);
+    }
+
+    @Override
+    @Transactional
+    public boolean verifyForgotPasswordCode(VerifyForgotPasswordCodeRequest request) {
+        Account account = accountRepository.getAccountByEmail(request.getEmail());
+
+        if (account == null) {
+            throw new BadRequestException("Account does not exist");
+        }
+
+        // Check if forgot password code exists
+        if (account.getForgotPasswordCode() == null) {
+            throw new BadRequestException("Forgot password code does not exist. Please request a new code");
+        }
+
+        // Check if forgot password code has expired
+        if (account.getForgotPasswordCodeExpiresAt() == null ||
+                LocalDateTime.now().isAfter(account.getForgotPasswordCodeExpiresAt())) {
+            throw new BadRequestException("Forgot password code has expired. Please request a new code");
+        }
+
+        // Verify the code
+        if (!request.getCode().equals(account.getForgotPasswordCode())) {
+            throw new BadRequestException("Invalid forgot password code. Please try again");
+        }
+
+        // Code is valid, return true but don't clear the code yet
+        // It will be cleared when password is actually reset
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean resetPassword(ResetPasswordRequest request) {
+        Account account = accountRepository.getAccountByEmail(request.getEmail());
+
+        if (account == null) {
+            throw new BadRequestException("Account does not exist");
+        }
+
+        // Check if forgot password code exists
+        if (account.getForgotPasswordCode() == null) {
+            throw new BadRequestException("Forgot password code does not exist. Please request a new code");
+        }
+
+        // Check if forgot password code has expired
+        if (account.getForgotPasswordCodeExpiresAt() == null ||
+                LocalDateTime.now().isAfter(account.getForgotPasswordCodeExpiresAt())) {
+            throw new BadRequestException("Forgot password code has expired. Please request a new code");
+        }
+
+        // Verify the code
+        if (!request.getCode().equals(account.getForgotPasswordCode())) {
+            throw new BadRequestException("Invalid forgot password code. Please try again");
+        }
+
+        // Update password
+        account.setPassword(bCryptPasswordEncoder.encode(request.getNewPassword()));
+        
+        // Clear forgot password code and expiration
+        account.setForgotPasswordCode(null);
+        account.setForgotPasswordCodeExpiresAt(null);
+        
+        // Clear tokens to force re-login
+        account.setAccessToken(null);
+        account.setRefreshToken(null);
+        
+        accountRepository.save(account);
+
+        return true;
+    }
+
+    private boolean sendForgotPasswordEmail(String email, String resetCode) {
+        if (email == null) {
+            return false;
+        }
+        try {
+            Context context = new Context();
+            context.setVariable("resetCode", resetCode);
+            context.setVariable("email", email);
+
+            String content = "forgot-password";
+
+            String mailContent = templateEngine.process(content, context);
+
+            String title = "Reset Password Code - Elder Care Connect";
+            String senderName = "ELDERLY PLATFORM";
+            MimeMessage mimeMessage = javaMailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+            helper.setFrom("hoangsonhadev@gmail.com", senderName);
+
+            if (email.contains(",")) {
+                helper.setTo(InternetAddress.parse(email));
+            } else {
+                helper.setTo(email);
+            }
+            helper.setSubject(title);
+            helper.setText(mailContent, true);
+            javaMailSender.send(mimeMessage);
+            log.info("Sent forgot password email to {}", email);
+            return true;
+        } catch (Exception e) {
+            log.error("Cannot send forgot password email: {}", e.toString());
+            return false;
+        }
     }
 
     // @Override

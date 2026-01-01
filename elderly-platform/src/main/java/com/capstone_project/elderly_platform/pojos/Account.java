@@ -52,6 +52,12 @@ public class Account extends BaseEntity {
     @Column(name = "code_verify_expires_at")
     LocalDateTime codeVerifyExpiresAt;
 
+    @Column(length = 6)
+    String forgotPasswordCode;
+
+    @Column(name = "forgot_password_code_expires_at")
+    LocalDateTime forgotPasswordCodeExpiresAt;
+
     @Column(name = "avatar_url", columnDefinition = "TEXT")
     String avatarUrl;
 
