@@ -612,8 +612,8 @@ public class CareServiceServiceImpl implements CareServiceService {
     }
 
     @Override
-    public List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status) {
-        log.info("Getting my care services with status filter: {}", status);
+    public List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status, LocalDate workDate) {
+        log.info("Getting my care services with status filter: {} and work date: {}", status, workDate);
 
         CustomAccountDetail currentUser = SecurityUtils.getCurrentUser();
         UUID accountId = currentUser.getId();
@@ -633,12 +633,37 @@ public class CareServiceServiceImpl implements CareServiceService {
                         "Không tìm thấy hồ sơ người tìm kiếm chăm sóc cho account ID: " + accountId);
             }
 
-            if (status != null) {
-                careServices = careServiceRepository.findByCareSeekerProfileAndStatusAndDeletedIsFalse(
-                        careSeekerProfile, status, sort);
+            // Filter by work date if provided
+            if (workDate != null) {
+                // When workDate is provided, exclude PENDING_CAREGIVER and EXPIRED status
+                if (status != null) {
+                    // If status is PENDING_CAREGIVER or EXPIRED, return empty list
+                    if (status == EnumCareServiceStatusType.PENDING_CAREGIVER || 
+                        status == EnumCareServiceStatusType.EXPIRED) {
+                        log.info("Filtering out PENDING_CAREGIVER and EXPIRED status when workDate is provided");
+                        careServices = new ArrayList<>();
+                    } else {
+                        careServices = careServiceRepository.findByCareSeekerProfileAndWorkDateAndStatusAndDeletedIsFalse(
+                                careSeekerProfile, workDate, status, sort);
+                    }
+                } else {
+                    // Get all care services for the work date, then filter out PENDING_CAREGIVER and EXPIRED
+                    careServices = careServiceRepository.findByCareSeekerProfileAndWorkDateAndDeletedIsFalse(
+                            careSeekerProfile, workDate, sort);
+                    careServices = careServices.stream()
+                            .filter(cs -> cs.getStatus() != EnumCareServiceStatusType.PENDING_CAREGIVER &&
+                                         cs.getStatus() != EnumCareServiceStatusType.EXPIRED)
+                            .collect(Collectors.toList());
+                }
             } else {
-                careServices = careServiceRepository.findByCareSeekerProfileAndDeletedIsFalse(
-                        careSeekerProfile, sort);
+                // Original behavior when no work date filter
+                if (status != null) {
+                    careServices = careServiceRepository.findByCareSeekerProfileAndStatusAndDeletedIsFalse(
+                            careSeekerProfile, status, sort);
+                } else {
+                    careServices = careServiceRepository.findByCareSeekerProfileAndDeletedIsFalse(
+                            careSeekerProfile, sort);
+                }
             }
 
             log.info("Found {} care services for care seeker with account ID: {}", careServices.size(), accountId);
@@ -652,12 +677,37 @@ public class CareServiceServiceImpl implements CareServiceService {
                 throw new ElementNotFoundException("Không tìm thấy hồ sơ người chăm sóc cho account ID: " + accountId);
             }
 
-            if (status != null) {
-                careServices = careServiceRepository.findByCaregiverProfileAndStatusAndDeletedIsFalse(
-                        caregiverProfile, status, sort);
+            // Filter by work date if provided
+            if (workDate != null) {
+                // When workDate is provided, exclude PENDING_CAREGIVER and EXPIRED status
+                if (status != null) {
+                    // If status is PENDING_CAREGIVER or EXPIRED, return empty list
+                    if (status == EnumCareServiceStatusType.PENDING_CAREGIVER || 
+                        status == EnumCareServiceStatusType.EXPIRED) {
+                        log.info("Filtering out PENDING_CAREGIVER and EXPIRED status when workDate is provided");
+                        careServices = new ArrayList<>();
+                    } else {
+                        careServices = careServiceRepository.findByCaregiverProfileAndWorkDateAndStatusAndDeletedIsFalse(
+                                caregiverProfile, workDate, status, sort);
+                    }
+                } else {
+                    // Get all care services for the work date, then filter out PENDING_CAREGIVER and EXPIRED
+                    careServices = careServiceRepository.findByCaregiverProfileAndWorkDateAndDeletedIsFalse(
+                            caregiverProfile, workDate, sort);
+                    careServices = careServices.stream()
+                            .filter(cs -> cs.getStatus() != EnumCareServiceStatusType.PENDING_CAREGIVER &&
+                                         cs.getStatus() != EnumCareServiceStatusType.EXPIRED)
+                            .collect(Collectors.toList());
+                }
             } else {
-                careServices = careServiceRepository.findByCaregiverProfileAndDeletedIsFalse(
-                        caregiverProfile, sort);
+                // Original behavior when no work date filter
+                if (status != null) {
+                    careServices = careServiceRepository.findByCaregiverProfileAndStatusAndDeletedIsFalse(
+                            caregiverProfile, status, sort);
+                } else {
+                    careServices = careServiceRepository.findByCaregiverProfileAndDeletedIsFalse(
+                            caregiverProfile, sort);
+                }
             }
 
             log.info("Found {} care services for caregiver with account ID: {}", careServices.size(), accountId);

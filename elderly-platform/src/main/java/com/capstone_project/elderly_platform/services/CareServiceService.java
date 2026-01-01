@@ -7,6 +7,7 @@ import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDT
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.pojos.CareService;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -23,8 +24,8 @@ public interface CareServiceService {
     // Get care service detail by booking code
     CareServiceResponseDTO getCareServiceByBookingCode(String bookingCode);
 
-    // Get all care services for current user (seeker or caregiver) with optional status filter
-    List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status);
+    // Get all care services for current user (seeker or caregiver) with optional status and work date filter
+    List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status, LocalDate workDate);
 
     CareService updateStatus(UUID careServiceId, UpdateCareServiceStatusRequest request);
 }

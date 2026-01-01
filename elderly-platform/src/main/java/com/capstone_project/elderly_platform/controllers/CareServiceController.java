@@ -18,11 +18,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -158,23 +160,39 @@ public class CareServiceController {
 
     /**
      * Get all care services for the current user (seeker or caregiver)
-     * Sorted by created date (newest first) with optional status filter
+     * Sorted by created date (newest first) with optional status and work date filter
+     * 
+     * Note: When workDate is provided, PENDING_CAREGIVER and EXPIRED status will be excluded from results
      *
      * @param status Optional status filter
+     * @param workDate Optional work date filter (format: yyyy-MM-dd, e.g., 2025-11-30)
      * @return list of care services
      */
-    @Operation(summary = "Get my care services", description = "Get all care services for current user (seeker or caregiver) with optional status filter. Default sort: newest first")
+    @Operation(summary = "Get my care services", 
+               description = "Get all care services for current user (seeker or caregiver) with optional status and work date filter. " +
+                             "Default sort: newest first. Work date format: yyyy-MM-dd (e.g., 2025-11-30). " +
+                             "NOTE: When workDate is provided, care services with PENDING_CAREGIVER and EXPIRED status will be excluded from results.")
     @PreAuthorize("hasRole('CAREGIVER') or hasRole('CARE_SEEKER')")
     @GetMapping("/my-care-services")
     public ResponseEntity<ObjectResponse> getMyCareServices(
             @Parameter(description = "Optional status filter (WAITING_PAYMENT, PENDING_CAREGIVER, CAREGIVER_APPROVED, IN_PROGRESS, COMPLETED_WAITING_REVIEW, COMPLETED, CANCELLED, EXPIRED)")
-            @RequestParam(required = false) EnumCareServiceStatusType status) {
+            @RequestParam(required = false) EnumCareServiceStatusType status,
+            @Parameter(description = "Optional work date filter (format: yyyy-MM-dd, e.g., 2025-11-30). When provided, PENDING_CAREGIVER and EXPIRED status will be excluded.")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate workDate) {
         try {
-            List<CareServiceResponseDTO> careServices = careServiceService.getMyCareServices(status);
-            String message = status != null 
-                    ? String.format("Get %d care services with status %s successfully", careServices.size(), status)
-                    : String.format("Get %d care services successfully", careServices.size());
-            return ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", message, careServices));
+            List<CareServiceResponseDTO> careServices = careServiceService.getMyCareServices(status, workDate);
+            
+            StringBuilder message = new StringBuilder();
+            message.append(String.format("Get %d care services", careServices.size()));
+            if (status != null) {
+                message.append(String.format(" with status %s", status));
+            }
+            if (workDate != null) {
+                message.append(String.format(" for work date %s (excluding PENDING_CAREGIVER, EXPIRED)", workDate));
+            }
+            message.append(" successfully");
+            
+            return ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", message.toString(), careServices));
         } catch (ElementNotFoundException e) {
             log.error("Error getting my care services", e);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ObjectResponse("Fail", e.getMessage(), null));

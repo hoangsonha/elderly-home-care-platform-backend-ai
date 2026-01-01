@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -25,10 +26,18 @@ public interface CareServiceRepository extends JpaRepository<CareService, UUID> 
     // Find all care services by seeker (with optional status filter and sorting)
     List<CareService> findByCareSeekerProfileAndDeletedIsFalse(CareSeekerProfile careSeekerProfile, Sort sort);
     List<CareService> findByCareSeekerProfileAndStatusAndDeletedIsFalse(CareSeekerProfile careSeekerProfile, EnumCareServiceStatusType status, Sort sort);
+    
+    // Find all care services by seeker with work date filter
+    List<CareService> findByCareSeekerProfileAndWorkDateAndDeletedIsFalse(CareSeekerProfile careSeekerProfile, LocalDate workDate, Sort sort);
+    List<CareService> findByCareSeekerProfileAndWorkDateAndStatusAndDeletedIsFalse(CareSeekerProfile careSeekerProfile, LocalDate workDate, EnumCareServiceStatusType status, Sort sort);
 
     // Find all care services by caregiver (with optional status filter and sorting)
     List<CareService> findByCaregiverProfileAndDeletedIsFalse(CaregiverProfile caregiverProfile, Sort sort);
     List<CareService> findByCaregiverProfileAndStatusAndDeletedIsFalse(CaregiverProfile caregiverProfile, EnumCareServiceStatusType status, Sort sort);
+    
+    // Find all care services by caregiver with work date filter
+    List<CareService> findByCaregiverProfileAndWorkDateAndDeletedIsFalse(CaregiverProfile caregiverProfile, LocalDate workDate, Sort sort);
+    List<CareService> findByCaregiverProfileAndWorkDateAndStatusAndDeletedIsFalse(CaregiverProfile caregiverProfile, LocalDate workDate, EnumCareServiceStatusType status, Sort sort);
 
     /**
      * Finds all care services with status PENDING_CAREGIVER that have already passed their deadline.
