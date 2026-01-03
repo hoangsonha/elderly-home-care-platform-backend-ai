@@ -67,7 +67,7 @@ public class ServicePackageController {
         }
     }
 
-    @Operation(summary = "Get all service packages", description = "Retrieve all service packages with statistics (total packages, active packages, total bookings, total revenue)")
+    @Operation(summary = "Get all service packages", description = "Retrieve all service packages (all statuses: active and inactive) with statistics (total packages, active packages, total bookings, total revenue)")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("")
     public ResponseEntity<ObjectResponse> getAllServicePackages() {

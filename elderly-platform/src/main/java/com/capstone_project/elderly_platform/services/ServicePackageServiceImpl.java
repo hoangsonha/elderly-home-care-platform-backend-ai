@@ -183,12 +183,10 @@ public class ServicePackageServiceImpl implements ServicePackageService {
     @Transactional(readOnly = true)
     @Override
     public ServicePackageListResponse getAllServicePackages() {
-        log.info("Getting all service packages with statistics");
+        log.info("Getting all service packages with statistics (all statuses)");
 
-        List<ServicePackage> packages = servicePackageRepository.findAll()
-                .stream()
-                .filter(pkg -> !pkg.isDeleted())
-                .collect(Collectors.toList());
+        // Get all packages regardless of deleted status
+        List<ServicePackage> packages = servicePackageRepository.findAll();
 
         // Load tasks for each package
         for (ServicePackage pkg : packages) {

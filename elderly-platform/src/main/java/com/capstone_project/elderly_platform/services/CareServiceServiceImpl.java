@@ -20,6 +20,7 @@ import com.capstone_project.elderly_platform.mappers.ElderlyProfileMapper;
 import com.capstone_project.elderly_platform.mappers.ServicePackageMapper;
 import com.capstone_project.elderly_platform.pojos.*;
 import com.capstone_project.elderly_platform.repositories.*;
+import com.capstone_project.elderly_platform.utils.CaregiverScheduleUtils;
 import com.capstone_project.elderly_platform.utils.SecurityUtils;
 import com.capstone_project.elderly_platform.utils.StringUtils;
 import com.capstone_project.elderly_platform.services.ExpiredCareServiceQueueService;
@@ -66,6 +67,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
     private final WorkScheduleRepository workScheduleRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final CaregiverScheduleUtils caregiverScheduleUtils;
     private static final EnumSet<EnumCareServiceStatusType> ALLOWED_STATUS = EnumSet
             .allOf(EnumCareServiceStatusType.class);
 
@@ -345,6 +347,25 @@ public class CareServiceServiceImpl implements CareServiceService {
         workScheduleRepository.save(workSchedule);
         log.info("Created work schedule with {} tasks for care service {}",
                 workTaskList.size(), savedCareService.getCareServiceId());
+
+        // Update caregiver free schedule to exclude booked time
+        try {
+            String currentProfileData = caregiverProfile.getProfileData();
+            String updatedProfileData = caregiverScheduleUtils.excludeBookedTime(
+                    currentProfileData,
+                    savedCareService.getWorkDate(),
+                    savedCareService.getStartTime(),
+                    savedCareService.getEndTime()
+            );
+            caregiverProfile.setProfileData(updatedProfileData);
+            caregiverProfileRepository.save(caregiverProfile);
+            log.info("Updated free schedule for caregiver profile {} to exclude booking time",
+                    caregiverProfile.getCaregiverProfileId());
+        } catch (Exception e) {
+            log.error("Failed to update caregiver free schedule for care service {}: {}",
+                    savedCareService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - care service is already saved, schedule update can be done manually
+        }
 
         // Send notification to seeker (caregiver đã accept)
         try {
