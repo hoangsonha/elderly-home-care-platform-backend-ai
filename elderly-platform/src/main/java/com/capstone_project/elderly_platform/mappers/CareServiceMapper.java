@@ -5,6 +5,7 @@ import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResp
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.WorkScheduleResponseDTO;
 import com.capstone_project.elderly_platform.pojos.CareService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ public class CareServiceMapper {
         private final CaregiverProfileMapper caregiverProfileMapper;
         private final ElderlyProfileMapper elderlyProfileMapper;
         private final ServicePackageMapper servicePackageMapper;
+        private final WorkScheduleMapper workScheduleMapper;
 
         private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
         private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ISO_LOCAL_TIME;
@@ -48,6 +50,12 @@ public class CareServiceMapper {
                 ServicePackageResponseDTO servicePackageDTO = null;
                 if (careService.getServicePackage() != null) {
                         servicePackageDTO = servicePackageMapper.toDTO(careService.getServicePackage());
+                }
+
+                // Map work schedule
+                WorkScheduleResponseDTO workScheduleDTO = null;
+                if (careService.getWorkSchedule() != null && !careService.getWorkSchedule().isDeleted()) {
+                        workScheduleDTO = workScheduleMapper.toDTO(careService.getWorkSchedule());
                 }
 
                 return CareServiceResponseDTO.builder()
@@ -84,6 +92,7 @@ public class CareServiceMapper {
                                 .elderlyProfile(elderlyProfileDTO)
                                 .caregiverProfile(caregiverProfileDTO)
                                 .servicePackage(servicePackageDTO)
+                                .workSchedule(workScheduleDTO)
                                 .build();
         }
 }

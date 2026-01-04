@@ -42,6 +42,12 @@ public class WorkSchedule extends BaseEntity {
 
     Integer completedTasks;
 
+    @Column(name = "check_in_image_url")
+    String checkInImageUrl; // CI - Check In image URL
+
+    @Column(name = "check_out_image_url")
+    String checkOutImageUrl; // CO - Check Out image URL
+
     @OneToOne
     @JoinColumn(name = "care_service_id")
     CareService careService;

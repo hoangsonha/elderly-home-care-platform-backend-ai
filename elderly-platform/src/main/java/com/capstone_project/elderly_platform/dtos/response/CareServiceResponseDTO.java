@@ -28,4 +28,5 @@ public class CareServiceResponseDTO {
     ElderlyProfileResponseDTO elderlyProfile;
     CaregiverProfileResponseDTO caregiverProfile;
     ServicePackageResponseDTO servicePackage;
+    WorkScheduleResponseDTO workSchedule;
 }

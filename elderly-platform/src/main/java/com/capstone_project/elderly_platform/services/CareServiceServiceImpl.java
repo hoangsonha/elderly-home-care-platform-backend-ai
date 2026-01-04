@@ -731,7 +731,7 @@ public class CareServiceServiceImpl implements CareServiceService {
                 }
             }
 
-            log.info("Found {} care services for caregiver with account ID: {}", careServices.size(), accountId);
+//            log.info("Found {} care services for caregiver with account ID: {}", careServices.size(), accountId);
         } else {
             throw new BadRequestException(
                     "Người dùng phải có vai trò CARE_SEEKER hoặc CAREGIVER để xem dịch vụ chăm sóc");

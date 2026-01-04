@@ -5,6 +5,7 @@ import com.capstone_project.elderly_platform.pojos.CareService;
 import com.capstone_project.elderly_platform.pojos.CareSeekerProfile;
 import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,7 +18,10 @@ import java.util.UUID;
 
 @Repository
 public interface CareServiceRepository extends JpaRepository<CareService, UUID> {
+    @EntityGraph(attributePaths = {"workSchedule", "workSchedule.workTasks"})
     CareService findByCareServiceIdAndDeletedIsFalse(UUID id);
+    
+    @EntityGraph(attributePaths = {"workSchedule", "workSchedule.workTasks"})
     CareService findByBookingCodeAndDeletedIsFalse(String bookingCode);
     CareService findByBookingCode(String bookingCode);
 
