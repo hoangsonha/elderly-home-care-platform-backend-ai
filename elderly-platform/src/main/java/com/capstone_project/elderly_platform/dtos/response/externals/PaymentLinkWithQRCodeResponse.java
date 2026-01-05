@@ -18,5 +18,6 @@ public class PaymentLinkWithQRCodeResponse {
   private String description;
   private String productName;
   private UUID paymentId;
+  private UUID careServiceId;
 }
 

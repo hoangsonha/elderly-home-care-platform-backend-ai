@@ -235,7 +235,7 @@ public class WorkScheduleServiceImpl implements WorkScheduleService {
         log.info("Work ended successfully for care service {}", savedCareService.getCareServiceId());
 
         return EndWorkResponse.builder()
-                .careServiceId(savedCareService.getCareServiceId())
+                .careServiceId(paymentResponse.getCareServiceId() != null ? paymentResponse.getCareServiceId() : savedCareService.getCareServiceId())
                 .status(savedCareService.getStatus().name())
                 .checkOutImageUrl(checkOutImageUrl)
                 .qrCodeBase64(paymentResponse.getQrCodeBase64())

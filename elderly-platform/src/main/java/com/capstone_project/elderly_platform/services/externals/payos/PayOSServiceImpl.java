@@ -6,6 +6,8 @@ import com.capstone_project.elderly_platform.dtos.request.externals.CreatePayout
 import com.capstone_project.elderly_platform.dtos.request.externals.EstimatePayoutRequest;
 import com.capstone_project.elderly_platform.dtos.response.ApiResponse;
 import com.capstone_project.elderly_platform.dtos.response.externals.PaymentLinkWithQRCodeResponse;
+import com.capstone_project.elderly_platform.enums.EnumActorType;
+import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.enums.EnumPaymentStatusType;
 import com.capstone_project.elderly_platform.enums.EnumPayoutStatusType;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
@@ -59,6 +61,7 @@ public class PayOSServiceImpl implements PayOSService {
     private final PayoutRepository payoutRepository;
     private final PayoutBatchRepository payoutBatchRepository;
     private final CareServiceRepository careServiceRepository;
+    private final CareServiceStatusLogRepository careServiceStatusLogRepository;
     private final QRCodeGeneration qrCodeGeneration;
     private final RestTemplate restTemplate;
 
@@ -169,7 +172,8 @@ public class PayOSServiceImpl implements PayOSService {
             Payment savedPayment = paymentRepository.save(payment);
 
             PaymentLinkWithQRCodeResponse response = new PaymentLinkWithQRCodeResponse(
-                    checkoutUrl, qrCodeBase64, orderCode, price, description, productName, savedPayment.getPaymentId());
+                    checkoutUrl, qrCodeBase64, orderCode, price, description, productName, savedPayment.getPaymentId(),
+                    careService.getCareServiceId());
 
             return response;
         } catch (Exception e) {
@@ -230,6 +234,27 @@ public class PayOSServiceImpl implements PayOSService {
 
                 // Update PayoutBatch totals
                 updatePayoutBatchTotals(payoutBatch, savedPayout);
+
+                // Update care service status to COMPLETED when payment is successful
+                EnumCareServiceStatusType oldStatus = careService.getStatus();
+                if (oldStatus != EnumCareServiceStatusType.COMPLETED) {
+                    careService.setStatus(EnumCareServiceStatusType.COMPLETED);
+                    careService.setCompletedAt(now);
+                    careServiceRepository.save(careService);
+
+                    // Create status log
+                    CareServiceStatusLog statusLog = CareServiceStatusLog.builder()
+                            .changedBy(EnumActorType.SYSTEM)
+                            .careService(careService)
+                            .oldStatus(oldStatus)
+                            .newStatus(EnumCareServiceStatusType.COMPLETED)
+                            .note("Thanh toán thành công - Payment completed successfully at " + now)
+                            .build();
+                    careServiceStatusLogRepository.save(statusLog);
+
+                    log.info("Updated care service {} status from {} to COMPLETED after successful payment",
+                            careService.getCareServiceId(), oldStatus);
+                }
             }
 
             return order;
