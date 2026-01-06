@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserStatisticsResponse;
 
@@ -9,6 +10,8 @@ public interface StatisticService {
     UserStatisticsResponse getUserStatistics(LocalDateTime startDate, LocalDateTime endDate);
     
     CaregiverStatisticsResponse getCaregiverStatistics();
+    
+    CareServiceStatisticsResponse getCareServiceStatistics();
 }
 
 

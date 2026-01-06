@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserStatisticsResponse;
@@ -58,6 +59,21 @@ public class StatisticController {
             log.error("Error getting caregiver statistics", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to get caregiver statistics: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Get care service statistics", description = "Get total care services and count by each status. Only accessible by ADMIN role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/care-services")
+    public ResponseEntity<ObjectResponse> getCareServiceStatistics() {
+        try {
+            CareServiceStatisticsResponse statistics = statisticService.getCareServiceStatistics();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Care service statistics retrieved successfully", statistics));
+        } catch (Exception e) {
+            log.error("Error getting care service statistics", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get care service statistics: " + e.getMessage(), null));
         }
     }
 }

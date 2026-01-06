@@ -5,7 +5,6 @@ public enum EnumCareServiceStatusType {
     PENDING_CAREGIVER,
     CAREGIVER_APPROVED,
     IN_PROGRESS,
-    COMPLETED_WAITING_REVIEW,
     COMPLETED,
     CANCELLED,
     EXPIRED,

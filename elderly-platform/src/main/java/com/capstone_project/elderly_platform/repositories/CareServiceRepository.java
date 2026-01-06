@@ -90,6 +90,9 @@ public interface CareServiceRepository extends JpaRepository<CareService, UUID> 
 
     @Query("SELECT COALESCE(SUM(cs.totalPrice), 0) FROM CareService cs WHERE cs.deleted = false")
     Double sumTotalRevenue();
+
+    @Query("SELECT COUNT(cs) FROM CareService cs WHERE cs.status = :status AND cs.deleted = false")
+    Long countByStatusAndDeletedFalse(@Param("status") EnumCareServiceStatusType status);
 }
 
 

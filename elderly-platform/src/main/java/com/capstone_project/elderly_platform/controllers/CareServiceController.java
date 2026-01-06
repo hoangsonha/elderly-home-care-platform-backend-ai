@@ -175,7 +175,7 @@ public class CareServiceController {
     @PreAuthorize("hasRole('CAREGIVER') or hasRole('CARE_SEEKER')")
     @GetMapping("/my-care-services")
     public ResponseEntity<ObjectResponse> getMyCareServices(
-            @Parameter(description = "Optional status filter (WAITING_PAYMENT, PENDING_CAREGIVER, CAREGIVER_APPROVED, IN_PROGRESS, COMPLETED_WAITING_REVIEW, COMPLETED, CANCELLED, EXPIRED)")
+            @Parameter(description = "Optional status filter (WAITING_PAYMENT, PENDING_CAREGIVER, CAREGIVER_APPROVED, IN_PROGRESS, COMPLETED, CANCELLED, EXPIRED)")
             @RequestParam(required = false) EnumCareServiceStatusType status,
             @Parameter(description = "Optional work date filter (format: yyyy-MM-dd, e.g., 2025-11-30). When provided, PENDING_CAREGIVER and EXPIRED status will be excluded.")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate workDate) {
