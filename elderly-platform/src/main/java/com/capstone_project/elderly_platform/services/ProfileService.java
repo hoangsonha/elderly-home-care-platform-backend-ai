@@ -2,6 +2,7 @@ package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
@@ -17,4 +18,8 @@ public interface ProfileService {
     ElderlyProfileResponseDTO createElderlyProfile(CreateElderlyProfileRequest request, MultipartFile avatarFile);
     
     CareSeekerProfileResponseDTO createCareSeekerProfile(CreateCareSeekerProfileRequest request, MultipartFile avatarFile);
+    
+    CaregiverProfileResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request, MultipartFile avatarFile, List<MultipartFile> credentialFiles);
+    
+    CaregiverProfileResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request, MultipartFile avatarFile, List<MultipartFile> credentialFiles);
 }

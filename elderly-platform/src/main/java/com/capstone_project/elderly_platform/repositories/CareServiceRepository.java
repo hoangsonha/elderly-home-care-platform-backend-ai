@@ -93,6 +93,13 @@ public interface CareServiceRepository extends JpaRepository<CareService, UUID> 
 
     @Query("SELECT COUNT(cs) FROM CareService cs WHERE cs.status = :status AND cs.deleted = false")
     Long countByStatusAndDeletedFalse(@Param("status") EnumCareServiceStatusType status);
+    
+    @Query("SELECT cs FROM CareService cs WHERE cs.caregiverProfile.caregiverProfileId = :caregiverProfileId " +
+            "AND FUNCTION('YEAR', cs.workDate) = :year AND FUNCTION('MONTH', cs.workDate) = :month AND cs.deleted = false")
+    List<CareService> findByCaregiverProfileAndYearAndMonth(
+            @Param("caregiverProfileId") UUID caregiverProfileId,
+            @Param("year") Integer year,
+            @Param("month") Integer month);
 }
 
 

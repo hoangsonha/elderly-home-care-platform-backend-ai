@@ -1,22 +1,35 @@
 package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserStatisticsResponse;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.enums.EnumRoleType;
+import com.capstone_project.elderly_platform.enums.EnumWorkTaskStatusType;
+import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.pojos.Account;
+import com.capstone_project.elderly_platform.pojos.CareService;
+import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
+import com.capstone_project.elderly_platform.pojos.PayoutBatch;
+import com.capstone_project.elderly_platform.pojos.WorkSchedule;
+import com.capstone_project.elderly_platform.pojos.WorkTask;
 import com.capstone_project.elderly_platform.repositories.AccountRepository;
 import com.capstone_project.elderly_platform.repositories.CareServiceRepository;
 import com.capstone_project.elderly_platform.repositories.CaregiverProfileRepository;
+import com.capstone_project.elderly_platform.repositories.PayoutBatchRepository;
 import com.capstone_project.elderly_platform.utils.AccountSpecification;
+import com.capstone_project.elderly_platform.utils.SecurityUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -26,6 +39,8 @@ public class StatisticServiceImpl implements StatisticService {
         private final AccountRepository accountRepository;
         private final CaregiverProfileRepository caregiverProfileRepository;
         private final CareServiceRepository careServiceRepository;
+        private final PayoutBatchRepository payoutBatchRepository;
+        private final ObjectMapper objectMapper;
 
         @Override
         public UserStatisticsResponse getUserStatistics(LocalDateTime startDate, LocalDateTime endDate) {
@@ -123,6 +138,119 @@ public class StatisticServiceImpl implements StatisticService {
                 return CareServiceStatisticsResponse.builder()
                                 .totalCareServices(totalCareServices)
                                 .countByStatus(countByStatus)
+                                .build();
+        }
+
+        @Override
+        public CaregiverPersonalStatisticsResponse getCaregiverPersonalStatistics() {
+                UUID currentAccountId = SecurityUtils.getCurrentUserId();
+                log.info("Getting personal statistics for caregiver with account ID: {}", currentAccountId);
+
+                // Get caregiver profile
+                CaregiverProfile caregiverProfile = caregiverProfileRepository
+                                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+                if (caregiverProfile == null) {
+                        throw new ElementNotFoundException("Caregiver profile not found for current user");
+                }
+
+                // Get current month and year
+                LocalDateTime now = LocalDateTime.now();
+                int currentMonth = now.getMonthValue();
+                int currentYear = now.getYear();
+
+                // 1. Count total care services in current month
+                List<CareService> careServicesThisMonth = careServiceRepository
+                                .findByCaregiverProfileAndYearAndMonth(
+                                                caregiverProfile.getCaregiverProfileId(),
+                                                currentYear,
+                                                currentMonth);
+                Long totalCareServicesThisMonth = (long) careServicesThisMonth.size();
+
+                // 2. Get total earnings from PayoutBatch for current month
+                Double totalEarningsThisMonth = 0.0;
+                java.util.Optional<PayoutBatch> payoutBatchOpt = payoutBatchRepository
+                                .findByCaregiverProfileAndYearAndMonth(
+                                                caregiverProfile.getCaregiverProfileId(),
+                                                currentYear,
+                                                currentMonth);
+                if (payoutBatchOpt.isPresent()) {
+                        PayoutBatch payoutBatch = payoutBatchOpt.get();
+                        totalEarningsThisMonth = payoutBatch.getTotalCaregiverEarnings() != null
+                                        ? payoutBatch.getTotalCaregiverEarnings()
+                                        : 0.0;
+                }
+
+                // 3. Get overall rating from profileData
+                Double overallRating = 0.0;
+                try {
+                        String profileDataJson = caregiverProfile.getProfileData();
+                        if (profileDataJson != null && !profileDataJson.isEmpty()) {
+                                Map<String, Object> profileDataMap = objectMapper.readValue(profileDataJson,
+                                                new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                                                });
+                                if (profileDataMap.containsKey("ratings_reviews")) {
+                                        @SuppressWarnings("unchecked")
+                                        Map<String, Object> ratingsReviews = (Map<String, Object>) profileDataMap
+                                                        .get("ratings_reviews");
+                                        if (ratingsReviews != null && ratingsReviews.containsKey("overall_rating")) {
+                                                Object ratingObj = ratingsReviews.get("overall_rating");
+                                                if (ratingObj instanceof Number) {
+                                                        overallRating = ((Number) ratingObj).doubleValue();
+                                                }
+                                        }
+                                }
+                        }
+                } catch (Exception e) {
+                        log.warn("Failed to parse overall_rating from profileData: {}", e.getMessage());
+                        overallRating = 0.0;
+                }
+
+                // 4. Calculate task completion rate
+                // Get all care services of this caregiver
+                List<CareService> allCareServices = careServiceRepository
+                                .findByCaregiverProfileAndDeletedIsFalse(caregiverProfile,
+                                                org.springframework.data.domain.Sort.unsorted());
+
+                int totalTasks = 0;
+                int completedTasks = 0;
+
+                for (CareService careService : allCareServices) {
+                        // Get work schedule for this care service
+                        WorkSchedule workSchedule = careService.getWorkSchedule();
+                        if (workSchedule != null) {
+                                // Add totalTasks from workSchedule
+                                if (workSchedule.getTotalTasks() != null) {
+                                        totalTasks += workSchedule.getTotalTasks();
+                                }
+
+                                // Count completed tasks (status = DONE)
+                                List<WorkTask> workTasks = workSchedule.getWorkTasks();
+                                if (workTasks != null) {
+                                        for (WorkTask task : workTasks) {
+                                                if (task.getStatus() == EnumWorkTaskStatusType.DONE) {
+                                                        completedTasks++;
+                                                }
+                                        }
+                                }
+                        }
+                }
+
+                // Calculate completion rate percentage
+                Double taskCompletionRate = 0.0;
+                if (totalTasks > 0) {
+                        taskCompletionRate = (completedTasks * 100.0) / totalTasks;
+                }
+
+                log.info(
+                                "Caregiver personal statistics - Care services this month: {}, Earnings: {}, Rating: {}, Task completion: {}%",
+                                totalCareServicesThisMonth, totalEarningsThisMonth, overallRating,
+                                taskCompletionRate);
+
+                return CaregiverPersonalStatisticsResponse.builder()
+                                .totalCareServicesThisMonth(totalCareServicesThisMonth)
+                                .totalEarningsThisMonth(totalEarningsThisMonth)
+                                .overallRating(overallRating)
+                                .taskCompletionRate(taskCompletionRate)
                                 .build();
         }
 }
