@@ -1,4 +1,4 @@
-package com.capstone_project.elderly_platform.config;
+package com.capstone_project.elderly_platform.configurations;
 
 import lombok.Getter;
 import lombok.Setter;

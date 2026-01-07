@@ -9,6 +9,7 @@ import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileRespons
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
 import com.capstone_project.elderly_platform.enums.EnumGenderType;
 import com.capstone_project.elderly_platform.enums.EnumHealthStatusType;
+import com.capstone_project.elderly_platform.enums.EnumSystemConfigKey;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.mappers.CaregiverProfileMapper;
@@ -61,6 +62,7 @@ public class ProfileServiceImpl implements ProfileService {
     private final ElderlyProfileMapper elderlyProfileMapper;
     private final FirebaseStorageService firebaseStorageService;
     private final CaregiverScheduleUtils caregiverScheduleUtils;
+    private final SystemConfigService systemConfigService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -492,8 +494,10 @@ public class ProfileServiceImpl implements ProfileService {
         
         // Validate and add max_hours_per_week
         if (request.getMaxHoursPerWeek() != null) {
-            if (request.getMaxHoursPerWeek() > 48) {
-                throw new BadRequestException("Max hours per week cannot exceed 48");
+            int maxAllowedHours = systemConfigService.getConfigValueAsInt(
+                    EnumSystemConfigKey.CAREGIVER_MAX_HOURS_PER_WEEK, 48);
+            if (request.getMaxHoursPerWeek() > maxAllowedHours) {
+                throw new BadRequestException("Max hours per week cannot exceed " + maxAllowedHours);
             }
             profileDataMap.put("max_hours_per_week", request.getMaxHoursPerWeek());
         }
@@ -767,10 +771,12 @@ public class ProfileServiceImpl implements ProfileService {
                 }
             }
             
-            // Update max_hours_per_week (validate <= 48)
+            // Update max_hours_per_week (validate against config)
             if (request.getMaxHoursPerWeek() != null) {
-                if (request.getMaxHoursPerWeek() > 48) {
-                    throw new BadRequestException("Max hours per week cannot exceed 48");
+                int maxAllowedHours = systemConfigService.getConfigValueAsInt(
+                        EnumSystemConfigKey.CAREGIVER_MAX_HOURS_PER_WEEK, 48);
+                if (request.getMaxHoursPerWeek() > maxAllowedHours) {
+                    throw new BadRequestException("Max hours per week cannot exceed " + maxAllowedHours);
                 }
                 profileDataMap.put("max_hours_per_week", request.getMaxHoursPerWeek());
             }

@@ -12,7 +12,8 @@ public enum EnumSystemConfigKey {
     CAREGIVER_RESPONSE_DEADLINE_LESS_THAN_24H,
 
     // System Fee
-    SYSTEM_FEE_PERCENTAGE
+    SYSTEM_FEE_PERCENTAGE,
+
+    // Caregiver Max Hours Per Week
+    CAREGIVER_MAX_HOURS_PER_WEEK
 }
-
-

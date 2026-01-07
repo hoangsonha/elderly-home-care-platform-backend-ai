@@ -73,6 +73,8 @@ application:
     page-size: 5
   service-package:
     allowed-duration-hours: 4,8  # Các giá trị duration hours được phép (phân cách bằng dấu phẩy)
+  caregiver:
+    max-hours-per-week: 48  # Số giờ tối đa caregiver có thể làm việc trong 1 tuần
 
 ai:
   matching:

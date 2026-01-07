@@ -1,6 +1,6 @@
 package com.capstone_project.elderly_platform.validators;
 
-import com.capstone_project.elderly_platform.config.ServicePackageProperties;
+import com.capstone_project.elderly_platform.configurations.ServicePackageProperties;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import lombok.RequiredArgsConstructor;
