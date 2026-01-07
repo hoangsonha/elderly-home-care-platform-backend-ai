@@ -142,6 +142,22 @@ public class CareServiceServiceImpl implements CareServiceService {
         }
         LocalTime endTime = startTime.plusHours(servicePackage.getDurationHours());
 
+        // Check if caregiver is available during the requested time slot
+        String caregiverProfileData = caregiverProfile.getProfileData();
+        boolean isAvailable = caregiverScheduleUtils.isAvailable(
+                caregiverProfileData,
+                workDate,
+                startTime,
+                endTime
+        );
+        
+        if (!isAvailable) {
+            throw new BadRequestException(
+                    String.format("Caregiver đã bận trong khung giờ %s - %s ngày %s. Vui lòng chọn khung giờ khác.",
+                            startTime, endTime, workDate)
+            );
+        }
+
         // get all active config values at booking time (snapshot) - use this for all
         // calculations
         Map<EnumSystemConfigKey, String> activeConfigs = systemConfigService.getAllActiveConfigs();
