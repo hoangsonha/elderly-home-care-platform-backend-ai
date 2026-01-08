@@ -3,6 +3,7 @@ package com.capstone_project.elderly_platform.controllers;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.CareSeekerPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserStatisticsResponse;
 import com.capstone_project.elderly_platform.services.StatisticService;
@@ -74,7 +75,8 @@ public class StatisticController {
         } catch (Exception e) {
             log.error("Error getting care service statistics", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ObjectResponse("Failed", "Failed to get care service statistics: " + e.getMessage(), null));
+                    .body(new ObjectResponse("Failed", "Failed to get care service statistics: " + e.getMessage(),
+                            null));
         }
     }
 
@@ -85,18 +87,30 @@ public class StatisticController {
         try {
             CaregiverPersonalStatisticsResponse statistics = statisticService.getCaregiverPersonalStatistics();
             return ResponseEntity.status(HttpStatus.OK)
-                    .body(new ObjectResponse("Success", "Caregiver personal statistics retrieved successfully", statistics));
+                    .body(new ObjectResponse("Success", "Caregiver personal statistics retrieved successfully",
+                            statistics));
         } catch (Exception e) {
             log.error("Error getting caregiver personal statistics", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ObjectResponse("Failed", "Failed to get caregiver personal statistics: " + e.getMessage(), null));
+                    .body(new ObjectResponse("Failed", "Failed to get caregiver personal statistics: " + e.getMessage(),
+                            null));
+        }
+    }
+
+    @Operation(summary = "Get care seeker personal statistics", description = "Get personal statistics for current care seeker including elderly profiles, care services this month, spending, completed bookings, and in progress services. Only accessible by CARE_SEEKER role")
+    @PreAuthorize("hasRole('CARE_SEEKER')")
+    @GetMapping("/care-seeker/personal")
+    public ResponseEntity<ObjectResponse> getCareSeekerPersonalStatistics() {
+        try {
+            CareSeekerPersonalStatisticsResponse statistics = statisticService.getCareSeekerPersonalStatistics();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Care seeker personal statistics retrieved successfully",
+                            statistics));
+        } catch (Exception e) {
+            log.error("Error getting care seeker personal statistics", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed",
+                            "Failed to get care seeker personal statistics: " + e.getMessage(), null));
         }
     }
 }
-
-
-
-
-
-
-

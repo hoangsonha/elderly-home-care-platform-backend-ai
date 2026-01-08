@@ -117,14 +117,13 @@ public class CareSeekerController {
         }
     }
 
-    @Operation(summary = "Get my care seeker profile", 
-               description = "Get current care seeker's profile with all related information including account, elderly profiles, etc. Only accessible by CARE_SEEKER role.")
+    @Operation(summary = "Get my care seeker profile", description = "Get current care seeker's profile with all related information including account, elderly profiles, etc. Only accessible by CARE_SEEKER role.")
     @PreAuthorize("hasRole('CARE_SEEKER')")
     @GetMapping("/profile")
     public ResponseEntity<ObjectResponse> getMyCareSeekerProfile() {
         try {
-            com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileDetailResponseDTO profile = 
-                    profileService.getMyCareSeekerProfile();
+            com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileDetailResponseDTO profile = profileService
+                    .getMyCareSeekerProfile();
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Get care seeker profile successfully", profile));
         } catch (ElementNotFoundException e) {

@@ -3,6 +3,7 @@ package com.capstone_project.elderly_platform.services;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.CareSeekerPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserStatisticsResponse;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.enums.EnumRoleType;
@@ -10,13 +11,17 @@ import com.capstone_project.elderly_platform.enums.EnumWorkTaskStatusType;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.pojos.Account;
 import com.capstone_project.elderly_platform.pojos.CareService;
+import com.capstone_project.elderly_platform.pojos.CareSeekerProfile;
 import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
+import com.capstone_project.elderly_platform.pojos.Payment;
 import com.capstone_project.elderly_platform.pojos.PayoutBatch;
 import com.capstone_project.elderly_platform.pojos.WorkSchedule;
 import com.capstone_project.elderly_platform.pojos.WorkTask;
 import com.capstone_project.elderly_platform.repositories.AccountRepository;
 import com.capstone_project.elderly_platform.repositories.CareServiceRepository;
+import com.capstone_project.elderly_platform.repositories.CareSeekerProfileRepository;
 import com.capstone_project.elderly_platform.repositories.CaregiverProfileRepository;
+import com.capstone_project.elderly_platform.repositories.PaymentRepository;
 import com.capstone_project.elderly_platform.repositories.PayoutBatchRepository;
 import com.capstone_project.elderly_platform.utils.AccountSpecification;
 import com.capstone_project.elderly_platform.utils.SecurityUtils;
@@ -38,7 +43,9 @@ public class StatisticServiceImpl implements StatisticService {
 
         private final AccountRepository accountRepository;
         private final CaregiverProfileRepository caregiverProfileRepository;
+        private final CareSeekerProfileRepository careSeekerProfileRepository;
         private final CareServiceRepository careServiceRepository;
+        private final PaymentRepository paymentRepository;
         private final PayoutBatchRepository payoutBatchRepository;
         private final ObjectMapper objectMapper;
 
@@ -253,6 +260,91 @@ public class StatisticServiceImpl implements StatisticService {
                                 .totalEarningsThisMonth(totalEarningsThisMonth)
                                 .overallRating(overallRating)
                                 .taskCompletionRate(taskCompletionRate)
+                                .build();
+        }
+
+        @Override
+        public CareSeekerPersonalStatisticsResponse getCareSeekerPersonalStatistics() {
+                UUID currentAccountId = SecurityUtils.getCurrentUserId();
+                log.info("Getting personal statistics for care seeker with account ID: {}", currentAccountId);
+
+                // Get care seeker profile
+                CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+                if (careSeekerProfile == null) {
+                        throw new ElementNotFoundException("Care seeker profile not found for current user");
+                }
+
+                // Get current month and year
+                LocalDateTime now = LocalDateTime.now();
+                int currentMonth = now.getMonthValue();
+                int currentYear = now.getYear();
+
+                // 1. Total elderly profiles
+                List<com.capstone_project.elderly_platform.pojos.ElderlyProfile> elderlyProfiles = 
+                        careSeekerProfile.getElderlyProfiles();
+                Long totalElderlyProfiles = 0L;
+                if (elderlyProfiles != null) {
+                        totalElderlyProfiles = elderlyProfiles.stream()
+                                .filter(e -> !e.isDeleted())
+                                .count();
+                }
+
+                // Get all care services for this care seeker
+                List<CareService> allCareServices = careServiceRepository
+                                .findByCareSeekerProfileAndDeletedIsFalse(careSeekerProfile,
+                                                org.springframework.data.domain.Sort.unsorted());
+
+                // 2. Count total care services in current month
+                List<CareService> careServicesThisMonth = allCareServices.stream()
+                                .filter(cs -> cs.getWorkDate() != null
+                                                && cs.getWorkDate().getYear() == currentYear
+                                                && cs.getWorkDate().getMonthValue() == currentMonth)
+                                .collect(java.util.stream.Collectors.toList());
+                
+                Long totalCareServicesThisMonth = (long) careServicesThisMonth.size();
+
+                // 3. Total spending this month (from payments with status SUCCESS in current month)
+                Double totalSpendingThisMonth = 0.0;
+                List<Payment> allPayments = paymentRepository.findAll().stream()
+                                .filter(p -> p.getSeekerProfile() != null
+                                        && p.getSeekerProfile().getCareSeekerProfileId()
+                                                .equals(careSeekerProfile.getCareSeekerProfileId())
+                                        && p.getStatus() == com.capstone_project.elderly_platform.enums.EnumPaymentStatusType.SUCCESS
+                                        && p.getPaidAt() != null
+                                        && p.getPaidAt().getYear() == currentYear
+                                        && p.getPaidAt().getMonthValue() == currentMonth)
+                                .collect(java.util.stream.Collectors.toList());
+                
+                for (Payment payment : allPayments) {
+                        if (payment.getAmount() != null) {
+                                totalSpendingThisMonth += payment.getAmount();
+                        }
+                }
+
+                // 4. Total completed bookings (care-services with status COMPLETED)
+                List<CareService> completedCareServices = allCareServices.stream()
+                                .filter(cs -> cs.getStatus() == EnumCareServiceStatusType.COMPLETED)
+                                .collect(java.util.stream.Collectors.toList());
+                Long totalCompletedBookings = (long) completedCareServices.size();
+
+                // 5. Total in progress services (care-services with status IN_PROGRESS)
+                List<CareService> inProgressCareServices = allCareServices.stream()
+                                .filter(cs -> cs.getStatus() == EnumCareServiceStatusType.IN_PROGRESS)
+                                .collect(java.util.stream.Collectors.toList());
+                Long totalInProgressServices = (long) inProgressCareServices.size();
+
+                log.info(
+                                "Care seeker personal statistics - Elderly profiles: {}, Care services this month: {}, Spending: {}, Completed: {}, In progress: {}",
+                                totalElderlyProfiles, totalCareServicesThisMonth, totalSpendingThisMonth,
+                                totalCompletedBookings, totalInProgressServices);
+
+                return CareSeekerPersonalStatisticsResponse.builder()
+                                .totalElderlyProfiles(totalElderlyProfiles)
+                                .totalCareServicesThisMonth(totalCareServicesThisMonth)
+                                .totalSpendingThisMonth(totalSpendingThisMonth)
+                                .totalCompletedBookings(totalCompletedBookings)
+                                .totalInProgressServices(totalInProgressServices)
                                 .build();
         }
 }
