@@ -4,6 +4,7 @@ import com.capstone_project.elderly_platform.dtos.request.ConfirmationCareServic
 import com.capstone_project.elderly_platform.dtos.request.CreateCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCareServiceStatusRequest;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageEligibilityResponse;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.pojos.CareService;
 
@@ -28,4 +29,9 @@ public interface CareServiceService {
     List<CareServiceResponseDTO> getMyCareServices(EnumCareServiceStatusType status, LocalDate workDate);
 
     CareService updateStatus(UUID careServiceId, UpdateCareServiceStatusRequest request);
+    
+    // Check caregiver eligibility for all active service packages
+    // If caregiverId is provided, checks that caregiver's eligibility
+    // If not provided, checks current user's eligibility (only for CAREGIVER role)
+    List<ServicePackageEligibilityResponse> checkCaregiverEligibilityForServicePackages(UUID caregiverId);
 }

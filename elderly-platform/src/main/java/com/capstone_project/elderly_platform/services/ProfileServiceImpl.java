@@ -49,6 +49,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -499,6 +500,28 @@ public class ProfileServiceImpl implements ProfileService {
                 List<Map<String, Object>> bookedSlotsList = new ArrayList<>();
                 for (UpdateCaregiverProfileRequest.BookedSlotRequest slot : request.getFreeSchedule()
                         .getBookedSlots()) {
+                    // Validate slot data
+                    if (slot.getDate() == null || slot.getStartTime() == null || slot.getEndTime() == null) {
+                        throw new BadRequestException("Booked slot phải có đầy đủ date, start_time và end_time");
+                    }
+
+                    // Parse times to validate
+                    LocalTime startTime;
+                    LocalTime endTime;
+                    try {
+                        startTime = LocalTime.parse(slot.getStartTime());
+                        endTime = LocalTime.parse(slot.getEndTime());
+                    } catch (Exception e) {
+                        throw new BadRequestException("start_time và end_time phải có format HH:mm (ví dụ: 08:00, 14:30)");
+                    }
+
+                    // Validate start_time < end_time
+                    if (!startTime.isBefore(endTime)) {
+                        throw new BadRequestException(
+                                String.format("start_time (%s) phải nhỏ hơn end_time (%s) cho slot ngày %s",
+                                        slot.getStartTime(), slot.getEndTime(), slot.getDate()));
+                    }
+
                     Map<String, Object> slotMap = new HashMap<>();
                     slotMap.put("date", slot.getDate());
                     slotMap.put("start_time", slot.getStartTime());
@@ -790,6 +813,28 @@ public class ProfileServiceImpl implements ProfileService {
                     List<Map<String, Object>> bookedSlotsList = new ArrayList<>();
                     for (UpdateCaregiverProfileRequest.BookedSlotRequest slot : request.getFreeSchedule()
                             .getBookedSlots()) {
+                        // Validate slot data
+                        if (slot.getDate() == null || slot.getStartTime() == null || slot.getEndTime() == null) {
+                            throw new BadRequestException("Booked slot phải có đầy đủ date, start_time và end_time");
+                        }
+
+                        // Parse times to validate
+                        LocalTime startTime;
+                        LocalTime endTime;
+                        try {
+                            startTime = LocalTime.parse(slot.getStartTime());
+                            endTime = LocalTime.parse(slot.getEndTime());
+                        } catch (Exception e) {
+                            throw new BadRequestException("start_time và end_time phải có format HH:mm (ví dụ: 08:00, 14:30)");
+                        }
+
+                        // Validate start_time < end_time
+                        if (!startTime.isBefore(endTime)) {
+                            throw new BadRequestException(
+                                    String.format("start_time (%s) phải nhỏ hơn end_time (%s) cho slot ngày %s",
+                                            slot.getStartTime(), slot.getEndTime(), slot.getDate()));
+                        }
+
                         Map<String, Object> slotMap = new HashMap<>();
                         slotMap.put("date", slot.getDate());
                         slotMap.put("start_time", slot.getStartTime());

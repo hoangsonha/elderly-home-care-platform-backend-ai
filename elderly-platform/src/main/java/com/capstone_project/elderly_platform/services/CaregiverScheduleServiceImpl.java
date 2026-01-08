@@ -15,7 +15,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -210,13 +212,102 @@ public class CaregiverScheduleServiceImpl implements CaregiverScheduleService {
                 .filter(slot -> dateString.equals(slot.get("date")))
                 .collect(Collectors.toList());
         
-        result.put("available_all_day", bookedSlotsForDate.isEmpty());
-        result.put("booked_slots", bookedSlotsForDate);
+        // Merge overlapping slots for cleaner display
+        List<Map<String, Object>> mergedSlots = mergeOverlappingSlots(bookedSlotsForDate);
         
-        log.info("Retrieved free schedule for date {}: available_all_day={}, booked_slots_count={}", 
-                date, bookedSlotsForDate.isEmpty(), bookedSlotsForDate.size());
+        result.put("available_all_day", mergedSlots.isEmpty());
+        result.put("booked_slots", mergedSlots);
+        
+        log.info("Retrieved free schedule for date {}: available_all_day={}, booked_slots_count={} (merged from {})", 
+                date, mergedSlots.isEmpty(), mergedSlots.size(), bookedSlotsForDate.size());
         
         return result;
+    }
+
+    /**
+     * Merge overlapping time slots for cleaner display
+     * Example: [6h-10h, 9h-16h] → [6h-16h]
+     * 
+     * @param slots List of booked slots with date, start_time, end_time
+     * @return Merged list of non-overlapping slots
+     */
+    private List<Map<String, Object>> mergeOverlappingSlots(List<Map<String, Object>> slots) {
+        if (slots == null || slots.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Parse and sort slots by start_time
+        List<SlotInfo> slotInfos = new ArrayList<>();
+        for (Map<String, Object> slot : slots) {
+            try {
+                String date = (String) slot.get("date");
+                String startTimeStr = (String) slot.get("start_time");
+                String endTimeStr = (String) slot.get("end_time");
+                
+                if (date == null || startTimeStr == null || endTimeStr == null) {
+                    continue; // Skip invalid slots
+                }
+                
+                LocalTime startTime = LocalTime.parse(startTimeStr);
+                LocalTime endTime = LocalTime.parse(endTimeStr);
+                
+                slotInfos.add(new SlotInfo(date, startTime, endTime));
+            } catch (Exception e) {
+                log.warn("Failed to parse slot: {}", slot, e);
+                // Skip invalid slots
+            }
+        }
+
+        // Sort by start_time
+        slotInfos.sort(Comparator.comparing(s -> s.startTime));
+
+        // Merge overlapping slots
+        List<SlotInfo> merged = new ArrayList<>();
+        for (SlotInfo current : slotInfos) {
+            if (merged.isEmpty()) {
+                merged.add(current);
+            } else {
+                SlotInfo last = merged.get(merged.size() - 1);
+                
+                // If current slot overlaps or is adjacent to last slot, merge them
+                // Overlap: current.startTime <= last.endTime
+                if (!current.startTime.isAfter(last.endTime)) {
+                    // Merge: extend last slot's endTime to max of both
+                    if (current.endTime.isAfter(last.endTime)) {
+                        last.endTime = current.endTime;
+                    }
+                } else {
+                    // No overlap, add as new slot
+                    merged.add(current);
+                }
+            }
+        }
+
+        // Convert back to Map format
+        return merged.stream()
+                .map(slot -> {
+                    Map<String, Object> slotMap = new HashMap<>();
+                    slotMap.put("date", slot.date);
+                    slotMap.put("start_time", slot.startTime.toString());
+                    slotMap.put("end_time", slot.endTime.toString());
+                    return slotMap;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Helper class to represent a time slot for merging
+     */
+    private static class SlotInfo {
+        String date;
+        LocalTime startTime;
+        LocalTime endTime;
+
+        SlotInfo(String date, LocalTime startTime, LocalTime endTime) {
+            this.date = date;
+            this.startTime = startTime;
+            this.endTime = endTime;
+        }
     }
 }
 

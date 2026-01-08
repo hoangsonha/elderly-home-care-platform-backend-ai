@@ -4,10 +4,12 @@ import com.capstone_project.elderly_platform.configurations.CustomAccountDetail;
 import com.capstone_project.elderly_platform.dtos.request.ConfirmationCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateCareServiceRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCareServiceStatusRequest;
+import com.capstone_project.elderly_platform.dtos.QualificationRequirements;
 import com.capstone_project.elderly_platform.dtos.response.CareServiceResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.ServicePackageEligibilityResponse;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ServiceTaskResponseDTO;
 import com.capstone_project.elderly_platform.enums.*;
@@ -18,6 +20,7 @@ import com.capstone_project.elderly_platform.mappers.CareSeekerProfileMapper;
 import com.capstone_project.elderly_platform.mappers.CaregiverProfileMapper;
 import com.capstone_project.elderly_platform.mappers.ElderlyProfileMapper;
 import com.capstone_project.elderly_platform.mappers.ServicePackageMapper;
+import com.capstone_project.elderly_platform.mappers.ServiceTaskMapper;
 import com.capstone_project.elderly_platform.pojos.*;
 import com.capstone_project.elderly_platform.repositories.*;
 import com.capstone_project.elderly_platform.utils.CaregiverScheduleUtils;
@@ -55,6 +58,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final CareSeekerProfileRepository careSeekerProfileRepository;
     private final CaregiverProfileRepository caregiverProfileRepository;
     private final ServicePackageRepository servicePackageRepository;
+    private final ServiceTaskRepository serviceTaskRepository;
     private final CareServiceStatusLogRepository careServiceStatusLogRepository;
     private final ObjectMapper objectMapper;
     private final SystemConfigService systemConfigService;
@@ -63,6 +67,7 @@ public class CareServiceServiceImpl implements CareServiceService {
     private final CareSeekerProfileMapper careSeekerProfileMapper;
     private final CaregiverProfileMapper caregiverProfileMapper;
     private final ServicePackageMapper servicePackageMapper;
+    private final ServiceTaskMapper serviceTaskMapper;
     private final PushNotificationService pushNotificationService;
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
     private final WorkScheduleRepository workScheduleRepository;
@@ -98,6 +103,30 @@ public class CareServiceServiceImpl implements CareServiceService {
                 .findByServicePackageIdAndDeletedIsFalse(request.getServicePackageId());
         if (servicePackage == null) {
             throw new ElementNotFoundException("Không tìm thấy gói dịch vụ");
+        }
+
+        // Check if service package is ACTIVE
+        if (servicePackage.getStatus() != EnumActivationStatusType.ACTIVE) {
+            throw new BadRequestException("Gói dịch vụ không ở trạng thái hoạt động");
+        }
+
+        // Check caregiver eligibility for this service package
+        List<Qualification> approvedQualifications = caregiverProfile.getQualifications() != null
+                ? caregiverProfile.getQualifications().stream()
+                        .filter(q -> !q.isDeleted()
+                                && q.getStatus() == EnumVerificationStatusType.APPROVED
+                                && q.getQualificationType() != null)
+                        .collect(Collectors.toList())
+                : new ArrayList<>();
+
+        Set<UUID> caregiverQualificationTypeIds = approvedQualifications.stream()
+                .map(q -> q.getQualificationType().getQualificationTypeId())
+                .collect(Collectors.toSet());
+
+        Boolean isEligible = checkEligibility(servicePackage, caregiverQualificationTypeIds);
+        if (!isEligible) {
+            throw new BadRequestException(
+                    "Người chăm sóc này không phù hợp với gói hiện tại. Vui lòng đổi gói khác hoặc tìm kiếm một người chăm sóc khác.");
         }
 
         // create snapshot using DTOs
@@ -142,20 +171,29 @@ public class CareServiceServiceImpl implements CareServiceService {
         }
         LocalTime endTime = startTime.plusHours(servicePackage.getDurationHours());
 
+        // If endTime <= startTime (or endTime is midnight), it means work spans to next
+        // day
+
+        if (endTime.isBefore(startTime)
+                || (endTime.equals(LocalTime.MIDNIGHT) && !startTime.equals(LocalTime.MIDNIGHT))) {
+            throw new BadRequestException(
+                    String.format(
+                            "Gói dịch vụ có thời lượng %d giờ không thể bắt đầu lúc %s vì sẽ làm việc qua ngày hôm sau. Vui lòng chọn thời gian bắt đầu sớm hơn hoặc chọn gói dịch vụ có thời lượng ngắn hơn.",
+                            servicePackage.getDurationHours(), startTime));
+        }
+
         // Check if caregiver is available during the requested time slot
         String caregiverProfileData = caregiverProfile.getProfileData();
         boolean isAvailable = caregiverScheduleUtils.isAvailable(
                 caregiverProfileData,
                 workDate,
                 startTime,
-                endTime
-        );
-        
+                endTime);
+
         if (!isAvailable) {
             throw new BadRequestException(
                     String.format("Caregiver đã bận trong khung giờ %s - %s ngày %s. Vui lòng chọn khung giờ khác.",
-                            startTime, endTime, workDate)
-            );
+                            startTime, endTime, workDate));
         }
 
         // get all active config values at booking time (snapshot) - use this for all
@@ -371,8 +409,7 @@ public class CareServiceServiceImpl implements CareServiceService {
                     currentProfileData,
                     savedCareService.getWorkDate(),
                     savedCareService.getStartTime(),
-                    savedCareService.getEndTime()
-            );
+                    savedCareService.getEndTime());
             caregiverProfile.setProfileData(updatedProfileData);
             caregiverProfileRepository.save(caregiverProfile);
             log.info("Updated free schedule for caregiver profile {} to exclude booking time",
@@ -380,7 +417,8 @@ public class CareServiceServiceImpl implements CareServiceService {
         } catch (Exception e) {
             log.error("Failed to update caregiver free schedule for care service {}: {}",
                     savedCareService.getCareServiceId(), e.getMessage(), e);
-            // Don't throw exception - care service is already saved, schedule update can be done manually
+            // Don't throw exception - care service is already saved, schedule update can be
+            // done manually
         }
 
         // Send notification to seeker (caregiver đã accept)
@@ -675,21 +713,23 @@ public class CareServiceServiceImpl implements CareServiceService {
                 // When workDate is provided, exclude PENDING_CAREGIVER and EXPIRED status
                 if (status != null) {
                     // If status is PENDING_CAREGIVER or EXPIRED, return empty list
-                    if (status == EnumCareServiceStatusType.PENDING_CAREGIVER || 
-                        status == EnumCareServiceStatusType.EXPIRED) {
+                    if (status == EnumCareServiceStatusType.PENDING_CAREGIVER ||
+                            status == EnumCareServiceStatusType.EXPIRED) {
                         log.info("Filtering out PENDING_CAREGIVER and EXPIRED status when workDate is provided");
                         careServices = new ArrayList<>();
                     } else {
-                        careServices = careServiceRepository.findByCareSeekerProfileAndWorkDateAndStatusAndDeletedIsFalse(
-                                careSeekerProfile, workDate, status, sort);
+                        careServices = careServiceRepository
+                                .findByCareSeekerProfileAndWorkDateAndStatusAndDeletedIsFalse(
+                                        careSeekerProfile, workDate, status, sort);
                     }
                 } else {
-                    // Get all care services for the work date, then filter out PENDING_CAREGIVER and EXPIRED
+                    // Get all care services for the work date, then filter out PENDING_CAREGIVER
+                    // and EXPIRED
                     careServices = careServiceRepository.findByCareSeekerProfileAndWorkDateAndDeletedIsFalse(
                             careSeekerProfile, workDate, sort);
                     careServices = careServices.stream()
                             .filter(cs -> cs.getStatus() != EnumCareServiceStatusType.PENDING_CAREGIVER &&
-                                         cs.getStatus() != EnumCareServiceStatusType.EXPIRED)
+                                    cs.getStatus() != EnumCareServiceStatusType.EXPIRED)
                             .collect(Collectors.toList());
                 }
             } else {
@@ -719,21 +759,23 @@ public class CareServiceServiceImpl implements CareServiceService {
                 // When workDate is provided, exclude PENDING_CAREGIVER and EXPIRED status
                 if (status != null) {
                     // If status is PENDING_CAREGIVER or EXPIRED, return empty list
-                    if (status == EnumCareServiceStatusType.PENDING_CAREGIVER || 
-                        status == EnumCareServiceStatusType.EXPIRED) {
+                    if (status == EnumCareServiceStatusType.PENDING_CAREGIVER ||
+                            status == EnumCareServiceStatusType.EXPIRED) {
                         log.info("Filtering out PENDING_CAREGIVER and EXPIRED status when workDate is provided");
                         careServices = new ArrayList<>();
                     } else {
-                        careServices = careServiceRepository.findByCaregiverProfileAndWorkDateAndStatusAndDeletedIsFalse(
-                                caregiverProfile, workDate, status, sort);
+                        careServices = careServiceRepository
+                                .findByCaregiverProfileAndWorkDateAndStatusAndDeletedIsFalse(
+                                        caregiverProfile, workDate, status, sort);
                     }
                 } else {
-                    // Get all care services for the work date, then filter out PENDING_CAREGIVER and EXPIRED
+                    // Get all care services for the work date, then filter out PENDING_CAREGIVER
+                    // and EXPIRED
                     careServices = careServiceRepository.findByCaregiverProfileAndWorkDateAndDeletedIsFalse(
                             caregiverProfile, workDate, sort);
                     careServices = careServices.stream()
                             .filter(cs -> cs.getStatus() != EnumCareServiceStatusType.PENDING_CAREGIVER &&
-                                         cs.getStatus() != EnumCareServiceStatusType.EXPIRED)
+                                    cs.getStatus() != EnumCareServiceStatusType.EXPIRED)
                             .collect(Collectors.toList());
                 }
             } else {
@@ -747,7 +789,8 @@ public class CareServiceServiceImpl implements CareServiceService {
                 }
             }
 
-//            log.info("Found {} care services for caregiver with account ID: {}", careServices.size(), accountId);
+            // log.info("Found {} care services for caregiver with account ID: {}",
+            // careServices.size(), accountId);
         } else {
             throw new BadRequestException(
                     "Người dùng phải có vai trò CARE_SEEKER hoặc CAREGIVER để xem dịch vụ chăm sóc");
@@ -803,6 +846,183 @@ public class CareServiceServiceImpl implements CareServiceService {
             throw new RuntimeException("Không thể thay đổi trạng thái từ trạng thái cuối cùng: " + oldStatus);
         }
 
+    }
+
+    @Override
+    public List<ServicePackageEligibilityResponse> checkCaregiverEligibilityForServicePackages(UUID caregiverId) {
+        UUID targetAccountId;
+
+        if (caregiverId != null) {
+            // If caregiverId is provided, find caregiver profile by caregiverId
+            CaregiverProfile targetProfile = caregiverProfileRepository
+                    .findByCaregiverProfileIdAndDeletedIsFalse(caregiverId);
+            if (targetProfile == null) {
+                throw new ElementNotFoundException("Caregiver profile not found with ID: " + caregiverId);
+            }
+            targetAccountId = targetProfile.getAccount().getAccountId();
+            log.info("Checking caregiver eligibility for caregiver ID: {} (account ID: {})",
+                    caregiverId, targetAccountId);
+        } else {
+            // If caregiverId is not provided, check current user's role
+            if (!SecurityUtils.hasRole("ROLE_CAREGIVER")) {
+                throw new BadRequestException("caregiverId is required for CARE_SEEKER role");
+            }
+            targetAccountId = SecurityUtils.getCurrentUserId();
+            log.info("Checking caregiver eligibility for current user (account ID: {})", targetAccountId);
+        }
+
+        // Get caregiver profile
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(targetAccountId);
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found for account ID: " + targetAccountId);
+        }
+
+        // Get all APPROVED qualifications of caregiver and extract
+        // qualification_type_ids
+        List<Qualification> approvedQualifications = caregiverProfile.getQualifications() != null
+                ? caregiverProfile.getQualifications().stream()
+                        .filter(q -> !q.isDeleted()
+                                && q.getStatus() == EnumVerificationStatusType.APPROVED
+                                && q.getQualificationType() != null)
+                        .collect(Collectors.toList())
+                : new ArrayList<>();
+
+        Set<UUID> caregiverQualificationTypeIds = approvedQualifications.stream()
+                .map(q -> q.getQualificationType().getQualificationTypeId())
+                .collect(Collectors.toSet());
+
+        log.info("Caregiver has {} approved qualifications with types: {}",
+                caregiverQualificationTypeIds.size(), caregiverQualificationTypeIds);
+
+        // Get all ACTIVE service packages
+        List<ServicePackage> activePackages = servicePackageRepository.findAll().stream()
+                .filter(p -> !p.isDeleted() && p.getStatus() == EnumActivationStatusType.ACTIVE)
+                .collect(Collectors.toList());
+
+        log.info("Found {} active service packages", activePackages.size());
+
+        // Load tasks for each package (similar to getAllActiveServicePackages)
+        for (ServicePackage pkg : activePackages) {
+            List<com.capstone_project.elderly_platform.pojos.ServiceTask> tasks = serviceTaskRepository.findAll()
+                    .stream()
+                    .filter(task -> !task.isDeleted()
+                            && task.getServicePackage() != null
+                            && task.getServicePackage().getServicePackageId().equals(pkg.getServicePackageId()))
+                    .collect(Collectors.toList());
+            pkg.setServiceTasks(tasks);
+        }
+
+        // Check eligibility for each package and build response
+        List<ServicePackageEligibilityResponse> results = new ArrayList<>();
+        for (ServicePackage servicePackage : activePackages) {
+            Boolean isEligible = checkEligibility(servicePackage, caregiverQualificationTypeIds);
+
+            // Parse qualification from JSON string
+            com.capstone_project.elderly_platform.dtos.QualificationRequirements qualification = null;
+            if (servicePackage.getQualification() != null && !servicePackage.getQualification().isEmpty()) {
+                try {
+                    qualification = objectMapper.readValue(servicePackage.getQualification(),
+                            com.capstone_project.elderly_platform.dtos.QualificationRequirements.class);
+                } catch (Exception e) {
+                    log.warn("Failed to parse qualification for package {}: {}",
+                            servicePackage.getPackageName(), e.getMessage());
+                }
+            }
+
+            // Map service tasks
+            List<com.capstone_project.elderly_platform.dtos.response.ServiceTaskResponseDTO> serviceTaskDTOs = null;
+            if (servicePackage.getServiceTasks() != null) {
+                serviceTaskDTOs = servicePackage.getServiceTasks().stream()
+                        .map(serviceTaskMapper::toDTO)
+                        .collect(Collectors.toList());
+            }
+
+            // Count total care services for this package
+            Long totalCareServices = careServiceRepository.countByServicePackageIdAndDeletedFalse(
+                    servicePackage.getServicePackageId());
+
+            ServicePackageEligibilityResponse response = ServicePackageEligibilityResponse.builder()
+                    .servicePackageId(servicePackage.getServicePackageId().toString())
+                    .packageName(servicePackage.getPackageName())
+                    .description(servicePackage.getDescription())
+                    .durationHours(servicePackage.getDurationHours())
+                    .packageType(servicePackage.getPackageType() != null
+                            ? servicePackage.getPackageType().name()
+                            : null)
+                    .price(servicePackage.getPrice())
+                    .note(servicePackage.getNote())
+                    .qualification(qualification)
+                    .status(servicePackage.getStatus() != null
+                            ? servicePackage.getStatus().name()
+                            : null)
+                    .serviceTasks(serviceTaskDTOs)
+                    .totalCareServices(totalCareServices)
+                    .isEligible(isEligible)
+                    .build();
+
+            results.add(response);
+        }
+
+        log.info("Eligibility check completed. {} packages checked", results.size());
+        return results;
+    }
+
+    private Boolean checkEligibility(ServicePackage servicePackage, Set<UUID> caregiverQualificationTypeIds) {
+        String qualificationJson = servicePackage.getQualification();
+
+        // If no qualification requirements, everyone is eligible
+        if (qualificationJson == null || qualificationJson.isEmpty()) {
+            log.debug("Package {} has no qualification requirements, eligible", servicePackage.getPackageName());
+            return true;
+        }
+
+        try {
+            // Parse qualification JSON
+            QualificationRequirements requirements = objectMapper.readValue(
+                    qualificationJson,
+                    QualificationRequirements.class);
+
+            // If certificate_groups is null or empty, everyone is eligible
+            if (requirements.getCertificateGroups() == null || requirements.getCertificateGroups().isEmpty()) {
+                log.debug("Package {} has no certificate_groups, eligible", servicePackage.getPackageName());
+                return true;
+            }
+
+            // Check each group (AND between groups)
+            for (List<UUID> group : requirements.getCertificateGroups()) {
+                if (group == null || group.isEmpty()) {
+                    continue; // Skip empty groups
+                }
+
+                // Check if caregiver has at least one qualification from this group (OR within
+                // group)
+                boolean hasQualificationFromGroup = false;
+                for (UUID requiredTypeId : group) {
+                    if (caregiverQualificationTypeIds.contains(requiredTypeId)) {
+                        hasQualificationFromGroup = true;
+                        break;
+                    }
+                }
+
+                // If caregiver doesn't have any qualification from this group, not eligible
+                if (!hasQualificationFromGroup) {
+                    log.debug("Package {} requires qualification from group {} but caregiver doesn't have it",
+                            servicePackage.getPackageName(), group);
+                    return false;
+                }
+            }
+
+            // All groups satisfied
+            log.debug("Package {} eligibility check passed", servicePackage.getPackageName());
+            return true;
+
+        } catch (Exception e) {
+            log.error("Error parsing qualification requirements for package {}: {}",
+                    servicePackage.getPackageName(), e.getMessage(), e);
+            // If we can't parse, assume not eligible to be safe
+            return false;
+        }
     }
 
     // Inner class for snapshot - using DTOs instead of custom snapshot classes
