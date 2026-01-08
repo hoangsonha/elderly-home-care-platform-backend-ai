@@ -1,11 +1,13 @@
 package com.capstone_project.elderly_platform.pojos;
 
+import com.capstone_project.elderly_platform.enums.EnumVerificationStatusType;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -50,7 +52,23 @@ public class Qualification extends BaseEntity {
     @Builder.Default
     Boolean isVerified = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", columnDefinition = "varchar(255) DEFAULT 'PENDING'")
+    @Builder.Default
+    EnumVerificationStatusType status = EnumVerificationStatusType.PENDING;
+
+    @Column(name = "rejection_reason", columnDefinition = "TEXT")
+    String rejectionReason;
+
+    @Column(name = "accepted_at")
+    LocalDateTime acceptedAt;
+
+    @Column(name = "declined_at")
+    LocalDateTime declinedAt;
+
+    @Column(name = "reviewed_by")
+    UUID reviewedBy;
+
     @Column(name = "notes", columnDefinition = "TEXT")
     String notes;
 }
-

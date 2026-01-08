@@ -3,13 +3,17 @@ package com.capstone_project.elderly_platform.services;
 import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
+import com.capstone_project.elderly_platform.dtos.request.CaregiverProfileVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.QualificationVerificationRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverVerificationResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
 import com.capstone_project.elderly_platform.enums.EnumGenderType;
 import com.capstone_project.elderly_platform.enums.EnumHealthStatusType;
 import com.capstone_project.elderly_platform.enums.EnumSystemConfigKey;
+import com.capstone_project.elderly_platform.enums.EnumVerificationStatusType;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.mappers.CaregiverProfileMapper;
@@ -141,12 +145,14 @@ public class ProfileServiceImpl implements ProfileService {
         // Build profileData JSON with all fields not in entity
         Map<String, Object> profileDataMap = new HashMap<>();
 
-        // Create LocalDate from birthYear if provided (age will be calculated in mapper)
+        // Create LocalDate from birthYear if provided (age will be calculated in
+        // mapper)
         java.time.LocalDate birthDate = null;
         if (request.getBirthYear() != null) {
             // Create LocalDate from birthYear (set to January 1st of that year)
             birthDate = java.time.LocalDate.of(request.getBirthYear(), 1, 1);
-            // Note: age is not stored in profileData, it will be calculated from birthDate in mapper
+            // Note: age is not stored in profileData, it will be calculated from birthDate
+            // in mapper
         }
 
         if (request.getWeight() != null) {
@@ -155,7 +161,7 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getHeight() != null) {
             profileDataMap.put("height", request.getHeight());
         }
-        
+
         // Add medical conditions to profileData
         if (request.getMedicalConditions() != null) {
             Map<String, Object> medicalConditionsMap = new HashMap<>();
@@ -175,7 +181,7 @@ public class ProfileServiceImpl implements ProfileService {
                 profileDataMap.put("medical_conditions", medicalConditionsMap);
             }
         }
-        
+
         // Add independence level to profileData
         if (request.getIndependenceLevel() != null && !request.getIndependenceLevel().isEmpty()) {
             Map<String, String> independenceLevelMap = new HashMap<>();
@@ -184,7 +190,7 @@ public class ProfileServiceImpl implements ProfileService {
             }
             profileDataMap.put("independence_level", independenceLevelMap);
         }
-        
+
         if (request.getHobbies() != null) {
             profileDataMap.put("hobbies", request.getHobbies());
         }
@@ -275,7 +281,8 @@ public class ProfileServiceImpl implements ProfileService {
             try {
                 healthStatus = EnumHealthStatusType.valueOf(request.getHealthStatus().toUpperCase());
             } catch (IllegalArgumentException e) {
-                throw new BadRequestException("Invalid health status: " + request.getHealthStatus() + ". Valid values: GOOD, WEAK, MODERATE");
+                throw new BadRequestException(
+                        "Invalid health status: " + request.getHealthStatus() + ". Valid values: GOOD, WEAK, MODERATE");
             }
         }
 
@@ -327,7 +334,7 @@ public class ProfileServiceImpl implements ProfileService {
             try {
                 avatarUrl = firebaseStorageService.uploadSingleImages(avatarFile);
                 log.info("Avatar uploaded successfully: {}", avatarUrl);
-                
+
                 // Update avatarUrl in Account
                 account.setAvatarUrl(avatarUrl);
                 accountRepository.save(account);
@@ -388,8 +395,8 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     @Transactional
     public CaregiverProfileResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request,
-                                                              MultipartFile avatarFile,
-                                                              List<MultipartFile> credentialFiles) {
+            MultipartFile avatarFile,
+            List<MultipartFile> credentialFiles) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         log.info("Creating caregiver profile for account ID: {}", currentAccountId);
 
@@ -401,8 +408,10 @@ public class ProfileServiceImpl implements ProfileService {
         CaregiverProfile existingProfile = caregiverProfileRepository
                 .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
         if (existingProfile != null) {
-            log.warn("Attempt to create caregiver profile failed: Profile already exists for account ID: {}", currentAccountId);
-            throw new BadRequestException("Caregiver profile already exists for this account. Please use update API instead.");
+            log.warn("Attempt to create caregiver profile failed: Profile already exists for account ID: {}",
+                    currentAccountId);
+            throw new BadRequestException(
+                    "Caregiver profile already exists for this account. Please use update API instead.");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -442,18 +451,18 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getLocation() != null || request.getServiceRadiusKm() != null) {
             try {
                 Map<String, Object> locationMap = new HashMap<>();
-                
+
                 if (request.getLocation() != null) {
                     locationMap.put("address", request.getLocation().getAddress());
                     locationMap.put("latitude", request.getLocation().getLatitude());
                     locationMap.put("longitude", request.getLocation().getLongitude());
                 }
-                
+
                 // Add service_radius_km
                 if (request.getServiceRadiusKm() != null) {
                     locationMap.put("service_radius_km", request.getServiceRadiusKm());
                 }
-                
+
                 locationJson = objectMapper.writeValueAsString(locationMap);
             } catch (Exception e) {
                 log.error("Failed to convert location to JSON: {}", e.getMessage(), e);
@@ -461,23 +470,25 @@ public class ProfileServiceImpl implements ProfileService {
             }
         }
 
-        // 5. Build profileData JSON (years_experience, free_schedule, max_hours_per_week, preferences)
+        // 5. Build profileData JSON (years_experience, free_schedule,
+        // max_hours_per_week, preferences)
         Map<String, Object> profileDataMap = new HashMap<>();
-        
+
         if (request.getYearsExperience() != null) {
             profileDataMap.put("years_experience", request.getYearsExperience());
         }
-        
+
         // Handle free_schedule
         if (request.getFreeSchedule() != null) {
             Map<String, Object> freeScheduleMap = new HashMap<>();
             if (request.getFreeSchedule().getAvailableAllTime() != null) {
                 freeScheduleMap.put("available_all_time", request.getFreeSchedule().getAvailableAllTime());
             }
-            
+
             if (request.getFreeSchedule().getBookedSlots() != null) {
                 List<Map<String, Object>> bookedSlotsList = new ArrayList<>();
-                for (UpdateCaregiverProfileRequest.BookedSlotRequest slot : request.getFreeSchedule().getBookedSlots()) {
+                for (UpdateCaregiverProfileRequest.BookedSlotRequest slot : request.getFreeSchedule()
+                        .getBookedSlots()) {
                     Map<String, Object> slotMap = new HashMap<>();
                     slotMap.put("date", slot.getDate());
                     slotMap.put("start_time", slot.getStartTime());
@@ -486,12 +497,12 @@ public class ProfileServiceImpl implements ProfileService {
                 }
                 freeScheduleMap.put("booked_slots", bookedSlotsList);
             }
-            
+
             if (!freeScheduleMap.isEmpty()) {
                 profileDataMap.put("free_schedule", freeScheduleMap);
             }
         }
-        
+
         // Validate and add max_hours_per_week
         if (request.getMaxHoursPerWeek() != null) {
             int maxAllowedHours = systemConfigService.getConfigValueAsInt(
@@ -501,15 +512,15 @@ public class ProfileServiceImpl implements ProfileService {
             }
             profileDataMap.put("max_hours_per_week", request.getMaxHoursPerWeek());
         }
-        
+
         // Handle preferences
         if (request.getPreferences() != null) {
             Map<String, Object> preferencesMap = new HashMap<>();
-            
+
             if (request.getPreferences().getPreferredHealthStatus() != null) {
                 preferencesMap.put("preferred_health_status", request.getPreferences().getPreferredHealthStatus());
             }
-            
+
             if (request.getPreferences().getElderlyAgePreference() != null) {
                 Map<String, Object> ageRangeMap = new HashMap<>();
                 if (request.getPreferences().getElderlyAgePreference().getMinAge() != null) {
@@ -522,17 +533,17 @@ public class ProfileServiceImpl implements ProfileService {
                     preferencesMap.put("elderly_age_preference", ageRangeMap);
                 }
             }
-            
+
             if (!preferencesMap.isEmpty()) {
                 profileDataMap.put("preferences", preferencesMap);
             }
         }
-        
+
         // Add default ratings_reviews for new caregiver profile
         Map<String, Object> ratingsReviewsMap = new HashMap<>();
         ratingsReviewsMap.put("overall_rating", 0);
         ratingsReviewsMap.put("total_reviews", 0);
-        
+
         Map<String, Integer> ratingBreakdown = new HashMap<>();
         ratingBreakdown.put("5_star", 0);
         ratingBreakdown.put("4_star", 0);
@@ -540,9 +551,9 @@ public class ProfileServiceImpl implements ProfileService {
         ratingBreakdown.put("2_star", 0);
         ratingBreakdown.put("1_star", 0);
         ratingsReviewsMap.put("rating_breakdown", ratingBreakdown);
-        
+
         profileDataMap.put("ratings_reviews", ratingsReviewsMap);
-        
+
         String profileDataJson = null;
         if (!profileDataMap.isEmpty()) {
             try {
@@ -554,6 +565,9 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         // 6. Create CaregiverProfile entity
+        // Set is_needed_review_certificate = true if there are credentials
+        boolean hasCredentials = request.getCredentials() != null && !request.getCredentials().isEmpty();
+
         CaregiverProfile caregiverProfile = CaregiverProfile.builder()
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhone())
@@ -562,10 +576,12 @@ public class ProfileServiceImpl implements ProfileService {
                 .location(locationJson)
                 .bio(request.getBio())
                 .isVerified(false) // Default false
+                .status(EnumVerificationStatusType.PENDING) // Default PENDING
+                .isNeededReviewCertificate(hasCredentials) // true if has credentials
                 .profileData(profileDataJson)
                 .account(account)
                 .build();
-        
+
         caregiverProfile.setCreatedAt(now);
         caregiverProfile.setUpdatedAt(now);
         caregiverProfile.setDeleted(false);
@@ -578,22 +594,24 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getCredentials() != null && !request.getCredentials().isEmpty()) {
             // Validate credential files
             if (credentialFiles == null || credentialFiles.size() != request.getCredentials().size()) {
-                throw new BadRequestException("Number of credential files must match number of credentials. Expected: " 
-                        + request.getCredentials().size() + ", got: " + (credentialFiles != null ? credentialFiles.size() : 0));
+                throw new BadRequestException("Number of credential files must match number of credentials. Expected: "
+                        + request.getCredentials().size() + ", got: "
+                        + (credentialFiles != null ? credentialFiles.size() : 0));
             }
-            
+
             // Create qualifications
             for (int i = 0; i < request.getCredentials().size(); i++) {
                 UpdateCaregiverProfileRequest.CredentialRequest credRequest = request.getCredentials().get(i);
                 MultipartFile credentialFile = credentialFiles.get(i);
-                
+
                 // Validate qualification type
                 QualificationType qualificationType = qualificationTypeRepository
                         .findByQualificationTypeIdAndDeletedIsFalse(credRequest.getQualificationTypeId());
                 if (qualificationType == null) {
-                    throw new BadRequestException("Qualification type not found: " + credRequest.getQualificationTypeId());
+                    throw new BadRequestException(
+                            "Qualification type not found: " + credRequest.getQualificationTypeId());
                 }
-                
+
                 // Upload certificate file (required for each credential)
                 String certificateUrl = null;
                 if (credentialFile != null && !credentialFile.isEmpty()) {
@@ -607,7 +625,7 @@ public class ProfileServiceImpl implements ProfileService {
                 } else {
                     throw new BadRequestException("Credential file is required for credential at index " + i);
                 }
-                
+
                 // Create Qualification
                 Qualification qualification = Qualification.builder()
                         .caregiverProfile(savedProfile)
@@ -618,13 +636,14 @@ public class ProfileServiceImpl implements ProfileService {
                         .expiryDate(credRequest.getExpiryDate())
                         .certificateUrl(certificateUrl)
                         .isVerified(false) // Default false
+                        .status(EnumVerificationStatusType.PENDING) // Default PENDING
                         .notes(credRequest.getNotes())
                         .build();
-                
+
                 qualification.setCreatedAt(now);
                 qualification.setUpdatedAt(now);
                 qualification.setDeleted(false);
-                
+
                 qualificationRepository.save(qualification);
             }
         }
@@ -634,16 +653,16 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional
-    public CaregiverProfileResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request, 
-                                                               MultipartFile avatarFile, 
-                                                               List<MultipartFile> credentialFiles) {
+    public CaregiverProfileResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request,
+            MultipartFile avatarFile,
+            List<MultipartFile> credentialFiles) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         log.info("Updating caregiver profile for account ID: {}", currentAccountId);
 
         // Get caregiver profile
         CaregiverProfile caregiverProfile = caregiverProfileRepository
                 .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
-        
+
         if (caregiverProfile == null) {
             throw new ElementNotFoundException("Caregiver profile not found for current user");
         }
@@ -659,7 +678,7 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getFullName() != null) {
             caregiverProfile.setFullName(request.getFullName());
         }
-        
+
         if (request.getBirthYear() != null) {
             caregiverProfile.setBirthDate(LocalDate.of(request.getBirthYear(), 1, 1));
         }
@@ -697,13 +716,14 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getLocation() != null || request.getServiceRadiusKm() != null) {
             try {
                 Map<String, Object> locationMap = new HashMap<>();
-                
+
                 // Parse existing location if exists
                 if (caregiverProfile.getLocation() != null && !caregiverProfile.getLocation().isEmpty()) {
-                    locationMap = objectMapper.readValue(caregiverProfile.getLocation(), 
-                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                    locationMap = objectMapper.readValue(caregiverProfile.getLocation(),
+                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                            });
                 }
-                
+
                 // Update with new values
                 if (request.getLocation() != null) {
                     if (request.getLocation().getAddress() != null) {
@@ -716,12 +736,12 @@ public class ProfileServiceImpl implements ProfileService {
                         locationMap.put("longitude", request.getLocation().getLongitude());
                     }
                 }
-                
+
                 // Add service_radius_km
                 if (request.getServiceRadiusKm() != null) {
                     locationMap.put("service_radius_km", request.getServiceRadiusKm());
                 }
-                
+
                 caregiverProfile.setLocation(objectMapper.writeValueAsString(locationMap));
             } catch (Exception e) {
                 log.error("Failed to update location: {}", e.getMessage(), e);
@@ -729,34 +749,37 @@ public class ProfileServiceImpl implements ProfileService {
             }
         }
 
-        // 4. Update profileData JSON (years_experience, free_schedule, max_hours_per_week, preferences)
+        // 4. Update profileData JSON (years_experience, free_schedule,
+        // max_hours_per_week, preferences)
         String currentProfileData = caregiverProfile.getProfileData();
         currentProfileData = caregiverScheduleUtils.initializeFreeScheduleIfNotExists(currentProfileData);
-        
+
         try {
             Map<String, Object> profileDataMap = new HashMap<>();
-            
+
             // Parse existing profileData if exists
             if (currentProfileData != null && !currentProfileData.isEmpty()) {
-                profileDataMap = objectMapper.readValue(currentProfileData, 
-                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                profileDataMap = objectMapper.readValue(currentProfileData,
+                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                        });
             }
-            
+
             // Update years_experience
             if (request.getYearsExperience() != null) {
                 profileDataMap.put("years_experience", request.getYearsExperience());
             }
-            
+
             // Update free_schedule
             if (request.getFreeSchedule() != null) {
                 Map<String, Object> freeScheduleMap = new HashMap<>();
                 if (request.getFreeSchedule().getAvailableAllTime() != null) {
                     freeScheduleMap.put("available_all_time", request.getFreeSchedule().getAvailableAllTime());
                 }
-                
+
                 if (request.getFreeSchedule().getBookedSlots() != null) {
                     List<Map<String, Object>> bookedSlotsList = new ArrayList<>();
-                    for (UpdateCaregiverProfileRequest.BookedSlotRequest slot : request.getFreeSchedule().getBookedSlots()) {
+                    for (UpdateCaregiverProfileRequest.BookedSlotRequest slot : request.getFreeSchedule()
+                            .getBookedSlots()) {
                         Map<String, Object> slotMap = new HashMap<>();
                         slotMap.put("date", slot.getDate());
                         slotMap.put("start_time", slot.getStartTime());
@@ -765,12 +788,12 @@ public class ProfileServiceImpl implements ProfileService {
                     }
                     freeScheduleMap.put("booked_slots", bookedSlotsList);
                 }
-                
+
                 if (!freeScheduleMap.isEmpty()) {
                     profileDataMap.put("free_schedule", freeScheduleMap);
                 }
             }
-            
+
             // Update max_hours_per_week (validate against config)
             if (request.getMaxHoursPerWeek() != null) {
                 int maxAllowedHours = systemConfigService.getConfigValueAsInt(
@@ -780,15 +803,15 @@ public class ProfileServiceImpl implements ProfileService {
                 }
                 profileDataMap.put("max_hours_per_week", request.getMaxHoursPerWeek());
             }
-            
+
             // Update preferences
             if (request.getPreferences() != null) {
                 Map<String, Object> preferencesMap = new HashMap<>();
-                
+
                 if (request.getPreferences().getPreferredHealthStatus() != null) {
                     preferencesMap.put("preferred_health_status", request.getPreferences().getPreferredHealthStatus());
                 }
-                
+
                 if (request.getPreferences().getElderlyAgePreference() != null) {
                     Map<String, Object> ageRangeMap = new HashMap<>();
                     if (request.getPreferences().getElderlyAgePreference().getMinAge() != null) {
@@ -801,12 +824,12 @@ public class ProfileServiceImpl implements ProfileService {
                         preferencesMap.put("elderly_age_preference", ageRangeMap);
                     }
                 }
-                
+
                 if (!preferencesMap.isEmpty()) {
                     profileDataMap.put("preferences", preferencesMap);
                 }
             }
-            
+
             // Save updated profileData
             caregiverProfile.setProfileData(objectMapper.writeValueAsString(profileDataMap));
         } catch (Exception e) {
@@ -818,32 +841,35 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getCredentials() != null && !request.getCredentials().isEmpty()) {
             // Validate credential files
             if (credentialFiles == null || credentialFiles.size() != request.getCredentials().size()) {
-                throw new BadRequestException("Number of credential files must match number of credentials. Expected: " 
-                        + request.getCredentials().size() + ", got: " + (credentialFiles != null ? credentialFiles.size() : 0));
+                throw new BadRequestException("Number of credential files must match number of credentials. Expected: "
+                        + request.getCredentials().size() + ", got: "
+                        + (credentialFiles != null ? credentialFiles.size() : 0));
             }
-            
+
             // Delete existing qualifications (soft delete)
             List<Qualification> existingQualifications = qualificationRepository
-                    .findByCaregiverProfile_CaregiverProfileIdAndDeletedIsFalse(caregiverProfile.getCaregiverProfileId());
-            
+                    .findByCaregiverProfile_CaregiverProfileIdAndDeletedIsFalse(
+                            caregiverProfile.getCaregiverProfileId());
+
             for (Qualification existing : existingQualifications) {
                 existing.setDeleted(true);
                 existing.setUpdatedAt(now);
                 qualificationRepository.save(existing);
             }
-            
+
             // Create new qualifications
             for (int i = 0; i < request.getCredentials().size(); i++) {
                 UpdateCaregiverProfileRequest.CredentialRequest credRequest = request.getCredentials().get(i);
                 MultipartFile credentialFile = credentialFiles.get(i);
-                
+
                 // Validate qualification type
                 QualificationType qualificationType = qualificationTypeRepository
                         .findByQualificationTypeIdAndDeletedIsFalse(credRequest.getQualificationTypeId());
                 if (qualificationType == null) {
-                    throw new BadRequestException("Qualification type not found: " + credRequest.getQualificationTypeId());
+                    throw new BadRequestException(
+                            "Qualification type not found: " + credRequest.getQualificationTypeId());
                 }
-                
+
                 // Upload certificate file (required for each credential)
                 String certificateUrl = null;
                 if (credentialFile != null && !credentialFile.isEmpty()) {
@@ -858,7 +884,7 @@ public class ProfileServiceImpl implements ProfileService {
                 } else {
                     throw new BadRequestException("Credential file is required for credential at index " + i);
                 }
-                
+
                 // Create Qualification
                 Qualification qualification = Qualification.builder()
                         .caregiverProfile(caregiverProfile)
@@ -869,13 +895,17 @@ public class ProfileServiceImpl implements ProfileService {
                         .expiryDate(credRequest.getExpiryDate())
                         .certificateUrl(certificateUrl)
                         .isVerified(false) // Default false, not from request
+                        .status(EnumVerificationStatusType.PENDING) // Default PENDING
                         .notes(credRequest.getNotes())
                         .build();
-                
+
+                // Set is_needed_review_certificate = true when new credential is added
+                caregiverProfile.setIsNeededReviewCertificate(true);
+
                 qualification.setCreatedAt(now);
                 qualification.setUpdatedAt(now);
                 qualification.setDeleted(false);
-                
+
                 qualificationRepository.save(qualification);
             }
         }
@@ -885,5 +915,304 @@ public class ProfileServiceImpl implements ProfileService {
         log.info("Caregiver profile updated successfully with ID: {}", savedProfile.getCaregiverProfileId());
 
         return caregiverProfileMapper.toDTO(savedProfile);
+    }
+
+    @Override
+    public List<CaregiverVerificationResponseDTO> getPendingVerificationCaregivers() {
+        log.info("Getting all caregivers pending verification");
+
+        List<CaregiverProfile> pendingCaregivers = caregiverProfileRepository.findByIsVerifiedFalseAndDeletedFalse();
+
+        return pendingCaregivers.stream()
+                .map(this::mapToVerificationDTO)
+                .collect(Collectors.toList());
+    }
+
+    private CaregiverVerificationResponseDTO mapToVerificationDTO(CaregiverProfile profile) {
+        if (profile == null) {
+            return null;
+        }
+
+        // Calculate age
+        Integer age = null;
+        if (profile.getBirthDate() != null) {
+            age = java.time.Period.between(profile.getBirthDate(), LocalDate.now()).getYears();
+        }
+
+        // Map Account info
+        String accountId = null;
+        String email = null;
+        String avatarUrl = null;
+        Boolean enabled = null;
+        Boolean nonLocked = null;
+
+        if (profile.getAccount() != null) {
+            Account account = profile.getAccount();
+            accountId = account.getAccountId() != null ? account.getAccountId().toString() : null;
+            email = account.getEmail();
+            avatarUrl = account.getAvatarUrl();
+            enabled = account.getEnabled();
+            nonLocked = account.getNonLocked();
+        }
+
+        // Map Qualifications
+        List<CaregiverVerificationResponseDTO.QualificationResponseDTO> qualifications = new ArrayList<>();
+        if (profile.getQualifications() != null) {
+            qualifications = profile.getQualifications().stream()
+                    .filter(q -> !q.isDeleted())
+                    .map(this::mapQualificationToDTO)
+                    .collect(Collectors.toList());
+        }
+
+        return CaregiverVerificationResponseDTO.builder()
+                .caregiverProfileId(profile.getCaregiverProfileId() != null
+                        ? profile.getCaregiverProfileId().toString()
+                        : null)
+                .fullName(profile.getFullName())
+                .phoneNumber(profile.getPhoneNumber())
+                .location(profile.getLocation())
+                .bio(profile.getBio())
+                .isVerified(profile.getIsVerified())
+                .status(profile.getStatus() != null ? profile.getStatus().name() : null)
+                .rejectionReason(profile.getRejectionReason())
+                .isNeededReviewCertificate(profile.getIsNeededReviewCertificate())
+                .acceptedAt(profile.getAcceptedAt() != null
+                        ? profile.getAcceptedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .declinedAt(profile.getDeclinedAt() != null
+                        ? profile.getDeclinedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .reviewedBy(profile.getReviewedBy() != null ? profile.getReviewedBy().toString() : null)
+                .birthDate(profile.getBirthDate() != null
+                        ? profile.getBirthDate().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                        : null)
+                .age(age)
+                .gender(profile.getGender() != null ? profile.getGender().name() : null)
+                .profileData(profile.getProfileData())
+                .accountId(accountId)
+                .email(email)
+                .avatarUrl(avatarUrl)
+                .enabled(enabled)
+                .nonLocked(nonLocked)
+                .qualifications(qualifications)
+                .build();
+    }
+
+    private CaregiverVerificationResponseDTO.QualificationResponseDTO mapQualificationToDTO(
+            Qualification qualification) {
+        if (qualification == null) {
+            return null;
+        }
+
+        String qualificationTypeId = null;
+        String qualificationTypeName = null;
+        if (qualification.getQualificationType() != null) {
+            qualificationTypeId = qualification.getQualificationType().getQualificationTypeId() != null
+                    ? qualification.getQualificationType().getQualificationTypeId().toString()
+                    : null;
+            qualificationTypeName = qualification.getQualificationType().getTypeName();
+        }
+
+        return CaregiverVerificationResponseDTO.QualificationResponseDTO.builder()
+                .qualificationId(qualification.getQualificationId() != null
+                        ? qualification.getQualificationId().toString()
+                        : null)
+                .qualificationTypeId(qualificationTypeId)
+                .qualificationTypeName(qualificationTypeName)
+                .certificateNumber(qualification.getCertificateNumber())
+                .issuingOrganization(qualification.getIssuingOrganization())
+                .issueDate(qualification.getIssueDate() != null
+                        ? qualification.getIssueDate().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                        : null)
+                .expiryDate(qualification.getExpiryDate() != null
+                        ? qualification.getExpiryDate().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                        : null)
+                .certificateUrl(qualification.getCertificateUrl())
+                .isVerified(qualification.getIsVerified())
+                .status(qualification.getStatus() != null ? qualification.getStatus().name() : null)
+                .rejectionReason(qualification.getRejectionReason())
+                .acceptedAt(qualification.getAcceptedAt() != null
+                        ? qualification.getAcceptedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .declinedAt(qualification.getDeclinedAt() != null
+                        ? qualification.getDeclinedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .reviewedBy(qualification.getReviewedBy() != null ? qualification.getReviewedBy().toString() : null)
+                .notes(qualification.getNotes())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public CaregiverVerificationResponseDTO verifyCaregiverProfileStatus(UUID caregiverProfileId,
+            CaregiverProfileVerificationRequest request) {
+        log.info("Verifying caregiver profile status {} with action: {}", caregiverProfileId, request.getAction());
+
+        // Find caregiver profile
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByCaregiverProfileIdAndDeletedIsFalse(caregiverProfileId);
+
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found");
+        }
+
+        // Validate action
+        String action = request.getAction();
+        if (action == null || action.trim().isEmpty()) {
+            throw new BadRequestException("Action is required. Must be 'APPROVE' or 'REJECT'");
+        }
+
+        action = action.toUpperCase().trim();
+        if (!"APPROVE".equals(action) && !"REJECT".equals(action)) {
+            throw new BadRequestException("Invalid action. Must be 'APPROVE' or 'REJECT'");
+        }
+
+        // Validate rejectionReason for REJECT
+        if ("REJECT".equals(action)) {
+            if (request.getRejectionReason() == null || request.getRejectionReason().trim().isEmpty()) {
+                throw new BadRequestException("Rejection reason is required when rejecting caregiver profile");
+            }
+        }
+
+        // Get current admin user ID
+        UUID reviewedBy = SecurityUtils.getCurrentUserId();
+        LocalDateTime now = LocalDateTime.now();
+
+        // Update status and isVerified
+        if ("APPROVE".equals(action)) {
+            caregiverProfile.setIsVerified(true);
+            caregiverProfile.setStatus(EnumVerificationStatusType.APPROVED);
+            caregiverProfile.setRejectionReason(null);
+            caregiverProfile.setAcceptedAt(now);
+            caregiverProfile.setDeclinedAt(null);
+            caregiverProfile.setReviewedBy(reviewedBy);
+            log.info("Caregiver profile {} approved by admin {}", caregiverProfileId, reviewedBy);
+        } else {
+            caregiverProfile.setIsVerified(false);
+            caregiverProfile.setStatus(EnumVerificationStatusType.REJECTED);
+            caregiverProfile.setRejectionReason(request.getRejectionReason());
+            caregiverProfile.setAcceptedAt(null);
+            caregiverProfile.setDeclinedAt(now);
+            caregiverProfile.setReviewedBy(reviewedBy);
+            log.info("Caregiver profile {} rejected by admin {} with reason: {}", caregiverProfileId, reviewedBy,
+                    request.getRejectionReason());
+        }
+
+        // Update timestamp
+        caregiverProfile.setUpdatedAt(now);
+
+        // Save caregiver profile
+        caregiverProfileRepository.save(caregiverProfile);
+        log.info("Caregiver profile {} verification status updated successfully", caregiverProfileId);
+
+        // Fetch again with account and qualifications to ensure all data is loaded
+        CaregiverProfile updatedProfile = caregiverProfileRepository
+                .findByCaregiverProfileIdWithAccountAndQualifications(caregiverProfileId);
+
+        if (updatedProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found after update");
+        }
+
+        // Return updated profile with all information
+        return mapToVerificationDTO(updatedProfile);
+    }
+
+    @Override
+    @Transactional
+    public CaregiverVerificationResponseDTO verifyQualification(UUID qualificationId,
+            QualificationVerificationRequest request) {
+        log.info("Verifying qualification {} with action: {}", qualificationId, request.getAction());
+
+        // Find qualification
+        Qualification qualification = qualificationRepository
+                .findByQualificationIdAndDeletedIsFalse(qualificationId);
+
+        if (qualification == null) {
+            throw new ElementNotFoundException("Qualification not found");
+        }
+
+        // Validate action
+        String action = request.getAction();
+        if (action == null || action.trim().isEmpty()) {
+            throw new BadRequestException("Action is required. Must be 'APPROVE' or 'REJECT'");
+        }
+
+        action = action.toUpperCase().trim();
+        if (!"APPROVE".equals(action) && !"REJECT".equals(action)) {
+            throw new BadRequestException("Invalid action. Must be 'APPROVE' or 'REJECT'");
+        }
+
+        // Validate rejectionReason for REJECT
+        if ("REJECT".equals(action)) {
+            if (request.getRejectionReason() == null || request.getRejectionReason().trim().isEmpty()) {
+                throw new BadRequestException("Rejection reason is required when rejecting qualification");
+            }
+        }
+
+        // Get current admin user ID
+        UUID reviewedBy = SecurityUtils.getCurrentUserId();
+        LocalDateTime now = LocalDateTime.now();
+
+        // Update qualification status
+        if ("APPROVE".equals(action)) {
+            qualification.setStatus(EnumVerificationStatusType.APPROVED);
+            qualification.setIsVerified(true);
+            qualification.setRejectionReason(null);
+            qualification.setAcceptedAt(now);
+            qualification.setDeclinedAt(null);
+            qualification.setReviewedBy(reviewedBy);
+            log.info("Qualification {} approved by admin {}", qualificationId, reviewedBy);
+        } else {
+            qualification.setStatus(EnumVerificationStatusType.REJECTED);
+            qualification.setIsVerified(false);
+            qualification.setRejectionReason(request.getRejectionReason());
+            qualification.setAcceptedAt(null);
+            qualification.setDeclinedAt(now);
+            qualification.setReviewedBy(reviewedBy);
+            log.info("Qualification {} rejected by admin {} with reason: {}", qualificationId, reviewedBy,
+                    request.getRejectionReason());
+        }
+
+        // Update timestamp
+        qualification.setUpdatedAt(now);
+
+        // Save qualification
+        qualificationRepository.save(qualification);
+        log.info("Qualification {} verification status updated successfully", qualificationId);
+
+        // Check if all qualifications are reviewed, if yes, set
+        // is_needed_review_certificate = false
+        CaregiverProfile caregiverProfile = qualification.getCaregiverProfile();
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found for qualification");
+        }
+
+        UUID caregiverProfileId = caregiverProfile.getCaregiverProfileId();
+        List<Qualification> allQualifications = qualificationRepository
+                .findByCaregiverProfile_CaregiverProfileIdAndDeletedIsFalse(caregiverProfileId);
+
+        // Check if there are any PENDING qualifications
+        boolean hasPendingQualifications = allQualifications.stream()
+                .anyMatch(q -> q.getStatus() == EnumVerificationStatusType.PENDING);
+
+        if (!hasPendingQualifications) {
+            caregiverProfile.setIsNeededReviewCertificate(false);
+            caregiverProfile.setUpdatedAt(LocalDateTime.now());
+            caregiverProfileRepository.save(caregiverProfile);
+            log.info("All qualifications reviewed for caregiver profile {}, set is_needed_review_certificate = false",
+                    caregiverProfileId);
+        }
+
+        // Fetch caregiver profile again with account and qualifications to ensure all
+        // data is loaded
+        CaregiverProfile updatedProfile = caregiverProfileRepository
+                .findByCaregiverProfileIdWithAccountAndQualifications(caregiverProfileId);
+
+        if (updatedProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found after update");
+        }
+
+        // Return updated profile with all information
+        return mapToVerificationDTO(updatedProfile);
     }
 }

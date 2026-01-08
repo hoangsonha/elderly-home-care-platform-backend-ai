@@ -21,4 +21,21 @@ public interface CaregiverProfileRepository extends JpaRepository<CaregiverProfi
     @Query("SELECT COUNT(c) FROM CaregiverProfile c WHERE c.deleted = false " +
             "AND (c.isVerified = false OR c.isVerified IS NULL)")
     Long countPendingVerificationCaregivers();
+
+    @Query("SELECT DISTINCT c FROM CaregiverProfile c " +
+            "LEFT JOIN FETCH c.account " +
+            "LEFT JOIN FETCH c.qualifications q " +
+            "WHERE c.deleted = false " +
+            "AND ((c.status = 'PENDING' OR c.status IS NULL) " +
+            "     OR (c.isVerified = true AND c.isNeededReviewCertificate = true)) " +
+            "AND (q.deleted = false OR q IS NULL)")
+    java.util.List<CaregiverProfile> findByIsVerifiedFalseAndDeletedFalse();
+
+    @Query("SELECT DISTINCT c FROM CaregiverProfile c " +
+            "LEFT JOIN FETCH c.account " +
+            "LEFT JOIN FETCH c.qualifications q " +
+            "WHERE c.caregiverProfileId = :id " +
+            "AND c.deleted = false " +
+            "AND (q.deleted = false OR q IS NULL)")
+    CaregiverProfile findByCaregiverProfileIdWithAccountAndQualifications(UUID id);
 }
