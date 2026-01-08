@@ -158,12 +158,18 @@ public class StatisticServiceImpl implements StatisticService {
                 int currentMonth = now.getMonthValue();
                 int currentYear = now.getYear();
 
+                // Get all care services for this caregiver (will be reused for task completion rate calculation)
+                List<CareService> allCareServices = careServiceRepository
+                                .findByCaregiverProfileAndDeletedIsFalse(caregiverProfile,
+                                                org.springframework.data.domain.Sort.unsorted());
+
                 // 1. Count total care services in current month
-                List<CareService> careServicesThisMonth = careServiceRepository
-                                .findByCaregiverProfileAndYearAndMonth(
-                                                caregiverProfile.getCaregiverProfileId(),
-                                                currentYear,
-                                                currentMonth);
+                List<CareService> careServicesThisMonth = allCareServices.stream()
+                                .filter(cs -> cs.getWorkDate() != null
+                                                && cs.getWorkDate().getYear() == currentYear
+                                                && cs.getWorkDate().getMonthValue() == currentMonth)
+                                .collect(java.util.stream.Collectors.toList());
+                
                 Long totalCareServicesThisMonth = (long) careServicesThisMonth.size();
 
                 // 2. Get total earnings from PayoutBatch for current month
@@ -206,11 +212,7 @@ public class StatisticServiceImpl implements StatisticService {
                 }
 
                 // 4. Calculate task completion rate
-                // Get all care services of this caregiver
-                List<CareService> allCareServices = careServiceRepository
-                                .findByCaregiverProfileAndDeletedIsFalse(caregiverProfile,
-                                                org.springframework.data.domain.Sort.unsorted());
-
+                // Reuse allCareServices already fetched above
                 int totalTasks = 0;
                 int completedTasks = 0;
 

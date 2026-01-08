@@ -119,4 +119,24 @@ public class CaregiverController {
         }
     }
 
+    @Operation(summary = "Get my caregiver profile", description = "Get current caregiver's profile with all related information including account, qualifications, etc. Only accessible by CAREGIVER role.")
+    @PreAuthorize("hasRole('CAREGIVER')")
+    @GetMapping("/profile")
+    public ResponseEntity<ObjectResponse> getMyCaregiverProfile() {
+        try {
+            com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO profile = profileService
+                    .getMyCaregiverProfile();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Get caregiver profile successfully", profile));
+        } catch (ElementNotFoundException e) {
+            log.error("Error getting caregiver profile", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error getting caregiver profile", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Fail", "Failed to get caregiver profile: " + e.getMessage(), null));
+        }
+    }
+
 }

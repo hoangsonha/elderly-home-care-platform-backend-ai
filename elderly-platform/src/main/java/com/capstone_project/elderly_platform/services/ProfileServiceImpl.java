@@ -5,8 +5,10 @@ import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRe
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CaregiverProfileVerificationRequest;
 import com.capstone_project.elderly_platform.dtos.request.QualificationVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverVerificationResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import com.capstone_project.elderly_platform.enums.EnumActivationStatusType;
@@ -27,10 +29,14 @@ import com.capstone_project.elderly_platform.pojos.Qualification;
 import com.capstone_project.elderly_platform.pojos.QualificationType;
 import com.capstone_project.elderly_platform.repositories.AccountRepository;
 import com.capstone_project.elderly_platform.repositories.CareSeekerProfileRepository;
+import com.capstone_project.elderly_platform.repositories.CareServiceRepository;
 import com.capstone_project.elderly_platform.repositories.CaregiverProfileRepository;
 import com.capstone_project.elderly_platform.repositories.ElderlyProfileRepository;
+import com.capstone_project.elderly_platform.repositories.PayoutBatchRepository;
 import com.capstone_project.elderly_platform.repositories.QualificationRepository;
 import com.capstone_project.elderly_platform.repositories.QualificationTypeRepository;
+import com.capstone_project.elderly_platform.repositories.WorkScheduleRepository;
+import com.capstone_project.elderly_platform.repositories.WorkTaskRepository;
 import com.capstone_project.elderly_platform.services.externals.firebase.FirebaseStorageService;
 import com.capstone_project.elderly_platform.utils.CaregiverScheduleUtils;
 import com.capstone_project.elderly_platform.utils.SecurityUtils;
@@ -61,6 +67,10 @@ public class ProfileServiceImpl implements ProfileService {
     private final AccountRepository accountRepository;
     private final QualificationRepository qualificationRepository;
     private final QualificationTypeRepository qualificationTypeRepository;
+    private final CareServiceRepository careServiceRepository;
+    private final PayoutBatchRepository payoutBatchRepository;
+    private final WorkScheduleRepository workScheduleRepository;
+    private final WorkTaskRepository workTaskRepository;
     private final CaregiverProfileMapper caregiverProfileMapper;
     private final CareSeekerProfileMapper careSeekerProfileMapper;
     private final ElderlyProfileMapper elderlyProfileMapper;
@@ -1214,5 +1224,293 @@ public class ProfileServiceImpl implements ProfileService {
 
         // Return updated profile with all information
         return mapToVerificationDTO(updatedProfile);
+    }
+
+    @Override
+    public CaregiverProfileDetailResponseDTO getMyCaregiverProfile() {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Getting caregiver profile for account ID: {}", currentAccountId);
+
+        // Fetch caregiver profile with account and qualifications
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByAccountIdWithAccountAndQualifications(currentAccountId);
+
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found for current user");
+        }
+
+        return mapToCaregiverProfileDetailDTO(caregiverProfile);
+    }
+
+    @Override
+    public CareSeekerProfileDetailResponseDTO getMyCareSeekerProfile() {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Getting care seeker profile for account ID: {}", currentAccountId);
+
+        // Fetch care seeker profile with account and elderly profiles
+        CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                .findByAccountIdWithAccountAndElderlyProfiles(currentAccountId);
+
+        if (careSeekerProfile == null) {
+            throw new ElementNotFoundException("Care seeker profile not found for current user");
+        }
+
+        return mapToCareSeekerProfileDetailDTO(careSeekerProfile);
+    }
+
+    private CaregiverProfileDetailResponseDTO mapToCaregiverProfileDetailDTO(CaregiverProfile profile) {
+        if (profile == null) {
+            return null;
+        }
+
+        // Calculate age
+        Integer age = null;
+        if (profile.getBirthDate() != null) {
+            age = java.time.Period.between(profile.getBirthDate(), LocalDate.now()).getYears();
+        }
+
+        // Map Account info
+        String accountId = null;
+        String email = null;
+        String avatarUrl = null;
+        Boolean enabled = null;
+        Boolean nonLocked = null;
+
+        if (profile.getAccount() != null) {
+            Account account = profile.getAccount();
+            accountId = account.getAccountId() != null ? account.getAccountId().toString() : null;
+            email = account.getEmail();
+            avatarUrl = account.getAvatarUrl();
+            enabled = account.getEnabled();
+            nonLocked = account.getNonLocked();
+        }
+
+        // Map Qualifications
+        List<CaregiverProfileDetailResponseDTO.QualificationDetailDTO> qualifications = new ArrayList<>();
+        if (profile.getQualifications() != null) {
+            qualifications = profile.getQualifications().stream()
+                    .filter(q -> !q.isDeleted())
+                    .map(this::mapQualificationToDetailDTO)
+                    .collect(Collectors.toList());
+        }
+
+        // Calculate statistics
+        // 1. Total completed bookings (care-services with status COMPLETED)
+        List<com.capstone_project.elderly_platform.pojos.CareService> completedCareServices = 
+                careServiceRepository.findByCaregiverProfileAndStatusAndDeletedIsFalse(
+                        profile, 
+                        com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType.COMPLETED,
+                        org.springframework.data.domain.Sort.unsorted());
+        Long totalCompletedBookings = (long) completedCareServices.size();
+
+        // 2. Total earnings (sum of total_caregiver_earnings from all PayoutBatches)
+        Double totalEarnings = 0.0;
+        List<com.capstone_project.elderly_platform.pojos.PayoutBatch> payoutBatches = 
+                payoutBatchRepository.findAll().stream()
+                        .filter(pb -> !pb.isDeleted() 
+                                && pb.getCaregiverProfile() != null
+                                && pb.getCaregiverProfile().getCaregiverProfileId()
+                                        .equals(profile.getCaregiverProfileId()))
+                        .collect(Collectors.toList());
+        for (com.capstone_project.elderly_platform.pojos.PayoutBatch pb : payoutBatches) {
+            if (pb.getTotalCaregiverEarnings() != null) {
+                totalEarnings += pb.getTotalCaregiverEarnings();
+            }
+        }
+
+        // 3. Task completion rate (% of DONE tasks in COMPLETED care-services)
+        Double taskCompletionRate = 0.0;
+        int totalTasks = 0;
+        int doneTasks = 0;
+        
+        for (com.capstone_project.elderly_platform.pojos.CareService careService : completedCareServices) {
+            // Get work schedules for this care service
+            List<com.capstone_project.elderly_platform.pojos.WorkSchedule> workSchedules = 
+                    workScheduleRepository.findAll().stream()
+                            .filter(ws -> !ws.isDeleted() 
+                                    && ws.getCareService() != null
+                                    && ws.getCareService().getCareServiceId()
+                                            .equals(careService.getCareServiceId()))
+                            .collect(Collectors.toList());
+            
+            for (com.capstone_project.elderly_platform.pojos.WorkSchedule workSchedule : workSchedules) {
+                // Add total_tasks from work schedule
+                if (workSchedule.getTotalTasks() != null) {
+                    totalTasks += workSchedule.getTotalTasks();
+                }
+                
+                // Get work tasks for this work schedule
+                List<com.capstone_project.elderly_platform.pojos.WorkTask> workTasks = 
+                        workTaskRepository.findAll().stream()
+                                .filter(wt -> !wt.isDeleted() 
+                                        && wt.getWorkSchedule() != null
+                                        && wt.getWorkSchedule().getWorkScheduleId()
+                                                .equals(workSchedule.getWorkScheduleId()))
+                                .collect(Collectors.toList());
+                
+                // Count DONE tasks
+                for (com.capstone_project.elderly_platform.pojos.WorkTask workTask : workTasks) {
+                    if (workTask.getStatus() == com.capstone_project.elderly_platform.enums.EnumWorkTaskStatusType.DONE) {
+                        doneTasks++;
+                    }
+                }
+            }
+        }
+        
+        // Calculate percentage
+        if (totalTasks > 0) {
+            taskCompletionRate = (doneTasks * 100.0) / totalTasks;
+        }
+
+        return CaregiverProfileDetailResponseDTO.builder()
+                .caregiverProfileId(profile.getCaregiverProfileId() != null
+                        ? profile.getCaregiverProfileId().toString()
+                        : null)
+                .fullName(profile.getFullName())
+                .phoneNumber(profile.getPhoneNumber())
+                .location(profile.getLocation())
+                .bio(profile.getBio())
+                .isVerified(profile.getIsVerified())
+                .status(profile.getStatus() != null ? profile.getStatus().name() : null)
+                .rejectionReason(profile.getRejectionReason())
+                .isNeededReviewCertificate(profile.getIsNeededReviewCertificate())
+                .acceptedAt(profile.getAcceptedAt() != null
+                        ? profile.getAcceptedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .declinedAt(profile.getDeclinedAt() != null
+                        ? profile.getDeclinedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .reviewedBy(profile.getReviewedBy() != null ? profile.getReviewedBy().toString() : null)
+                .birthDate(profile.getBirthDate() != null
+                        ? profile.getBirthDate().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                        : null)
+                .age(age)
+                .gender(profile.getGender() != null ? profile.getGender().name() : null)
+                .profileData(profile.getProfileData())
+                .accountId(accountId)
+                .email(email)
+                .avatarUrl(avatarUrl)
+                .enabled(enabled)
+                .nonLocked(nonLocked)
+                .qualifications(qualifications)
+                .totalCompletedBookings(totalCompletedBookings)
+                .totalEarnings(totalEarnings)
+                .taskCompletionRate(taskCompletionRate)
+                .build();
+    }
+
+    private CaregiverProfileDetailResponseDTO.QualificationDetailDTO mapQualificationToDetailDTO(Qualification qualification) {
+        if (qualification == null) {
+            return null;
+        }
+
+        String qualificationTypeId = null;
+        String qualificationTypeName = null;
+        if (qualification.getQualificationType() != null) {
+            qualificationTypeId = qualification.getQualificationType().getQualificationTypeId() != null
+                    ? qualification.getQualificationType().getQualificationTypeId().toString()
+                    : null;
+            qualificationTypeName = qualification.getQualificationType().getTypeName();
+        }
+
+        return CaregiverProfileDetailResponseDTO.QualificationDetailDTO.builder()
+                .qualificationId(qualification.getQualificationId() != null
+                        ? qualification.getQualificationId().toString()
+                        : null)
+                .qualificationTypeId(qualificationTypeId)
+                .qualificationTypeName(qualificationTypeName)
+                .certificateNumber(qualification.getCertificateNumber())
+                .issuingOrganization(qualification.getIssuingOrganization())
+                .issueDate(qualification.getIssueDate() != null
+                        ? qualification.getIssueDate().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                        : null)
+                .expiryDate(qualification.getExpiryDate() != null
+                        ? qualification.getExpiryDate().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                        : null)
+                .certificateUrl(qualification.getCertificateUrl())
+                .isVerified(qualification.getIsVerified())
+                .status(qualification.getStatus() != null ? qualification.getStatus().name() : null)
+                .rejectionReason(qualification.getRejectionReason())
+                .acceptedAt(qualification.getAcceptedAt() != null
+                        ? qualification.getAcceptedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .declinedAt(qualification.getDeclinedAt() != null
+                        ? qualification.getDeclinedAt().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .reviewedBy(qualification.getReviewedBy() != null ? qualification.getReviewedBy().toString() : null)
+                .notes(qualification.getNotes())
+                .build();
+    }
+
+    private CareSeekerProfileDetailResponseDTO mapToCareSeekerProfileDetailDTO(CareSeekerProfile profile) {
+        if (profile == null) {
+            return null;
+        }
+
+        // Calculate age
+        Integer age = null;
+        if (profile.getBirthDate() != null) {
+            age = java.time.Period.between(profile.getBirthDate(), LocalDate.now()).getYears();
+        }
+
+        // Map Account info
+        String accountId = null;
+        String email = null;
+        String avatarUrl = null;
+        Boolean enabled = null;
+        Boolean nonLocked = null;
+
+        if (profile.getAccount() != null) {
+            Account account = profile.getAccount();
+            accountId = account.getAccountId() != null ? account.getAccountId().toString() : null;
+            email = account.getEmail();
+            avatarUrl = account.getAvatarUrl();
+            enabled = account.getEnabled();
+            nonLocked = account.getNonLocked();
+        }
+
+        // Map Elderly Profiles
+        List<ElderlyProfileResponseDTO> elderlyProfiles = new ArrayList<>();
+        if (profile.getElderlyProfiles() != null) {
+            elderlyProfiles = profile.getElderlyProfiles().stream()
+                    .filter(e -> !e.isDeleted())
+                    .map(elderlyProfileMapper::toDTO)
+                    .collect(Collectors.toList());
+        }
+
+        // Calculate statistics
+        // 1. Total elderly profiles
+        Long totalElderlyProfiles = (long) elderlyProfiles.size();
+
+        // 2. Total completed bookings (care-services with status COMPLETED)
+        List<com.capstone_project.elderly_platform.pojos.CareService> completedCareServices = 
+                careServiceRepository.findByCareSeekerProfileAndStatusAndDeletedIsFalse(
+                        profile, 
+                        com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType.COMPLETED,
+                        org.springframework.data.domain.Sort.unsorted());
+        Long totalCompletedBookings = (long) completedCareServices.size();
+
+        return CareSeekerProfileDetailResponseDTO.builder()
+                .careSeekerProfileId(profile.getCareSeekerProfileId() != null
+                        ? profile.getCareSeekerProfileId().toString()
+                        : null)
+                .fullName(profile.getFullName())
+                .phoneNumber(profile.getPhoneNumber())
+                .location(profile.getLocation())
+                .birthDate(profile.getBirthDate() != null
+                        ? profile.getBirthDate().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
+                        : null)
+                .age(age)
+                .gender(profile.getGender() != null ? profile.getGender().name() : null)
+                .profileData(profile.getProfileData())
+                .accountId(accountId)
+                .email(email)
+                .avatarUrl(avatarUrl)
+                .enabled(enabled)
+                .nonLocked(nonLocked)
+                .elderlyProfiles(elderlyProfiles)
+                .totalElderlyProfiles(totalElderlyProfiles)
+                .totalCompletedBookings(totalCompletedBookings)
+                .build();
     }
 }

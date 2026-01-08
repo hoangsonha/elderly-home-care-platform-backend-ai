@@ -38,4 +38,12 @@ public interface CaregiverProfileRepository extends JpaRepository<CaregiverProfi
             "AND c.deleted = false " +
             "AND (q.deleted = false OR q IS NULL)")
     CaregiverProfile findByCaregiverProfileIdWithAccountAndQualifications(UUID id);
+    
+    @Query("SELECT DISTINCT c FROM CaregiverProfile c " +
+            "LEFT JOIN FETCH c.account " +
+            "LEFT JOIN FETCH c.qualifications q " +
+            "WHERE c.account.accountId = :accountId " +
+            "AND c.deleted = false " +
+            "AND (q.deleted = false OR q IS NULL)")
+    CaregiverProfile findByAccountIdWithAccountAndQualifications(UUID accountId);
 }

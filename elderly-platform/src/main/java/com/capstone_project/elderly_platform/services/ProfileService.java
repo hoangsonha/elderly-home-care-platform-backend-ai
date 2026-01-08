@@ -5,8 +5,10 @@ import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfil
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.QualificationVerificationRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverVerificationResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,4 +39,8 @@ public interface ProfileService {
 
     CaregiverVerificationResponseDTO verifyQualification(UUID qualificationId,
             QualificationVerificationRequest request);
+    
+    CaregiverProfileDetailResponseDTO getMyCaregiverProfile();
+    
+    CareSeekerProfileDetailResponseDTO getMyCareSeekerProfile();
 }
