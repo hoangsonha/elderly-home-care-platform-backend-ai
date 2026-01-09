@@ -3,6 +3,7 @@ package com.capstone_project.elderly_platform.services;
 import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverQualificationsRequest;
 import com.capstone_project.elderly_platform.dtos.request.CaregiverProfileVerificationRequest;
 import com.capstone_project.elderly_platform.dtos.request.QualificationVerificationRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
@@ -172,7 +173,7 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getHeight() != null) {
             profileDataMap.put("height", request.getHeight());
         }
-
+        
         // Add medical conditions to profileData
         if (request.getMedicalConditions() != null) {
             Map<String, Object> medicalConditionsMap = new HashMap<>();
@@ -192,7 +193,7 @@ public class ProfileServiceImpl implements ProfileService {
                 profileDataMap.put("medical_conditions", medicalConditionsMap);
             }
         }
-
+        
         // Add independence level to profileData
         if (request.getIndependenceLevel() != null && !request.getIndependenceLevel().isEmpty()) {
             Map<String, String> independenceLevelMap = new HashMap<>();
@@ -201,7 +202,7 @@ public class ProfileServiceImpl implements ProfileService {
             }
             profileDataMap.put("independence_level", independenceLevelMap);
         }
-
+        
         if (request.getHobbies() != null) {
             profileDataMap.put("hobbies", request.getHobbies());
         }
@@ -345,7 +346,7 @@ public class ProfileServiceImpl implements ProfileService {
             try {
                 avatarUrl = firebaseStorageService.uploadSingleImages(avatarFile);
                 log.info("Avatar uploaded successfully: {}", avatarUrl);
-
+                
                 // Update avatarUrl in Account
                 account.setAvatarUrl(avatarUrl);
                 accountRepository.save(account);
@@ -407,7 +408,9 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional
     public CaregiverProfileResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request,
             MultipartFile avatarFile,
-            List<MultipartFile> credentialFiles) {
+            List<MultipartFile> credentialFiles,
+            MultipartFile citizenIdFrontImage,
+            MultipartFile citizenIdBackImage) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         log.info("Creating caregiver profile for account ID: {}", currentAccountId);
 
@@ -426,6 +429,17 @@ public class ProfileServiceImpl implements ProfileService {
         }
 
         LocalDateTime now = LocalDateTime.now();
+
+        // 0. Validate required CCCD/CMND fields
+        if (request.getCitizenId() == null || request.getCitizenId().trim().isEmpty()) {
+            throw new BadRequestException("Số CCCD/CMND là bắt buộc");
+        }
+        if (citizenIdFrontImage == null || citizenIdFrontImage.isEmpty()) {
+            throw new BadRequestException("Ảnh mặt trước CCCD/CMND là bắt buộc");
+        }
+        if (citizenIdBackImage == null || citizenIdBackImage.isEmpty()) {
+            throw new BadRequestException("Ảnh mặt sau CCCD/CMND là bắt buộc");
+        }
 
         // 1. Upload avatar and update Account
         String avatarUrl = null;
@@ -481,12 +495,47 @@ public class ProfileServiceImpl implements ProfileService {
             }
         }
 
-        // 5. Build profileData JSON (years_experience, free_schedule,
-        // max_hours_per_week, preferences)
+        // 5. Upload CCCD/CMND images and get URLs
+        String citizenIdFrontImageUrl = null;
+        String citizenIdBackImageUrl = null;
+        
+        if (citizenIdFrontImage != null && !citizenIdFrontImage.isEmpty()) {
+            try {
+                citizenIdFrontImageUrl = firebaseStorageService.uploadSingleImages(citizenIdFrontImage);
+                log.info("CCCD/CMND front image uploaded successfully: {}", citizenIdFrontImageUrl);
+            } catch (Exception e) {
+                log.error("Failed to upload CCCD/CMND front image: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to upload CCCD/CMND front image: " + e.getMessage());
+            }
+        }
+        
+        if (citizenIdBackImage != null && !citizenIdBackImage.isEmpty()) {
+            try {
+                citizenIdBackImageUrl = firebaseStorageService.uploadSingleImages(citizenIdBackImage);
+                log.info("CCCD/CMND back image uploaded successfully: {}", citizenIdBackImageUrl);
+            } catch (Exception e) {
+                log.error("Failed to upload CCCD/CMND back image: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to upload CCCD/CMND back image: " + e.getMessage());
+            }
+        }
+
+        // 6. Build profileData JSON (years_experience, free_schedule,
+        // max_hours_per_week, preferences, citizen_id)
         Map<String, Object> profileDataMap = new HashMap<>();
 
         if (request.getYearsExperience() != null) {
             profileDataMap.put("years_experience", request.getYearsExperience());
+        }
+        
+        // Add citizen ID information
+        if (request.getCitizenId() != null && !request.getCitizenId().trim().isEmpty()) {
+            profileDataMap.put("citizen_id", request.getCitizenId());
+        }
+        if (citizenIdFrontImageUrl != null) {
+            profileDataMap.put("citizen_id_front_image_url", citizenIdFrontImageUrl);
+        }
+        if (citizenIdBackImageUrl != null) {
+            profileDataMap.put("citizen_id_back_image_url", citizenIdBackImageUrl);
         }
 
         // Handle free_schedule
@@ -597,7 +646,7 @@ public class ProfileServiceImpl implements ProfileService {
             }
         }
 
-        // 6. Create CaregiverProfile entity
+        // 7. Create CaregiverProfile entity
         // Set is_needed_review_certificate = true if there are credentials
         boolean hasCredentials = request.getCredentials() != null && !request.getCredentials().isEmpty();
 
@@ -623,7 +672,7 @@ public class ProfileServiceImpl implements ProfileService {
         CaregiverProfile savedProfile = caregiverProfileRepository.save(caregiverProfile);
         log.info("Caregiver profile created successfully with ID: {}", savedProfile.getCaregiverProfileId());
 
-        // 7. Handle credentials
+        // 8. Handle credentials
         if (request.getCredentials() != null && !request.getCredentials().isEmpty()) {
             // Validate credential files
             if (credentialFiles == null || credentialFiles.size() != request.getCredentials().size()) {
@@ -688,7 +737,9 @@ public class ProfileServiceImpl implements ProfileService {
     @Transactional
     public CaregiverProfileResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request,
             MultipartFile avatarFile,
-            List<MultipartFile> credentialFiles) {
+            List<MultipartFile> credentialFiles,
+            MultipartFile citizenIdFrontImage,
+            MultipartFile citizenIdBackImage) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         log.info("Updating caregiver profile for account ID: {}", currentAccountId);
 
@@ -704,8 +755,6 @@ public class ProfileServiceImpl implements ProfileService {
         if (account == null) {
             throw new ElementNotFoundException("Account not found for caregiver profile");
         }
-
-        LocalDateTime now = LocalDateTime.now();
 
         // 1. Update basic fields
         if (request.getFullName() != null) {
@@ -782,8 +831,32 @@ public class ProfileServiceImpl implements ProfileService {
             }
         }
 
-        // 4. Update profileData JSON (years_experience, free_schedule,
-        // max_hours_per_week, preferences)
+        // 4. Upload CCCD/CMND images and get URLs
+        String citizenIdFrontImageUrl = null;
+        String citizenIdBackImageUrl = null;
+        
+        if (citizenIdFrontImage != null && !citizenIdFrontImage.isEmpty()) {
+            try {
+                citizenIdFrontImageUrl = firebaseStorageService.uploadSingleImages(citizenIdFrontImage);
+                log.info("CCCD/CMND front image uploaded successfully: {}", citizenIdFrontImageUrl);
+            } catch (Exception e) {
+                log.error("Failed to upload CCCD/CMND front image: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to upload CCCD/CMND front image: " + e.getMessage());
+            }
+        }
+        
+        if (citizenIdBackImage != null && !citizenIdBackImage.isEmpty()) {
+            try {
+                citizenIdBackImageUrl = firebaseStorageService.uploadSingleImages(citizenIdBackImage);
+                log.info("CCCD/CMND back image uploaded successfully: {}", citizenIdBackImageUrl);
+            } catch (Exception e) {
+                log.error("Failed to upload CCCD/CMND back image: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to upload CCCD/CMND back image: " + e.getMessage());
+            }
+        }
+
+        // 5. Update profileData JSON (years_experience, free_schedule,
+        // max_hours_per_week, preferences, citizen_id)
         String currentProfileData = caregiverProfile.getProfileData();
         currentProfileData = caregiverScheduleUtils.initializeFreeScheduleIfNotExists(currentProfileData);
 
@@ -800,6 +873,17 @@ public class ProfileServiceImpl implements ProfileService {
             // Update years_experience
             if (request.getYearsExperience() != null) {
                 profileDataMap.put("years_experience", request.getYearsExperience());
+            }
+            
+            // Update citizen ID information
+            if (request.getCitizenId() != null && !request.getCitizenId().trim().isEmpty()) {
+                profileDataMap.put("citizen_id", request.getCitizenId());
+            }
+            if (citizenIdFrontImageUrl != null) {
+                profileDataMap.put("citizen_id_front_image_url", citizenIdFrontImageUrl);
+            }
+            if (citizenIdBackImageUrl != null) {
+                profileDataMap.put("citizen_id_back_image_url", citizenIdBackImageUrl);
             }
 
             // Update free_schedule
@@ -892,82 +976,108 @@ public class ProfileServiceImpl implements ProfileService {
             throw new BadRequestException("Failed to update profile data: " + e.getMessage());
         }
 
-        // 5. Handle credentials
-        if (request.getCredentials() != null && !request.getCredentials().isEmpty()) {
-            // Validate credential files
-            if (credentialFiles == null || credentialFiles.size() != request.getCredentials().size()) {
-                throw new BadRequestException("Number of credential files must match number of credentials. Expected: "
-                        + request.getCredentials().size() + ", got: "
-                        + (credentialFiles != null ? credentialFiles.size() : 0));
-            }
-
-            // Delete existing qualifications (soft delete)
-            List<Qualification> existingQualifications = qualificationRepository
-                    .findByCaregiverProfile_CaregiverProfileIdAndDeletedIsFalse(
-                            caregiverProfile.getCaregiverProfileId());
-
-            for (Qualification existing : existingQualifications) {
-                existing.setDeleted(true);
-                existing.setUpdatedAt(now);
-                qualificationRepository.save(existing);
-            }
-
-            // Create new qualifications
-            for (int i = 0; i < request.getCredentials().size(); i++) {
-                UpdateCaregiverProfileRequest.CredentialRequest credRequest = request.getCredentials().get(i);
-                MultipartFile credentialFile = credentialFiles.get(i);
-
-                // Validate qualification type
-                QualificationType qualificationType = qualificationTypeRepository
-                        .findByQualificationTypeIdAndDeletedIsFalse(credRequest.getQualificationTypeId());
-                if (qualificationType == null) {
-                    throw new BadRequestException(
-                            "Qualification type not found: " + credRequest.getQualificationTypeId());
-                }
-
-                // Upload certificate file (required for each credential)
-                String certificateUrl = null;
-                if (credentialFile != null && !credentialFile.isEmpty()) {
-                    try {
-                        // Use uploadFile for any file type (image or document)
-                        certificateUrl = firebaseStorageService.uploadFile(credentialFile);
-                        log.info("Credential file uploaded successfully: {}", certificateUrl);
-                    } catch (Exception e) {
-                        log.error("Failed to upload credential file: {}", e.getMessage(), e);
-                        throw new BadRequestException("Failed to upload credential file: " + e.getMessage());
-                    }
-                } else {
-                    throw new BadRequestException("Credential file is required for credential at index " + i);
-                }
-
-                // Create Qualification
-                Qualification qualification = Qualification.builder()
-                        .caregiverProfile(caregiverProfile)
-                        .qualificationType(qualificationType)
-                        .certificateNumber(credRequest.getCertificateNumber())
-                        .issuingOrganization(credRequest.getIssuingOrganization())
-                        .issueDate(credRequest.getIssueDate())
-                        .expiryDate(credRequest.getExpiryDate())
-                        .certificateUrl(certificateUrl)
-                        .isVerified(false) // Default false, not from request
-                        .status(EnumVerificationStatusType.PENDING) // Default PENDING
-                        .notes(credRequest.getNotes())
-                        .build();
-
-                // Set is_needed_review_certificate = true when new credential is added
-                caregiverProfile.setIsNeededReviewCertificate(true);
-
-                qualification.setCreatedAt(now);
-                qualification.setUpdatedAt(now);
-                qualification.setDeleted(false);
-
-                qualificationRepository.save(qualification);
-            }
-        }
+        // Note: Credentials are now handled by separate API: PUT /api/v1/caregivers/qualifications
 
         // Save caregiver profile
         CaregiverProfile savedProfile = caregiverProfileRepository.save(caregiverProfile);
         log.info("Caregiver profile updated successfully with ID: {}", savedProfile.getCaregiverProfileId());
+
+        return caregiverProfileMapper.toDTO(savedProfile);
+    }
+
+    @Override
+    @Transactional
+    public CaregiverProfileResponseDTO updateCaregiverQualifications(UpdateCaregiverQualificationsRequest request,
+            List<MultipartFile> credentialFiles) {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Updating caregiver qualifications for account ID: {}", currentAccountId);
+
+        // Get caregiver profile
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found for current user");
+        }
+
+        if (request.getQualifications() == null || request.getQualifications().isEmpty()) {
+            throw new BadRequestException("Danh sách chứng chỉ không được để trống");
+        }
+
+        // Validate credential files
+        if (credentialFiles == null || credentialFiles.size() != request.getQualifications().size()) {
+            throw new BadRequestException("Number of credential files must match number of qualifications. Expected: "
+                    + request.getQualifications().size() + ", got: "
+                    + (credentialFiles != null ? credentialFiles.size() : 0));
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // Delete existing qualifications (soft delete)
+        List<Qualification> existingQualifications = qualificationRepository
+                .findByCaregiverProfile_CaregiverProfileIdAndDeletedIsFalse(
+                        caregiverProfile.getCaregiverProfileId());
+
+        for (Qualification existing : existingQualifications) {
+            existing.setDeleted(true);
+            existing.setUpdatedAt(now);
+            qualificationRepository.save(existing);
+        }
+
+        // Create new qualifications
+        for (int i = 0; i < request.getQualifications().size(); i++) {
+            UpdateCaregiverQualificationsRequest.QualificationRequest qualRequest = request.getQualifications().get(i);
+            MultipartFile credentialFile = credentialFiles.get(i);
+
+            // Validate qualification type
+            QualificationType qualificationType = qualificationTypeRepository
+                    .findByQualificationTypeIdAndDeletedIsFalse(qualRequest.getQualificationTypeId());
+            if (qualificationType == null) {
+                throw new BadRequestException(
+                        "Qualification type not found: " + qualRequest.getQualificationTypeId());
+            }
+
+            // Upload certificate file (required for each credential)
+            String certificateUrl = null;
+            if (credentialFile != null && !credentialFile.isEmpty()) {
+                try {
+                    certificateUrl = firebaseStorageService.uploadFile(credentialFile);
+                    log.info("Credential file uploaded successfully: {}", certificateUrl);
+                } catch (Exception e) {
+                    log.error("Failed to upload credential file: {}", e.getMessage(), e);
+                    throw new BadRequestException("Failed to upload credential file: " + e.getMessage());
+                }
+            } else {
+                throw new BadRequestException("Credential file is required for qualification at index " + i);
+            }
+
+            // Create Qualification
+            Qualification qualification = Qualification.builder()
+                    .caregiverProfile(caregiverProfile)
+                    .qualificationType(qualificationType)
+                    .certificateNumber(qualRequest.getCertificateNumber())
+                    .issuingOrganization(qualRequest.getIssuingOrganization())
+                    .issueDate(qualRequest.getIssueDate())
+                    .expiryDate(qualRequest.getExpiryDate())
+                    .certificateUrl(certificateUrl)
+                    .isVerified(false) // Default false
+                    .status(EnumVerificationStatusType.PENDING) // Default PENDING
+                    .notes(qualRequest.getNotes())
+                    .build();
+
+            // Set is_needed_review_certificate = true when new credential is added
+            caregiverProfile.setIsNeededReviewCertificate(true);
+
+            qualification.setCreatedAt(now);
+            qualification.setUpdatedAt(now);
+            qualification.setDeleted(false);
+
+            qualificationRepository.save(qualification);
+        }
+
+        // Save caregiver profile
+        CaregiverProfile savedProfile = caregiverProfileRepository.save(caregiverProfile);
+        log.info("Caregiver qualifications updated successfully with ID: {}", savedProfile.getCaregiverProfileId());
 
         return caregiverProfileMapper.toDTO(savedProfile);
     }

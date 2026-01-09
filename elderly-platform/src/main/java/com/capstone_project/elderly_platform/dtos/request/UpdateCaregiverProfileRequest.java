@@ -34,6 +34,9 @@ public class UpdateCaregiverProfileRequest {
 
     String phone;
 
+    @JsonProperty("citizen_id")
+    String citizenId; // Số CCCD/CMND
+
     @Valid
     LocationRequest location; // address, latitude, longitude
 
