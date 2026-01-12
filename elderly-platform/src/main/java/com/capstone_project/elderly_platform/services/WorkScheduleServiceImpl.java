@@ -23,12 +23,18 @@ import com.capstone_project.elderly_platform.repositories.CareServiceStatusLogRe
 import com.capstone_project.elderly_platform.repositories.WorkScheduleRepository;
 import com.capstone_project.elderly_platform.repositories.WorkTaskRepository;
 import com.capstone_project.elderly_platform.services.externals.firebase.FirebaseStorageService;
+import com.capstone_project.elderly_platform.services.externals.firebase.PushNotificationService;
 import com.capstone_project.elderly_platform.services.externals.payos.PayOSService;
+import com.capstone_project.elderly_platform.enums.EnumNotificationType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -41,6 +47,7 @@ public class WorkScheduleServiceImpl implements WorkScheduleService {
     private final CareServiceStatusLogRepository careServiceStatusLogRepository;
     private final FirebaseStorageService firebaseStorageService;
     private final PayOSService payOSService;
+    private final PushNotificationService pushNotificationService;
 
     @Override
     @Transactional
@@ -123,6 +130,51 @@ public class WorkScheduleServiceImpl implements WorkScheduleService {
                 .note("Bắt đầu làm việc - Check In tại " + java.time.LocalDateTime.now())
                 .build();
         careServiceStatusLogRepository.save(statusLog);
+
+        // Send notification to care seeker (caregiver đã bắt đầu làm việc)
+        try {
+            UUID seekerAccountId = savedCareService.getCareSeekerProfile() != null
+                    && savedCareService.getCareSeekerProfile().getAccount() != null
+                            ? savedCareService.getCareSeekerProfile().getAccount().getAccountId()
+                            : null;
+
+            UUID caregiverAccountId = savedCareService.getCaregiverProfile() != null
+                    && savedCareService.getCaregiverProfile().getAccount() != null
+                            ? savedCareService.getCaregiverProfile().getAccount().getAccountId()
+                            : null;
+
+            if (seekerAccountId != null) {
+                Map<String, Object> notificationData = new HashMap<>();
+                notificationData.put("careServiceId", savedCareService.getCareServiceId().toString());
+                notificationData.put("bookingCode", savedCareService.getBookingCode());
+                notificationData.put("status", EnumCareServiceStatusType.IN_PROGRESS.name());
+                notificationData.put("workDate", savedCareService.getWorkDate() != null 
+                        ? savedCareService.getWorkDate().toString() : null);
+
+                pushNotificationService.sendNotification(
+                        seekerAccountId, // recipient: seeker
+                        caregiverAccountId, // sender: caregiver
+                        "Caregiver đã bắt đầu làm việc",
+                        String.format(
+                                "Caregiver đã bắt đầu làm việc cho dịch vụ #%s vào ngày %s.",
+                                savedCareService.getBookingCode(),
+                                savedCareService.getWorkDate() != null 
+                                        ? savedCareService.getWorkDate().toString() 
+                                        : "hôm nay"),
+                        EnumNotificationType.WORK_SCHEDULE_UPDATED,
+                        "CARE_SERVICE",
+                        savedCareService.getCareServiceId(),
+                        notificationData,
+                        checkInImageUrl); // Use check-in image
+
+                log.info("Notification sent to seeker {} for started work service {}",
+                        seekerAccountId, savedCareService.getCareServiceId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send notification for started work service {}: {}",
+                    savedCareService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - work is already started
+        }
 
         log.info("Work started successfully for care service {}", savedCareService.getCareServiceId());
 
@@ -232,6 +284,51 @@ public class WorkScheduleServiceImpl implements WorkScheduleService {
             throw new BadRequestException("Lỗi khi tạo payment link: " + e.getMessage());
         }
 
+        // Send notification to care seeker (caregiver đã kết thúc làm việc)
+        try {
+            UUID seekerAccountId = savedCareService.getCareSeekerProfile() != null
+                    && savedCareService.getCareSeekerProfile().getAccount() != null
+                            ? savedCareService.getCareSeekerProfile().getAccount().getAccountId()
+                            : null;
+
+            UUID caregiverAccountId = savedCareService.getCaregiverProfile() != null
+                    && savedCareService.getCaregiverProfile().getAccount() != null
+                            ? savedCareService.getCaregiverProfile().getAccount().getAccountId()
+                            : null;
+
+            if (seekerAccountId != null) {
+                Map<String, Object> notificationData = new HashMap<>();
+                notificationData.put("careServiceId", savedCareService.getCareServiceId().toString());
+                notificationData.put("bookingCode", savedCareService.getBookingCode());
+                notificationData.put("status", EnumCareServiceStatusType.WAITING_PAYMENT.name());
+                notificationData.put("workDate", savedCareService.getWorkDate() != null 
+                        ? savedCareService.getWorkDate().toString() : null);
+                notificationData.put("amount", savedCareService.getTotalPrice());
+                notificationData.put("checkoutUrl", paymentResponse.getCheckoutUrl());
+                notificationData.put("orderCode", paymentResponse.getOrderCode());
+
+                pushNotificationService.sendNotification(
+                        seekerAccountId, // recipient: seeker
+                        caregiverAccountId, // sender: caregiver
+                        "Caregiver đã hoàn thành công việc",
+                        String.format(
+                                "Caregiver đã hoàn thành công việc cho dịch vụ #%s. Vui lòng thanh toán để hoàn tất dịch vụ.",
+                                savedCareService.getBookingCode()),
+                        EnumNotificationType.WORK_SCHEDULE_UPDATED,
+                        "CARE_SERVICE",
+                        savedCareService.getCareServiceId(),
+                        notificationData,
+                        checkOutImageUrl); // Use check-out image
+
+                log.info("Notification sent to seeker {} for ended work service {}",
+                        seekerAccountId, savedCareService.getCareServiceId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to send notification for ended work service {}: {}",
+                    savedCareService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - work is already ended
+        }
+
         log.info("Work ended successfully for care service {}", savedCareService.getCareServiceId());
 
         return EndWorkResponse.builder()
@@ -297,6 +394,71 @@ public class WorkScheduleServiceImpl implements WorkScheduleService {
 
         log.info("Task {} status changed from {} to {}", 
                 savedTask.getWorkTaskId(), oldStatus, newStatus);
+
+        // Send notification to care seeker about task status change
+        try {
+            // Get care service from work schedule
+            CareService careService = workSchedule.getCareService();
+            if (careService != null && !careService.isDeleted()) {
+                UUID seekerAccountId = careService.getCareSeekerProfile() != null
+                        && careService.getCareSeekerProfile().getAccount() != null
+                                ? careService.getCareSeekerProfile().getAccount().getAccountId()
+                                : null;
+
+                UUID caregiverAccountId = careService.getCaregiverProfile() != null
+                        && careService.getCaregiverProfile().getAccount() != null
+                                ? careService.getCaregiverProfile().getAccount().getAccountId()
+                                : null;
+
+                if (seekerAccountId != null) {
+                    Map<String, Object> notificationData = new HashMap<>();
+                    notificationData.put("careServiceId", careService.getCareServiceId().toString());
+                    notificationData.put("bookingCode", careService.getBookingCode());
+                    notificationData.put("workTaskId", savedTask.getWorkTaskId().toString());
+                    notificationData.put("taskName", savedTask.getName());
+                    notificationData.put("taskStatus", newStatus.name());
+                    notificationData.put("workDate", careService.getWorkDate() != null 
+                            ? careService.getWorkDate().toString() : null);
+
+                    String notificationTitle;
+                    String notificationBody;
+
+                    if (newStatus == EnumWorkTaskStatusType.DONE) {
+                        // Task completed
+                        notificationTitle = "Nhiệm vụ đã hoàn thành";
+                        notificationBody = String.format(
+                                "Caregiver đã hoàn thành nhiệm vụ \"%s\" cho dịch vụ #%s.",
+                                savedTask.getName() != null ? savedTask.getName() : "nhiệm vụ",
+                                careService.getBookingCode());
+                    } else {
+                        // Task marked as not completed
+                        notificationTitle = "Nhiệm vụ đã được đánh dấu chưa hoàn thành";
+                        notificationBody = String.format(
+                                "Caregiver đã đánh dấu nhiệm vụ \"%s\" chưa hoàn thành cho dịch vụ #%s.",
+                                savedTask.getName() != null ? savedTask.getName() : "nhiệm vụ",
+                                careService.getBookingCode());
+                    }
+
+                    pushNotificationService.sendNotification(
+                            seekerAccountId, // recipient: seeker
+                            caregiverAccountId, // sender: caregiver
+                            notificationTitle,
+                            notificationBody,
+                            EnumNotificationType.WORK_SCHEDULE_UPDATED,
+                            "CARE_SERVICE",
+                            careService.getCareServiceId(),
+                            notificationData,
+                            null);
+
+                    log.info("Notification sent to seeker {} for toggled task {} (status: {})",
+                            seekerAccountId, savedTask.getWorkTaskId(), newStatus);
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to send notification for toggled task {}: {}",
+                    savedTask.getWorkTaskId(), e.getMessage(), e);
+            // Don't throw exception - task is already saved
+        }
 
         return ToggleWorkTaskResponse.builder()
                 .workTaskId(savedTask.getWorkTaskId())

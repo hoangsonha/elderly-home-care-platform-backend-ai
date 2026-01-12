@@ -316,6 +316,16 @@ public class CareServiceServiceImpl implements CareServiceService {
                             + careService.getStatus());
         }
 
+        // Check if deadline has passed
+        if (careService.getCaregiverResponseDeadline() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            if (now.isAfter(careService.getCaregiverResponseDeadline())) {
+                throw new BadRequestException(
+                        "Đã quá hạn để chấp nhận dịch vụ này. Hạn chót phản hồi là: "
+                                + careService.getCaregiverResponseDeadline());
+            }
+        }
+
         // Cancel scheduled expiration from Redis queue
         expiredCareServiceQueueService.cancelExpiration(careService.getCareServiceId());
 
@@ -482,6 +492,18 @@ public class CareServiceServiceImpl implements CareServiceService {
 
         if (!SecurityUtils.hasRole("ROLE_CAREGIVER") && !SecurityUtils.hasRole("ROLE_CARE_SEEKER")) {
             throw new BadRequestException("Chỉ có caregiver hoặc care seeker mới có thể từ chối dịch vụ này");
+        }
+
+        // Check deadline only for caregiver (care seeker can decline anytime)
+        if (SecurityUtils.hasRole("ROLE_CAREGIVER")) {
+            if (careService.getCaregiverResponseDeadline() != null) {
+                LocalDateTime now = LocalDateTime.now();
+                if (now.isAfter(careService.getCaregiverResponseDeadline())) {
+                    throw new BadRequestException(
+                            "Đã quá hạn để từ chối dịch vụ này. Hạn chót phản hồi là: "
+                                    + careService.getCaregiverResponseDeadline());
+                }
+            }
         }
 
         String title = SecurityUtils.hasRole("ROLE_CAREGIVER") ? "người chăm sóc" : "người thuê";

@@ -170,11 +170,14 @@ public class StatisticServiceImpl implements StatisticService {
                                 .findByCaregiverProfileAndDeletedIsFalse(caregiverProfile,
                                                 org.springframework.data.domain.Sort.unsorted());
 
-                // 1. Count total care services in current month
+                // 1. Count total care services in current month (excluding PENDING_CAREGIVER, CANCELLED, and EXPIRED status)
                 List<CareService> careServicesThisMonth = allCareServices.stream()
                                 .filter(cs -> cs.getWorkDate() != null
                                                 && cs.getWorkDate().getYear() == currentYear
-                                                && cs.getWorkDate().getMonthValue() == currentMonth)
+                                                && cs.getWorkDate().getMonthValue() == currentMonth
+                                                && cs.getStatus() != EnumCareServiceStatusType.PENDING_CAREGIVER
+                                                && cs.getStatus() != EnumCareServiceStatusType.CANCELLED
+                                                && cs.getStatus() != EnumCareServiceStatusType.EXPIRED)
                                 .collect(java.util.stream.Collectors.toList());
                 
                 Long totalCareServicesThisMonth = (long) careServicesThisMonth.size();
@@ -218,12 +221,17 @@ public class StatisticServiceImpl implements StatisticService {
                         overallRating = 0.0;
                 }
 
-                // 4. Calculate task completion rate
-                // Reuse allCareServices already fetched above
+                // 4. Calculate task completion rate (only for IN_PROGRESS and COMPLETED care services)
                 int totalTasks = 0;
                 int completedTasks = 0;
 
                 for (CareService careService : allCareServices) {
+                        // Only calculate for IN_PROGRESS and COMPLETED care services
+                        if (careService.getStatus() != EnumCareServiceStatusType.IN_PROGRESS
+                                        && careService.getStatus() != EnumCareServiceStatusType.COMPLETED) {
+                                continue;
+                        }
+
                         // Get work schedule for this care service
                         WorkSchedule workSchedule = careService.getWorkSchedule();
                         if (workSchedule != null) {
