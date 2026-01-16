@@ -40,4 +40,14 @@ public interface FeedbackRepository extends JpaRepository<Feedback, UUID> {
     // Find feedback by account and target
     Optional<Feedback> findByAccount_AccountIdAndTargetIdAndTargetTypeAndDeletedIsFalse(
             UUID accountId, UUID targetId, EnumFeedbackTargetType targetType);
+
+    // Get count by target type
+    @Query("SELECT COUNT(f) FROM Feedback f " +
+            "WHERE f.targetType = :targetType AND f.deleted = false")
+    Long countByTargetType(@Param("targetType") EnumFeedbackTargetType targetType);
+
+    // Get average rating by target type
+    @Query("SELECT COALESCE(AVG(f.rating), 0) FROM Feedback f " +
+            "WHERE f.targetType = :targetType AND f.deleted = false")
+    Double getAverageRatingByTargetType(@Param("targetType") EnumFeedbackTargetType targetType);
 }

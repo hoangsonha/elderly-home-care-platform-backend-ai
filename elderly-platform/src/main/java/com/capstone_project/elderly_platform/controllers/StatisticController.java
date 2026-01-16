@@ -4,8 +4,10 @@ import com.capstone_project.elderly_platform.dtos.response.CareServiceStatistics
 import com.capstone_project.elderly_platform.dtos.response.CaregiverPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerPersonalStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.FeedbackDashboardResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserStatisticsResponse;
+import com.capstone_project.elderly_platform.services.FeedbackDashboardService;
 import com.capstone_project.elderly_platform.services.StatisticService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +32,7 @@ import java.time.LocalDateTime;
 public class StatisticController {
 
     private final StatisticService statisticService;
+    private final FeedbackDashboardService feedbackDashboardService;
 
     @Operation(summary = "Get user statistics", description = "Get total registered users and total unverified users within a date range. Only accessible by ADMIN role")
     @PreAuthorize("hasRole('ADMIN')")
@@ -111,6 +114,22 @@ public class StatisticController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed",
                             "Failed to get care seeker personal statistics: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Get feedback dashboard statistics", 
+               description = "Get comprehensive feedback statistics including overview by target type, service details for caregivers and care seekers, and top 5 caregivers. Only accessible by ADMIN role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/feedback")
+    public ResponseEntity<ObjectResponse> getFeedbackDashboard() {
+        try {
+            FeedbackDashboardResponseDTO dashboard = feedbackDashboardService.getFeedbackDashboard();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Feedback dashboard statistics retrieved successfully", dashboard));
+        } catch (Exception e) {
+            log.error("Error getting feedback dashboard statistics", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get feedback dashboard statistics: " + e.getMessage(), null));
         }
     }
 }

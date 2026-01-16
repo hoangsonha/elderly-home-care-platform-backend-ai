@@ -628,7 +628,7 @@ public class ProfileServiceImpl implements ProfileService {
                         .getBookedSlots()) {
                     // Validate slot data
                     if (slot.getDate() == null || slot.getStartTime() == null || slot.getEndTime() == null) {
-                        throw new BadRequestException("Booked slot phải có đầy đủ date, start_time và end_time");
+                        throw new BadRequestException("Đặt lịch hẹn phải có đầy đủ ngày, thời gian bắt đầu và thời gian kết thúc");
                     }
 
                     // Parse times to validate
@@ -638,13 +638,13 @@ public class ProfileServiceImpl implements ProfileService {
                         startTime = LocalTime.parse(slot.getStartTime());
                         endTime = LocalTime.parse(slot.getEndTime());
                     } catch (Exception e) {
-                        throw new BadRequestException("start_time và end_time phải có format HH:mm (ví dụ: 08:00, 14:30)");
+                        throw new BadRequestException("Thời gian bắt đầu và thời gian kết thúc phải có format HH:mm (ví dụ: 08:00, 14:30)");
                     }
 
                     // Validate start_time < end_time
                     if (!startTime.isBefore(endTime)) {
                         throw new BadRequestException(
-                                String.format("start_time (%s) phải nhỏ hơn end_time (%s) cho slot ngày %s",
+                                String.format("Thời gian bắt đầu (%s) phải nhỏ hơn thời gian kết thúc (%s) cho slot ngày %s",
                                         slot.getStartTime(), slot.getEndTime(), slot.getDate()));
                     }
 
