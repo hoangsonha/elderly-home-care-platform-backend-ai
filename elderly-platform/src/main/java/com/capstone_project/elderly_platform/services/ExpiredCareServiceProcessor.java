@@ -4,8 +4,11 @@ import com.capstone_project.elderly_platform.enums.EnumActorType;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.pojos.CareService;
 import com.capstone_project.elderly_platform.pojos.CareServiceStatusLog;
+import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import com.capstone_project.elderly_platform.repositories.CareServiceRepository;
 import com.capstone_project.elderly_platform.repositories.CareServiceStatusLogRepository;
+import com.capstone_project.elderly_platform.repositories.CaregiverProfileRepository;
+import com.capstone_project.elderly_platform.utils.CaregiverScheduleUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.Message;
@@ -38,6 +41,8 @@ public class ExpiredCareServiceProcessor implements MessageListener {
     private final CareServiceStatusLogRepository careServiceStatusLogRepository;
     private final NotificationService notificationService;
     private final ExpiredCareServiceQueueService expiredCareServiceQueueService;
+    private final CaregiverProfileRepository caregiverProfileRepository;
+    private final CaregiverScheduleUtils caregiverScheduleUtils;
 
     /**
      * Processes a single expired care service.
@@ -79,6 +84,27 @@ public class ExpiredCareServiceProcessor implements MessageListener {
         careServiceRepository.save(careService);
 
         log.info("Care service {} has been expired successfully", careService.getCareServiceId());
+
+        // Restore caregiver free schedule (đã set lịch bận khi tạo booking)
+        try {
+            CaregiverProfile caregiverProfile = careService.getCaregiverProfile();
+            if (caregiverProfile != null) {
+                String currentProfileData = caregiverProfile.getProfileData();
+                String updatedProfileData = caregiverScheduleUtils.removeBookedTime(
+                        currentProfileData,
+                        careService.getWorkDate(),
+                        careService.getStartTime(),
+                        careService.getEndTime());
+                caregiverProfile.setProfileData(updatedProfileData);
+                caregiverProfileRepository.save(caregiverProfile);
+                log.info("Restored free schedule for caregiver profile {} after expiring care service {}",
+                        caregiverProfile.getCaregiverProfileId(), careService.getCareServiceId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to restore caregiver free schedule for expired care service {}: {}",
+                    careService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - expiration is already processed
+        }
 
         // Send notification
         try {

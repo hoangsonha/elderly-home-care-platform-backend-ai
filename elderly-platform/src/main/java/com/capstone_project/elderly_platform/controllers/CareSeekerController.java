@@ -2,6 +2,7 @@ package com.capstone_project.elderly_platform.controllers;
 
 import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
@@ -113,6 +114,41 @@ public class CareSeekerController {
             log.error("Error creating care seeker profile", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to create care seeker profile: " + e.getMessage(),
+                            null));
+        }
+    }
+
+    @Operation(summary = "Update care seeker profile (with avatar)", description = "Update the current care seeker profile with optional avatar. Only accessible by CARE_SEEKER role. Use multipart/form-data when uploading avatar.")
+    @PreAuthorize("hasRole('CARE_SEEKER')")
+    @PutMapping(value = "/profile", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ObjectResponse> updateCareSeekerProfile(
+            @RequestPart("data") @Valid UpdateCareSeekerProfileRequest request,
+            @RequestPart(value = "avatar", required = false) MultipartFile avatarFile) {
+        try {
+            CareSeekerProfileResponseDTO updatedProfile = profileService.updateCareSeekerProfile(request, avatarFile);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Care seeker profile updated successfully", updatedProfile));
+        } catch (Exception e) {
+            log.error("Error updating care seeker profile", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to update care seeker profile: " + e.getMessage(),
+                            null));
+        }
+    }
+
+    @Operation(summary = "Update care seeker profile (without avatar)", description = "Update the current care seeker profile without avatar. Only accessible by CARE_SEEKER role. Use application/json when no avatar is needed.")
+    @PreAuthorize("hasRole('CARE_SEEKER')")
+    @PutMapping(value = "/profile/json", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ObjectResponse> updateCareSeekerProfileWithoutAvatar(
+            @Valid @RequestBody UpdateCareSeekerProfileRequest request) {
+        try {
+            CareSeekerProfileResponseDTO updatedProfile = profileService.updateCareSeekerProfile(request, null);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Care seeker profile updated successfully", updatedProfile));
+        } catch (Exception e) {
+            log.error("Error updating care seeker profile", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to update care seeker profile: " + e.getMessage(),
                             null));
         }
     }

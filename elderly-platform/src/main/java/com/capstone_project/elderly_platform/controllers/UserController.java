@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.request.CreateUserRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateUserRequest;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.PagingResponse;
@@ -31,15 +32,26 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(
-        summary = "Lock user account", 
-        description = "Lock a user account by setting enabled=false and nonLocked=false. Only accessible by ADMIN role"
-    )
+    @Operation(summary = "Create new user account", description = "Create a new user account with email, password, and role. Account is automatically enabled and unlocked (no verification required). Only accessible by ADMIN role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping
+    public ResponseEntity<ObjectResponse> createUser(@Valid @RequestBody CreateUserRequest request) {
+        try {
+            UserResponse userResponse = userService.createUser(request);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "User created successfully", userResponse));
+        } catch (Exception e) {
+            log.error("Error creating user", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to create user: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Lock user account", description = "Lock a user account by setting enabled=false and nonLocked=false. Only accessible by ADMIN role")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{accountId}/lock")
     public ResponseEntity<ObjectResponse> lockUser(
-            @Parameter(description = "Account ID of the user to lock")
-            @PathVariable UUID accountId) {
+            @Parameter(description = "Account ID of the user to lock") @PathVariable UUID accountId) {
         try {
             UserResponse userResponse = userService.lockUser(accountId);
             return ResponseEntity.status(HttpStatus.OK)
@@ -51,15 +63,11 @@ public class UserController {
         }
     }
 
-    @Operation(
-        summary = "Unlock user account", 
-        description = "Unlock a user account by setting enabled=true and nonLocked=true. Only accessible by ADMIN role"
-    )
+    @Operation(summary = "Unlock user account", description = "Unlock a user account by setting enabled=true and nonLocked=true. Only accessible by ADMIN role")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{accountId}/unlock")
     public ResponseEntity<ObjectResponse> unlockUser(
-            @Parameter(description = "Account ID of the user to unlock")
-            @PathVariable UUID accountId) {
+            @Parameter(description = "Account ID of the user to unlock") @PathVariable UUID accountId) {
         try {
             UserResponse userResponse = userService.unlockUser(accountId);
             return ResponseEntity.status(HttpStatus.OK)
@@ -71,15 +79,11 @@ public class UserController {
         }
     }
 
-    @Operation(
-        summary = "Update user account", 
-        description = "Update user account information (email, avatarUrl). Role cannot be updated. Only accessible by ADMIN role"
-    )
+    @Operation(summary = "Update user account", description = "Update user account information (email, avatarUrl). Role cannot be updated. Only accessible by ADMIN role")
     @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/{accountId}")
     public ResponseEntity<ObjectResponse> updateUser(
-            @Parameter(description = "Account ID of the user to update")
-            @PathVariable UUID accountId,
+            @Parameter(description = "Account ID of the user to update") @PathVariable UUID accountId,
             @Valid @RequestBody UpdateUserRequest request) {
         try {
             UserResponse userResponse = userService.updateUser(accountId, request);
@@ -92,34 +96,21 @@ public class UserController {
         }
     }
 
-    @Operation(
-        summary = "Get all users with filters", 
-        description = "Get all users with pagination and filters (email search, locked status, date range). Returns fullName from profile. Only accessible by ADMIN role"
-    )
+    @Operation(summary = "Get all users with filters", description = "Get all users with pagination and filters (email search, locked status, date range). Returns fullName from profile. Only accessible by ADMIN role")
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<PagingResponse> getAllUsers(
-            @Parameter(description = "Page number (1-based)")
-            @RequestParam(defaultValue = "1") int page,
-            
-            @Parameter(description = "Page size")
-            @RequestParam(defaultValue = "10") int size,
-            
-            @Parameter(description = "Search by email (partial match)")
-            @RequestParam(required = false) String email,
-            
-            @Parameter(description = "Filter by locked status (true = locked, false = unlocked)")
-            @RequestParam(required = false) Boolean isLocked,
-            
-            @Parameter(description = "Start date filter (optional). Format: yyyy-MM-ddTHH:mm:ss")
-            @RequestParam(required = false) 
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) 
-            LocalDateTime startDate,
-            
-            @Parameter(description = "End date filter (optional). Format: yyyy-MM-ddTHH:mm:ss")
-            @RequestParam(required = false) 
-            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) 
-            LocalDateTime endDate) {
+            @Parameter(description = "Page number (1-based)") @RequestParam(defaultValue = "1") int page,
+
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size,
+
+            @Parameter(description = "Search by email (partial match)") @RequestParam(required = false) String email,
+
+            @Parameter(description = "Filter by locked status (true = locked, false = unlocked)") @RequestParam(required = false) Boolean isLocked,
+
+            @Parameter(description = "Start date filter (optional). Format: yyyy-MM-ddTHH:mm:ss") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+
+            @Parameter(description = "End date filter (optional). Format: yyyy-MM-ddTHH:mm:ss") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
         try {
             PagingResponse response = userService.getAllUsers(page, size, email, isLocked, startDate, endDate);
             return ResponseEntity.status(HttpStatus.OK).body(response);
@@ -138,13 +129,3 @@ public class UserController {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-

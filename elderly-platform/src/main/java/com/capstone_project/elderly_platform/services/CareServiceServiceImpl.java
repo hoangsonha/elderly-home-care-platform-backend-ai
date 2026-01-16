@@ -274,6 +274,27 @@ public class CareServiceServiceImpl implements CareServiceService {
 
         CareService savedCareService = careServiceRepository.save(careService);
 
+        // Update caregiver free schedule to exclude booked time (set lịch bận ngay khi tạo booking)
+        try {
+            String currentProfileData = caregiverProfile.getProfileData();
+            String updatedProfileData = caregiverScheduleUtils.excludeBookedTime(
+                    currentProfileData,
+                    savedCareService.getWorkDate(),
+                    savedCareService.getStartTime(),
+                    savedCareService.getEndTime(),
+                    savedCareService.getCareServiceId(), // Mark as booking with care service ID
+                    savedCareService.getBookingCode()); // Add booking code
+            caregiverProfile.setProfileData(updatedProfileData);
+            caregiverProfileRepository.save(caregiverProfile);
+            log.info("Updated free schedule for caregiver profile {} to exclude booking time (created booking) with care service ID {} and booking code {}",
+                    caregiverProfile.getCaregiverProfileId(), savedCareService.getCareServiceId(), savedCareService.getBookingCode());
+        } catch (Exception e) {
+            log.error("Failed to update caregiver free schedule for care service {}: {}",
+                    savedCareService.getCareServiceId(), e.getMessage(), e);
+            // Don't throw exception - care service is already saved, schedule update can be
+            // done manually
+        }
+
         // Publish event for notification
         try {
             eventPublisher.publishEvent(new CareServiceCreatedEvent(this, savedCareService));
@@ -419,11 +440,13 @@ public class CareServiceServiceImpl implements CareServiceService {
                     currentProfileData,
                     savedCareService.getWorkDate(),
                     savedCareService.getStartTime(),
-                    savedCareService.getEndTime());
+                    savedCareService.getEndTime(),
+                    savedCareService.getCareServiceId(), // Mark as booking with care service ID
+                    savedCareService.getBookingCode()); // Add booking code
             caregiverProfile.setProfileData(updatedProfileData);
             caregiverProfileRepository.save(caregiverProfile);
-            log.info("Updated free schedule for caregiver profile {} to exclude booking time",
-                    caregiverProfile.getCaregiverProfileId());
+            log.info("Updated free schedule for caregiver profile {} to exclude booking time with care service ID {} and booking code {}",
+                    caregiverProfile.getCaregiverProfileId(), savedCareService.getCareServiceId(), savedCareService.getBookingCode());
         } catch (Exception e) {
             log.error("Failed to update caregiver free schedule for care service {}: {}",
                     savedCareService.getCareServiceId(), e.getMessage(), e);
@@ -511,10 +534,12 @@ public class CareServiceServiceImpl implements CareServiceService {
         EnumActorType actorType = SecurityUtils.hasRole("ROLE_CAREGIVER") ? EnumActorType.CAREGIVER
                 : EnumActorType.CARE_SEEKER;
 
+        EnumCareServiceStatusType oldStatus = careService.getStatus();
+        
         CareServiceStatusLog careServiceStatusLog = CareServiceStatusLog.builder()
                 .changedBy(actorType)
                 .careService(careService)
-                .oldStatus(careService.getStatus())
+                .oldStatus(oldStatus)
                 .newStatus(EnumCareServiceStatusType.CANCELLED)
                 .note("Đã bị hủy bởi " + title + " với lí do: " + request.getNote())
                 .build();
@@ -523,6 +548,35 @@ public class CareServiceServiceImpl implements CareServiceService {
 
         careService.setStatus(EnumCareServiceStatusType.CANCELLED);
         CareService savedCareService = careServiceRepository.save(careService);
+
+        // Restore caregiver free schedule (loại bỏ khung giờ bận) khi decline/hủy
+        // Chỉ remove lịch bận khi status là PENDING_CAREGIVER hoặc CAREGIVER_APPROVED (trước khi bắt đầu làm việc)
+        // Không remove nếu đã bắt đầu làm việc (IN_PROGRESS, COMPLETED, etc.)
+        if (oldStatus.equals(EnumCareServiceStatusType.PENDING_CAREGIVER) 
+                || oldStatus.equals(EnumCareServiceStatusType.CAREGIVER_APPROVED)) {
+            try {
+                CaregiverProfile caregiverProfile = savedCareService.getCaregiverProfile();
+                if (caregiverProfile != null) {
+                    String currentProfileData = caregiverProfile.getProfileData();
+                    String updatedProfileData = caregiverScheduleUtils.removeBookedTime(
+                            currentProfileData,
+                            savedCareService.getWorkDate(),
+                            savedCareService.getStartTime(),
+                            savedCareService.getEndTime());
+                    caregiverProfile.setProfileData(updatedProfileData);
+                    caregiverProfileRepository.save(caregiverProfile);
+                    log.info("Restored free schedule for caregiver profile {} after declining care service {} (old status: {})",
+                            caregiverProfile.getCaregiverProfileId(), savedCareService.getCareServiceId(), oldStatus);
+                }
+            } catch (Exception e) {
+                log.error("Failed to restore caregiver free schedule for care service {}: {}",
+                        savedCareService.getCareServiceId(), e.getMessage(), e);
+                // Don't throw exception - care service is already saved
+            }
+        } else {
+            log.info("Skipping free schedule restoration for care service {} with old status {} (already started or completed)",
+                    savedCareService.getCareServiceId(), oldStatus);
+        }
 
         // Send notification to the other party (người còn lại)
         try {

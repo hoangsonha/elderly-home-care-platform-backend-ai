@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.request.UpdateFreeScheduleByDateRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateFreeScheduleRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
@@ -58,6 +59,37 @@ public class CaregiverScheduleController {
                     .body(new ObjectResponse("Fail", e.getMessage(), null));
         } catch (Exception e) {
             log.error("Error updating free schedule", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Fail", "Lỗi khi cập nhật lịch rảnh: " + e.getMessage(), null));
+        }
+    }
+
+    /**
+     * Update free schedule for a specific date
+     *
+     * @param request Update free schedule by date request
+     * @return Updated caregiver profile
+     */
+    @Operation(summary = "Update free schedule for a specific date", description = "Update free schedule for current caregiver for a specific date. " +
+            "Booking slots (is_booking = true) cannot be modified and will be preserved. " +
+            "Only manual slots (is_booking = false) can be updated.")
+    @PreAuthorize("hasRole('CAREGIVER')")
+    @PutMapping("/free-schedule/date")
+    public ResponseEntity<ObjectResponse> updateFreeScheduleByDate(@Valid @RequestBody UpdateFreeScheduleByDateRequest request) {
+        try {
+            CaregiverProfileResponseDTO profile = caregiverScheduleService.updateFreeScheduleByDate(request);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Cập nhật lịch rảnh cho ngày " + request.getDate() + " thành công", profile));
+        } catch (ElementNotFoundException e) {
+            log.error("Error updating free schedule by date", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (BadRequestException e) {
+            log.error("Error updating free schedule by date", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error updating free schedule by date", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Fail", "Lỗi khi cập nhật lịch rảnh: " + e.getMessage(), null));
         }

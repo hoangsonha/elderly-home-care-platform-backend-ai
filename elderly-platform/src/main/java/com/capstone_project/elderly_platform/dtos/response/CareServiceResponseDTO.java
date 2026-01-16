@@ -29,4 +29,5 @@ public class CareServiceResponseDTO {
     CaregiverProfileResponseDTO caregiverProfile;
     ServicePackageResponseDTO servicePackage;
     WorkScheduleResponseDTO workSchedule;
+    CareServiceFeedbackDTO feedback; // Feedback for this care service (if exists)
 }

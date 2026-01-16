@@ -33,7 +33,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -251,13 +254,25 @@ public class DatabaseInit implements CommandLineRunner {
                         // Create CareSeekerProfile
                         String seekerLocationJson = createLocationJson("123 Đường Nguyễn Văn A, Quận 1, TP.HCM",
                                         10.762622, 106.660172);
+                        
+                        // Build profileData for Care Seeker
+                        Map<String, Object> seekerProfileDataMap = new HashMap<>();
+                        seekerProfileDataMap.put("preferredContactTime", "9:00-17:00");
+                        String seekerProfileDataJson;
+                        try {
+                                seekerProfileDataJson = objectMapper.writeValueAsString(seekerProfileDataMap);
+                        } catch (Exception e) {
+                                log.error("Failed to create seeker profileData JSON", e);
+                                seekerProfileDataJson = "{\"preferredContactTime\":\"9:00-17:00\"}";
+                        }
+                        
                         CareSeekerProfile careSeekerProfile = CareSeekerProfile.builder()
                                         .fullName("Nguyễn Văn Tìm")
                                         .phoneNumber("0901234567")
                                         .location(seekerLocationJson)
                                         .birthDate(LocalDate.of(1985, 5, 15))
                                         .gender(EnumGenderType.MALE)
-                                        .profileData("{\"preferredContactTime\":\"9:00-17:00\"}")
+                                        .profileData(seekerProfileDataJson)
                                         .account(seekerAccount)
                                         .build();
                         careSeekerProfile = careSeekerProfileRepository.save(careSeekerProfile);
@@ -266,6 +281,58 @@ public class DatabaseInit implements CommandLineRunner {
                         // Create CaregiverProfile 1
                         String caregiver1LocationJson = createLocationJson("456 Đường Lê Lợi, Quận 3, TP.HCM", 10.7769,
                                         106.7009);
+                        
+                        // Build profileData for Caregiver 1
+                        Map<String, Object> caregiver1ProfileDataMap = new HashMap<>();
+                        caregiver1ProfileDataMap.put("years_experience", 5);
+                        caregiver1ProfileDataMap.put("citizen_id", "079123456789");
+                        caregiver1ProfileDataMap.put("citizen_id_front_image_url", "https://example.com/citizen/front1.jpg");
+                        caregiver1ProfileDataMap.put("citizen_id_back_image_url", "https://example.com/citizen/back1.jpg");
+                        
+                        // Free schedule - available all time
+                        Map<String, Object> freeSchedule1 = new HashMap<>();
+                        freeSchedule1.put("available_all_time", true);
+                        caregiver1ProfileDataMap.put("free_schedule", freeSchedule1);
+                        
+                        // Max hours per week
+                        caregiver1ProfileDataMap.put("max_hours_per_week", 40);
+                        
+                        // Preferences
+                        Map<String, Object> preferences1 = new HashMap<>();
+                        preferences1.put("preferred_health_status", "MODERATE");
+                        Map<String, Object> agePreference1 = new HashMap<>();
+                        agePreference1.put("min_age", 70);
+                        agePreference1.put("max_age", 85);
+                        preferences1.put("elderly_age_preference", agePreference1);
+                        caregiver1ProfileDataMap.put("preferences", preferences1);
+                        
+                        // Ratings reviews
+                        Map<String, Object> ratingsReviews1 = new HashMap<>();
+                        ratingsReviews1.put("overall_rating", 0);
+                        ratingsReviews1.put("total_reviews", 0);
+                        Map<String, Integer> ratingBreakdown1 = new HashMap<>();
+                        ratingBreakdown1.put("5_star", 0);
+                        ratingBreakdown1.put("4_star", 0);
+                        ratingBreakdown1.put("3_star", 0);
+                        ratingBreakdown1.put("2_star", 0);
+                        ratingBreakdown1.put("1_star", 0);
+                        ratingsReviews1.put("rating_breakdown", ratingBreakdown1);
+                        Map<String, Double> detailedRatingsBreakdown1 = new HashMap<>();
+                        detailedRatingsBreakdown1.put("professionalism", 0.0);
+                        detailedRatingsBreakdown1.put("attitude", 0.0);
+                        detailedRatingsBreakdown1.put("punctuality", 0.0);
+                        detailedRatingsBreakdown1.put("quality", 0.0);
+                        ratingsReviews1.put("detailed_ratings_breakdown", detailedRatingsBreakdown1);
+                        caregiver1ProfileDataMap.put("ratings_reviews", ratingsReviews1);
+                        
+                        String caregiver1ProfileDataJson;
+                        try {
+                                caregiver1ProfileDataJson = objectMapper.writeValueAsString(caregiver1ProfileDataMap);
+                        } catch (Exception e) {
+                                log.error("Failed to create caregiver1 profileData JSON", e);
+                                caregiver1ProfileDataJson = "{}";
+                        }
+                        
                         CaregiverProfile caregiverProfile1 = CaregiverProfile.builder()
                                         .fullName("Trần Thị Chăm Sóc")
                                         .phoneNumber("0902345678")
@@ -274,7 +341,7 @@ public class DatabaseInit implements CommandLineRunner {
                                         .isVerified(true)
                                         .birthDate(LocalDate.of(1990, 8, 20))
                                         .gender(EnumGenderType.FEMALE)
-                                        .profileData("{\"experience\":\"5 years\",\"specializations\":[\"Alzheimer\",\"Parkinson\"]}")
+                                        .profileData(caregiver1ProfileDataJson)
                                         .account(caregiverAccount1)
                                         .build();
                         caregiverProfileRepository.save(caregiverProfile1);
@@ -283,6 +350,65 @@ public class DatabaseInit implements CommandLineRunner {
                         // Create CaregiverProfile 2
                         String caregiver2LocationJson = createLocationJson("789 Đường Võ Văn Tần, Quận 10, TP.HCM",
                                         10.7730, 106.6660);
+                        
+                        // Build profileData for Caregiver 2
+                        Map<String, Object> caregiver2ProfileDataMap = new HashMap<>();
+                        caregiver2ProfileDataMap.put("years_experience", 7);
+                        caregiver2ProfileDataMap.put("citizen_id", "079987654321");
+                        caregiver2ProfileDataMap.put("citizen_id_front_image_url", "https://example.com/citizen/front2.jpg");
+                        caregiver2ProfileDataMap.put("citizen_id_back_image_url", "https://example.com/citizen/back2.jpg");
+                        
+                        // Free schedule - specific schedule with booked slots
+                        Map<String, Object> freeSchedule2 = new HashMap<>();
+                        List<Map<String, Object>> bookedSlots2 = new ArrayList<>();
+                        // Example: booked slot on 2026-01-15 from 10:00 to 14:00
+                        Map<String, Object> bookedSlot1 = new HashMap<>();
+                        bookedSlot1.put("date", "2026-01-15");
+                        bookedSlot1.put("start_time", "10:00");
+                        bookedSlot1.put("end_time", "14:00");
+                        bookedSlots2.add(bookedSlot1);
+                        freeSchedule2.put("booked_slots", bookedSlots2);
+                        caregiver2ProfileDataMap.put("free_schedule", freeSchedule2);
+                        
+                        // Max hours per week
+                        caregiver2ProfileDataMap.put("max_hours_per_week", 48);
+                        
+                        // Preferences
+                        Map<String, Object> preferences2 = new HashMap<>();
+                        preferences2.put("preferred_health_status", "GOOD");
+                        Map<String, Object> agePreference2 = new HashMap<>();
+                        agePreference2.put("min_age", 65);
+                        agePreference2.put("max_age", 90);
+                        preferences2.put("elderly_age_preference", agePreference2);
+                        caregiver2ProfileDataMap.put("preferences", preferences2);
+                        
+                        // Ratings reviews
+                        Map<String, Object> ratingsReviews2 = new HashMap<>();
+                        ratingsReviews2.put("overall_rating", 0);
+                        ratingsReviews2.put("total_reviews", 0);
+                        Map<String, Integer> ratingBreakdown2 = new HashMap<>();
+                        ratingBreakdown2.put("5_star", 0);
+                        ratingBreakdown2.put("4_star", 0);
+                        ratingBreakdown2.put("3_star", 0);
+                        ratingBreakdown2.put("2_star", 0);
+                        ratingBreakdown2.put("1_star", 0);
+                        ratingsReviews2.put("rating_breakdown", ratingBreakdown2);
+                        Map<String, Double> detailedRatingsBreakdown2 = new HashMap<>();
+                        detailedRatingsBreakdown2.put("professionalism", 0.0);
+                        detailedRatingsBreakdown2.put("attitude", 0.0);
+                        detailedRatingsBreakdown2.put("punctuality", 0.0);
+                        detailedRatingsBreakdown2.put("quality", 0.0);
+                        ratingsReviews2.put("detailed_ratings_breakdown", detailedRatingsBreakdown2);
+                        caregiver2ProfileDataMap.put("ratings_reviews", ratingsReviews2);
+                        
+                        String caregiver2ProfileDataJson;
+                        try {
+                                caregiver2ProfileDataJson = objectMapper.writeValueAsString(caregiver2ProfileDataMap);
+                        } catch (Exception e) {
+                                log.error("Failed to create caregiver2 profileData JSON", e);
+                                caregiver2ProfileDataJson = "{}";
+                        }
+                        
                         CaregiverProfile caregiverProfile2 = CaregiverProfile.builder()
                                         .fullName("Lê Văn Yêu Thương")
                                         .phoneNumber("0903456789")
@@ -291,7 +417,7 @@ public class DatabaseInit implements CommandLineRunner {
                                         .isVerified(true)
                                         .birthDate(LocalDate.of(1988, 3, 10))
                                         .gender(EnumGenderType.MALE)
-                                        .profileData("{\"experience\":\"7 years\",\"certifications\":[\"International Elderly Care\"]}")
+                                        .profileData(caregiver2ProfileDataJson)
                                         .account(caregiverAccount2)
                                         .build();
                         caregiverProfileRepository.save(caregiverProfile2);

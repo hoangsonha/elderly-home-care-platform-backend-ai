@@ -4,6 +4,7 @@ import com.capstone_project.elderly_platform.dtos.request.CaregiverProfileVerifi
 import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.QualificationVerificationRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverQualificationsRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
@@ -25,6 +26,9 @@ public interface ProfileService {
     ElderlyProfileResponseDTO createElderlyProfile(CreateElderlyProfileRequest request, MultipartFile avatarFile);
     
     CareSeekerProfileResponseDTO createCareSeekerProfile(CreateCareSeekerProfileRequest request,
+            MultipartFile avatarFile);
+
+    CareSeekerProfileResponseDTO updateCareSeekerProfile(UpdateCareSeekerProfileRequest request,
             MultipartFile avatarFile);
 
     CaregiverProfileResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request, MultipartFile avatarFile,

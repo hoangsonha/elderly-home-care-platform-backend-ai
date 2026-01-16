@@ -1,11 +1,15 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.dtos.request.CreateUserRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateUserRequest;
 import com.capstone_project.elderly_platform.dtos.response.PagingResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserResponse;
+import com.capstone_project.elderly_platform.enums.EnumRoleType;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
+import com.capstone_project.elderly_platform.exceptions.ElementExistException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.pojos.Account;
+import com.capstone_project.elderly_platform.pojos.Role;
 import com.capstone_project.elderly_platform.repositories.AccountRepository;
 import com.capstone_project.elderly_platform.utils.AccountSpecification;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +19,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +34,50 @@ import java.util.stream.Collectors;
 public class UserServiceImpl implements UserService {
 
     private final AccountRepository accountRepository;
+    private final RoleService roleService;
+    private final BCryptPasswordEncoder bCryptPasswordEncoder;
+
+    @Override
+    @Transactional
+    public UserResponse createUser(CreateUserRequest request) {
+        log.info("Creating new user with email: {}", request.getEmail());
+
+        // Check if email already exists
+        Account existingAccount = accountRepository.getAccountByEmail(request.getEmail());
+        if (existingAccount != null) {
+            throw new ElementExistException("Email already exists");
+        }
+
+        // Validate and get role
+        Role role = null;
+        try {
+            EnumRoleType roleType = EnumRoleType.valueOf(request.getRole().toUpperCase());
+            role = roleService.getRoleByRoleName(roleType);
+            if (role == null) {
+                throw new BadRequestException("Invalid role: " + request.getRole());
+            }
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Invalid role: " + request.getRole());
+        }
+
+        // Create new account
+        Account account = Account.builder()
+                .email(request.getEmail())
+                .password(bCryptPasswordEncoder.encode(request.getPassword()))
+                .enabled(true) // Admin creates user, no need to verify
+                .nonLocked(true) // Admin creates user, no need to verify
+                .role(role)
+                .accessToken(null)
+                .refreshToken(null)
+                .codeVerify(null)
+                .codeVerifyExpiresAt(null)
+                .build();
+
+        Account savedAccount = accountRepository.save(account);
+        log.info("User created successfully with ID: {}", savedAccount.getAccountId());
+
+        return mapToUserResponse(savedAccount);
+    }
 
     @Override
     @Transactional

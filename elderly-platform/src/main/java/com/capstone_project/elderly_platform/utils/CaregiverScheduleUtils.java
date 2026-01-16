@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.*;
+import java.util.UUID;
 
 /**
  * Utility class for managing caregiver free schedule in profileData
@@ -61,6 +62,35 @@ public class CaregiverScheduleUtils {
      * @return Updated profileData JSON string with booked time excluded
      */
     public String excludeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime) {
+        return excludeBookedTime(profileData, workDate, startTime, endTime, null);
+    }
+
+    /**
+     * Update free schedule to exclude booked time slot (with care service ID to mark as booking)
+     * 
+     * @param profileData Current profileData JSON string
+     * @param workDate    Date of the booking
+     * @param startTime   Start time of the booking
+     * @param endTime     End time of the booking
+     * @param careServiceId Care service ID to mark this slot as a booking (null for manual slots)
+     * @return Updated profileData JSON string with booked time excluded
+     */
+    public String excludeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime, UUID careServiceId) {
+        return excludeBookedTime(profileData, workDate, startTime, endTime, careServiceId, null);
+    }
+
+    /**
+     * Update free schedule to exclude booked time slot (with care service ID and booking code to mark as booking)
+     * 
+     * @param profileData Current profileData JSON string
+     * @param workDate    Date of the booking
+     * @param startTime   Start time of the booking
+     * @param endTime     End time of the booking
+     * @param careServiceId Care service ID to mark this slot as a booking (null for manual slots)
+     * @param bookingCode Booking code of the care service (null for manual slots)
+     * @return Updated profileData JSON string with booked time excluded
+     */
+    public String excludeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime, UUID careServiceId, String bookingCode) {
         try {
             Map<String, Object> profileDataMap = parseProfileData(profileData);
 
@@ -90,6 +120,17 @@ public class CaregiverScheduleUtils {
             bookedSlot.put("date", workDate.toString());
             bookedSlot.put("start_time", startTime.toString());
             bookedSlot.put("end_time", endTime.toString());
+            
+            // Mark as booking if careServiceId is provided
+            if (careServiceId != null) {
+                bookedSlot.put("is_booking", true);
+                bookedSlot.put("care_service_id", careServiceId.toString());
+                if (bookingCode != null) {
+                    bookedSlot.put("booking_code", bookingCode);
+                }
+            } else {
+                bookedSlot.put("is_booking", false);
+            }
 
             bookedSlots.add(bookedSlot);
             freeScheduleMap.put("booked_slots", bookedSlots);
@@ -99,6 +140,125 @@ public class CaregiverScheduleUtils {
             return objectMapper.writeValueAsString(profileDataMap);
         } catch (Exception e) {
             log.error("Failed to exclude booked time: {}", e.getMessage(), e);
+            // Return original profileData if error occurs
+            return profileData;
+        }
+    }
+
+    /**
+     * Remove all booked slots for a specific date (both booking and manual slots)
+     * Used by scheduled job to clean up old schedules
+     * 
+     * @param profileData Current profileData JSON string
+     * @param date        Date to remove all booked slots
+     * @return Updated profileData JSON string with all booked slots for the date removed
+     */
+    public String removeBookedSlotsByDate(String profileData, LocalDate date) {
+        try {
+            Map<String, Object> profileDataMap = parseProfileData(profileData);
+
+            // If no free_schedule, nothing to remove
+            if (!profileDataMap.containsKey(FREE_SCHEDULE_KEY)) {
+                return profileData;
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> freeScheduleMap = (Map<String, Object>) profileDataMap.get(FREE_SCHEDULE_KEY);
+
+            // If available_all_time is true, nothing to remove
+            if (Boolean.TRUE.equals(freeScheduleMap.get(AVAILABLE_ALL_TIME))) {
+                return profileData;
+            }
+
+            // Get booked slots
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> bookedSlots = (List<Map<String, Object>>) freeScheduleMap.get("booked_slots");
+
+            if (bookedSlots == null || bookedSlots.isEmpty()) {
+                return profileData;
+            }
+
+            // Remove ALL slots (both booking and manual) for the specified date
+            String dateString = date.toString();
+            int initialSize = bookedSlots.size();
+            
+            bookedSlots.removeIf(slot -> {
+                String slotDate = (String) slot.get("date");
+                return dateString.equals(slotDate);
+            });
+
+            int removedCount = initialSize - bookedSlots.size();
+            
+            if (removedCount > 0) {
+                freeScheduleMap.put("booked_slots", bookedSlots);
+                profileDataMap.put(FREE_SCHEDULE_KEY, freeScheduleMap);
+                log.debug("Removed {} booked slot(s) for date {} (all slots removed)", removedCount, date);
+                return objectMapper.writeValueAsString(profileDataMap);
+            }
+
+            return profileData;
+        } catch (Exception e) {
+            log.error("Failed to remove booked slots by date: {}", e.getMessage(), e);
+            // Return original profileData if error occurs
+            return profileData;
+        }
+    }
+
+    /**
+     * Remove booked time slot to restore free schedule
+     * 
+     * @param profileData Current profileData JSON string
+     * @param workDate    Date of the booking to remove
+     * @param startTime   Start time of the booking to remove
+     * @param endTime     End time of the booking to remove
+     * @return Updated profileData JSON string with booked time removed
+     */
+    public String removeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime) {
+        try {
+            Map<String, Object> profileDataMap = parseProfileData(profileData);
+
+            // If no free_schedule, nothing to remove
+            if (!profileDataMap.containsKey(FREE_SCHEDULE_KEY)) {
+                return profileData;
+            }
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> freeScheduleMap = (Map<String, Object>) profileDataMap.get(FREE_SCHEDULE_KEY);
+
+            // If available_all_time is true, nothing to remove
+            if (Boolean.TRUE.equals(freeScheduleMap.get(AVAILABLE_ALL_TIME))) {
+                return profileData;
+            }
+
+            // Get booked slots
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> bookedSlots = (List<Map<String, Object>>) freeScheduleMap.get("booked_slots");
+
+            if (bookedSlots == null || bookedSlots.isEmpty()) {
+                return profileData;
+            }
+
+            // Remove matching booked slot
+            String dateString = workDate.toString();
+            String startTimeStr = startTime.toString();
+            String endTimeStr = endTime.toString();
+
+            bookedSlots.removeIf(slot -> {
+                String slotDate = (String) slot.get("date");
+                String slotStartTime = (String) slot.get("start_time");
+                String slotEndTime = (String) slot.get("end_time");
+
+                return dateString.equals(slotDate) 
+                    && startTimeStr.equals(slotStartTime) 
+                    && endTimeStr.equals(slotEndTime);
+            });
+
+            freeScheduleMap.put("booked_slots", bookedSlots);
+            profileDataMap.put(FREE_SCHEDULE_KEY, freeScheduleMap);
+
+            return objectMapper.writeValueAsString(profileDataMap);
+        } catch (Exception e) {
+            log.error("Failed to remove booked time: {}", e.getMessage(), e);
             // Return original profileData if error occurs
             return profileData;
         }

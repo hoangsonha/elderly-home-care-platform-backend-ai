@@ -2,6 +2,7 @@ package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverQualificationsRequest;
 import com.capstone_project.elderly_platform.dtos.request.CaregiverProfileVerificationRequest;
@@ -406,6 +407,82 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional
+    public CareSeekerProfileResponseDTO updateCareSeekerProfile(UpdateCareSeekerProfileRequest request,
+            MultipartFile avatarFile) {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Updating care seeker profile for account ID: {}", currentAccountId);
+
+        // Get care seeker profile
+        CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+
+        if (careSeekerProfile == null) {
+            throw new ElementNotFoundException("Care seeker profile not found for current user");
+        }
+
+        Account account = careSeekerProfile.getAccount();
+        if (account == null) {
+            throw new ElementNotFoundException("Account not found for care seeker profile");
+        }
+
+        // 1. Update basic fields
+        if (request.getFullName() != null) {
+            careSeekerProfile.setFullName(request.getFullName());
+        }
+
+        if (request.getBirthYear() != null) {
+            careSeekerProfile.setBirthDate(LocalDate.of(request.getBirthYear(), 1, 1));
+        }
+
+        if (request.getGender() != null) {
+            try {
+                careSeekerProfile.setGender(EnumGenderType.valueOf(request.getGender().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid gender: " + request.getGender());
+            }
+        }
+
+        if (request.getPhone() != null) {
+            careSeekerProfile.setPhoneNumber(request.getPhone());
+        }
+
+        // 2. Upload avatar and update Account
+        if (avatarFile != null && !avatarFile.isEmpty()) {
+            try {
+                String avatarUrl = firebaseStorageService.uploadSingleImages(avatarFile);
+                log.info("Avatar uploaded successfully: {}", avatarUrl);
+                account.setAvatarUrl(avatarUrl);
+                accountRepository.save(account);
+            } catch (Exception e) {
+                log.error("Failed to upload avatar: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to upload avatar: " + e.getMessage());
+            }
+        }
+
+        // 3. Update location JSON
+        if (request.getLocation() != null) {
+            try {
+                Map<String, Object> locationMap = new HashMap<>();
+                locationMap.put("address", request.getLocation().getAddress());
+                locationMap.put("latitude", request.getLocation().getLatitude());
+                locationMap.put("longitude", request.getLocation().getLongitude());
+                careSeekerProfile.setLocation(objectMapper.writeValueAsString(locationMap));
+            } catch (Exception e) {
+                log.error("Failed to update location: {}", e.getMessage(), e);
+                throw new BadRequestException("Invalid location data");
+            }
+        }
+
+        // Save to database
+        CareSeekerProfile savedProfile = careSeekerProfileRepository.save(careSeekerProfile);
+        log.info("Care seeker profile updated successfully with ID: {}", savedProfile.getCareSeekerProfileId());
+
+        // Convert to DTO and return
+        return careSeekerProfileMapper.toDTO(savedProfile);
+    }
+
+    @Override
+    @Transactional
     public CaregiverProfileResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request,
             MultipartFile avatarFile,
             List<MultipartFile> credentialFiles,
@@ -633,6 +710,14 @@ public class ProfileServiceImpl implements ProfileService {
         ratingBreakdown.put("2_star", 0);
         ratingBreakdown.put("1_star", 0);
         ratingsReviewsMap.put("rating_breakdown", ratingBreakdown);
+
+        // Add default detailed_ratings_breakdown
+        Map<String, Double> detailedRatingsBreakdown = new HashMap<>();
+        detailedRatingsBreakdown.put("professionalism", 0.0);
+        detailedRatingsBreakdown.put("attitude", 0.0);
+        detailedRatingsBreakdown.put("punctuality", 0.0);
+        detailedRatingsBreakdown.put("quality", 0.0);
+        ratingsReviewsMap.put("detailed_ratings_breakdown", detailedRatingsBreakdown);
 
         profileDataMap.put("ratings_reviews", ratingsReviewsMap);
 

@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.dtos.request.CreateUserRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateUserRequest;
 import com.capstone_project.elderly_platform.dtos.response.PagingResponse;
 import com.capstone_project.elderly_platform.dtos.response.UserResponse;
@@ -8,6 +9,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 public interface UserService {
+    UserResponse createUser(CreateUserRequest request);
+    
     UserResponse lockUser(UUID accountId);
     
     UserResponse unlockUser(UUID accountId);

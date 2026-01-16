@@ -76,6 +76,11 @@ application:
   caregiver:
     max-hours-per-week: 48  # Số giờ tối đa caregiver có thể làm việc trong 1 tuần
 
+job:
+  delete-old-free-schedules:
+    hour: 0
+    minute: 0
+
 ai:
   matching:
     service:

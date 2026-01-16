@@ -32,6 +32,13 @@
 	</properties>
 	<dependencies>
 
+		<!-- Schedule Task -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-quartz</artifactId>
+			<version>3.5.5</version>
+		</dependency>
+
 		<!-- PayOS : payment gateway -->
 		<dependency>
 			<groupId>vn.payos</groupId>

@@ -108,4 +108,23 @@ public interface CareServiceRepository extends JpaRepository<CareService, UUID> 
         @Query("SELECT COUNT(cs) FROM CareService cs WHERE cs.status = :status AND cs.deleted = false")
         Long countByStatusAndDeletedFalse(@Param("status") EnumCareServiceStatusType status);
 
+        /**
+         * Find all care services for a caregiver within a date range
+         * Used to check conflicts when updating free schedule
+         * 
+         * @param caregiverProfile Caregiver profile
+         * @param startDate Start date (inclusive)
+         * @param endDate End date (inclusive)
+         * @return List of care services in the date range
+         */
+        @Query("SELECT cs FROM CareService cs WHERE cs.caregiverProfile = :caregiverProfile " +
+                        "AND cs.workDate >= :startDate " +
+                        "AND cs.workDate <= :endDate " +
+                        "AND cs.deleted = false " +
+                        "ORDER BY cs.workDate ASC, cs.startTime ASC")
+        List<CareService> findByCaregiverProfileAndWorkDateBetweenAndDeletedIsFalse(
+                        @Param("caregiverProfile") CaregiverProfile caregiverProfile,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate);
+
 }
