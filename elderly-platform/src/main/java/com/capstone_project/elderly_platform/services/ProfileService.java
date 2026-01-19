@@ -20,6 +20,8 @@ import java.util.UUID;
 
 public interface ProfileService {
     List<CaregiverProfileResponseDTO> getAllCaregivers();
+    
+    CaregiverProfileResponseDTO getCaregiverById(UUID caregiverProfileId);
 
     List<ElderlyProfileResponseDTO> getElderlyProfilesByCurrentCareSeeker();
 

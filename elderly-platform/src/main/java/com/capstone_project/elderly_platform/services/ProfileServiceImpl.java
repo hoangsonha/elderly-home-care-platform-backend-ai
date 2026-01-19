@@ -90,6 +90,20 @@ public class ProfileServiceImpl implements ProfileService {
                 .map(caregiverProfileMapper::toDTO)
                 .collect(Collectors.toList());
     }
+    
+    @Override
+    public CaregiverProfileResponseDTO getCaregiverById(UUID caregiverProfileId) {
+        log.info("Getting caregiver by ID: {}", caregiverProfileId);
+        // Use query that loads account and qualifications to ensure all data is available
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByCaregiverProfileIdWithAccountAndQualifications(caregiverProfileId);
+        
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found with ID: " + caregiverProfileId);
+        }
+        
+        return caregiverProfileMapper.toDTO(caregiverProfile);
+    }
 
     @Override
     public List<ElderlyProfileResponseDTO> getElderlyProfilesByCurrentCareSeeker() {
@@ -244,21 +258,10 @@ public class ProfileServiceImpl implements ProfileService {
         if (request.getCareNeeds() != null) {
             try {
                 Map<String, Object> careRequirementMap = new HashMap<>();
-                if (request.getCareNeeds().getLevelOfCare() != null) {
-                    careRequirementMap.put("level_of_care", request.getCareNeeds().getLevelOfCare());
-                }
-                if (request.getCareNeeds().getSkills() != null) {
-                    Map<String, Object> skillsMap = new HashMap<>();
-                    if (request.getCareNeeds().getSkills().getRequiredSkills() != null) {
-                        skillsMap.put("kĩ năng bắt buộc", request.getCareNeeds().getSkills().getRequiredSkills());
-                    }
-                    if (request.getCareNeeds().getSkills().getPrioritySkills() != null) {
-                        skillsMap.put("kĩ năng ưu tiên", request.getCareNeeds().getSkills().getPrioritySkills());
-                    }
-                    if (!skillsMap.isEmpty()) {
-                        careRequirementMap.put("skills", skillsMap);
-                    }
-                }
+                
+                // Chỉ lưu: age, gender, experience, rating
+                // Đã xóa: level_of_care, skills
+                
                 if (request.getCareNeeds().getAge() != null && !request.getCareNeeds().getAge().isEmpty()) {
                     careRequirementMap.put("age", request.getCareNeeds().getAge());
                 }

@@ -1,9 +1,11 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.request.externals.MatchCaregiverByElderlyRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.QualificationTypeResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
+import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.services.ProfileService;
 import com.capstone_project.elderly_platform.services.QualificationTypeService;
@@ -68,108 +70,27 @@ public class PublicController {
         }
     }
 
-    // private final AircraftService aircraftService;
-    //
-    // @Value("${application.default-current-page}")
-    // private int defaultCurrentPage;
-    //
-    // @Value("${application.default-page-size}")
-    // private int defaultPageSize;
-    //
-    // /**
-    // * Method get all air-crafts have status is active
-    // *
-    // * @param currentPage currentOfThePage
-    // * @param pageSize numberOfElement
-    // * @return list or empty
-    // */
-    // @Operation(summary = "Get all air-crafts active", description = "Retrieves
-    // all air-crafts have status is active")
-    // @GetMapping("/aircraft-active")
-    // public ResponseEntity<PagingResponse>
-    // getAllAircraftActive(@RequestParam(value = "currentPage", required = false)
-    // Integer currentPage,
-    // @RequestParam(value = "pageSize", required = false) Integer pageSize) {
-    // int resolvedCurrentPage = (currentPage != null) ? currentPage :
-    // defaultCurrentPage;
-    // int resolvedPageSize = (pageSize != null) ? pageSize : defaultPageSize;
-    // PagingResponse results =
-    // aircraftService.getAircraftsActive(resolvedCurrentPage, resolvedPageSize);
-    // List<?> data = (List<?>) results.getData();
-    // return ResponseEntity.status(!data.isEmpty() ? HttpStatus.OK :
-    // HttpStatus.BAD_REQUEST).body(results);
-    // }
-    //
-    // /**
-    // * Method search air-crafts active with name and sortBy
-    // *
-    // * @param currentPage currentOfThePage
-    // * @param pageSize numberOfElement
-    // * @param code code of aircraft to search
-    // * @param model sortBy model with aircraftType
-    // * @param manufacturer sortBy manufacturer with aircraftType
-    // * @return list or empty
-    // */
-    // @Operation(summary = "Search air-crafts active", description = "Retrieves all
-    // air-crafts active are filtered by code, model and manufacturer")
-    // @GetMapping("/search-aricraft-active")
-    // public ResponseEntity<PagingResponse>
-    // searchAircraftActive(@RequestParam(value = "currentPage", required = false)
-    // Integer currentPage,
-    // @RequestParam(value = "pageSize", required = false) Integer pageSize,
-    // @RequestParam(value = "code", required = false, defaultValue = "") String
-    // code,
-    // @RequestParam(value = "model", required = false, defaultValue = "") String
-    // model,
-    // @RequestParam(value = "manufacturer", required = false, defaultValue = "")
-    // String manufacturer) {
-    // int resolvedCurrentPage = (currentPage != null) ? currentPage :
-    // defaultCurrentPage;
-    // int resolvedPageSize = (pageSize != null) ? pageSize : defaultPageSize;
-    //
-    // PagingResponse results =
-    // aircraftService.searchAircraftsActive(resolvedCurrentPage, resolvedPageSize,
-    // code, model, manufacturer);
-    // List<?> data = (List<?>) results.getData();
-    // return ResponseEntity.status(!data.isEmpty() ? HttpStatus.OK :
-    // HttpStatus.BAD_REQUEST).body(results);
-    // }
-    //
-    // /**
-    // * Method get aircraft by aircraft id
-    // *
-    // * @param id idOfAircraft
-    // * @return list or empty
-    // */
-    // @Operation(summary = "Get aircraft by aircraft id", description = "Retrieves
-    // aircraft by aircraft id")
-    //// @PreAuthorize("hasRole('USER') or hasRole('STAFF') or hasRole('ADMIN')")
-    // @GetMapping("/{id}/active")
-    // public ResponseEntity<ObjectResponse>
-    // getAircraftByIDActive(@PathVariable("id") UUID id) {
-    // AircraftResponseDTO aircraft = aircraftService.findByIdActive(id);
-    // return aircraft != null ?
-    // ResponseEntity.status(HttpStatus.OK).body(new ObjectResponse("Success", "Get
-    // aircraft by ID successfully", aircraft)) :
-    // ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ObjectResponse("Fail",
-    // "Get aircraft by ID failed", null));
-    // }
-
     /**
      * Match caregivers using AI matching service
      * 
-     * @param request MatchCaregiverRequest with DISEASE request details
+     * @param request MatchCaregiverByElderlyRequest với elderlyProfileId, servicePackageId, workDate, startHour, startMinute
      * @return MatchCaregiverResponse with matched caregivers
      */
-    @Operation(summary = "Match caregivers using AI", description = "Match caregivers using AI matching service based on care requirements")
+    @Operation(summary = "Match caregivers using AI", description = "Match caregivers using AI matching service based on elderly profile and service package")
     @PostMapping("/match-caregivers")
-    public ResponseEntity<?> matchCaregivers(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> matchCaregivers(@RequestBody MatchCaregiverByElderlyRequest request) {
         try {
-            log.info("Received caregiver matching request");
+            log.info("Received caregiver matching request for elderly profile: {}", request.getElderlyProfileId());
 
-            Map<String, Object> response = aiMatchingService.matchCaregivers(request);
+            Map<String, Object> response = aiMatchingService.matchCaregiversByElderly(request);
 
             return ResponseEntity.ok(response);
+        } catch (ElementNotFoundException | BadRequestException e) {
+            log.error("Error matching caregivers: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of(
+                            "status", "error",
+                            "message", e.getMessage()));
         } catch (Exception e) {
             log.error("Error matching caregivers: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -190,6 +111,24 @@ public class PublicController {
             log.error("Error getting caregivers", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to get caregivers: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Get caregiver by ID", description = "Retrieve a caregiver profile by its ID")
+    @GetMapping("/caregivers/{id}")
+    public ResponseEntity<ObjectResponse> getCaregiverById(@PathVariable("id") UUID id) {
+        try {
+            CaregiverProfileResponseDTO caregiver = profileService.getCaregiverById(id);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Caregiver retrieved successfully", caregiver));
+        } catch (ElementNotFoundException e) {
+            log.error("Caregiver not found", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ObjectResponse("Failed", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error getting caregiver", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get caregiver: " + e.getMessage(), null));
         }
     }
 

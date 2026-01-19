@@ -11,6 +11,7 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -69,11 +70,6 @@ public class CreateElderlyProfileRequest {
     @NoArgsConstructor
     @FieldDefaults(level = AccessLevel.PRIVATE)
     public static class CareNeed {
-        @JsonProperty("level_of_care")
-        String levelOfCare; // Mức độ chăm sóc cần thiết (ví dụ: "Nâng cao")
-
-        Skills skills;
-
         @JsonProperty("age")
         List<Integer> age; // [minAge, maxAge] ví dụ: [18, 28]
 
@@ -82,19 +78,6 @@ public class CreateElderlyProfileRequest {
         Integer experience;
 
         Double rating;
-    }
-
-    @Getter
-    @Setter
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @FieldDefaults(level = AccessLevel.PRIVATE)
-    public static class Skills {
-        @JsonProperty("kĩ năng bắt buộc")
-        List<String> requiredSkills;
-
-        @JsonProperty("kĩ năng ưu tiên")
-        List<String> prioritySkills;
     }
 
     @Getter

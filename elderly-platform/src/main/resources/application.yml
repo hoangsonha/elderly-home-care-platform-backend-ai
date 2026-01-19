@@ -84,7 +84,7 @@ job:
 ai:
   matching:
     service:
-      url: http://ai_matching:8000
+      url: http://localhost:8000
 
 # Core PayOS credentials
 payos:

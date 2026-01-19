@@ -2,43 +2,17 @@
   {
     "id": "req_001",
     "seeker_name": "Trần Văn A",
-    "care_level": 3,
     "health_status": "weak",
     "required_years_experience": 3,
     "overall_rating_range": [
-      3.5,
-      5.0
+      3,
+      5
     ],
-    "skills": {
-      "required_skills": [
-        "tiêm insulin",
-        "đo đường huyết",
-        "đái tháo đường",
-        "quản lý thuốc"
-      ],
-      "priority_skills": [
-        "chăm sóc vết thương",
-        "đo dấu hiệu sinh tồn",
-        "nấu ăn"
-      ]
+    "time_slots": {
+      "day": "2026-01-18",
+      "start": "08:00",
+      "end": "12:00"
     },
-    "time_slots": [
-      {
-        "day": "monday",
-        "start": "08:00",
-        "end": "12:00"
-      },
-      {
-        "day": "wednesday",
-        "start": "08:00",
-        "end": "12:00"
-      },
-      {
-        "day": "friday",
-        "start": "08:00",
-        "end": "12:00"
-      }
-    ],
     "elderly_age": 78,
     "caregiver_age_range": [
       30,
@@ -49,205 +23,46 @@
       "lon": 106.72,
       "address": "Quận 7, TP.HCM"
     },
-    "gender_preference": null
-  },
-  {
-    "id": "req_002",
-    "seeker_name": "Nguyễn Văn C",
-    "care_level": 3,
-    "elderly_age": 85,
-    "health_status": "weak",
-    "required_years_experience": 5,
-    "overall_rating_range": [
-      4.0,
-      5.0
-    ],
-    "skills": {
-      "required_skills": [
-        "đột quỵ phục hồi",
-        "vật lý trị liệu",
-        "hỗ trợ đi lại",
-        "đo dấu hiệu sinh tồn",
-        "quản lý thuốc"
+    "gender_preference": null,
+    "service_package": {
+      "servicePackageId": "d6aa9640-3157-4ba6-ba28-db3505dd8d29",
+      "packageName": "Gói Chuyên Nghiệp",
+      "description": "Gói chăm sóc chuyên nghiệp với các dịch vụ phục hồi chức năng và theo dõi sức khỏe. Yêu cầu: Chứng chỉ vật lý trị liệu HOẶC điều dưỡng, Rating ≥4.3/5.0",
+      "durationHours": 8,
+      "packageType": "PROFESSIONAL",
+      "price": 2000,
+      "note": "Phù hợp cho người cao tuổi cần phục hồi chức năng và theo dõi sức khỏe. Phải đặt trước tối thiểu 24 giờ. Working hours: 7:00 AM - 5:00 PM",
+      "qualification": {
+        "skills": null,
+        "certificate_groups": [
+          [
+            "cef01b7e-aa3e-4bef-a380-a70655601e60",
+            "4bf33616-d522-4eef-ac5a-a2a7b140f8ec"
+          ]
+        ]
+      },
+      "status": "ACTIVE",
+      "serviceTasks": [
+        {
+          "serviceTaskId": "1065e9d7-3b23-4522-b93a-a0c5608985ab",
+          "taskName": "Tập vật lý trị liệu",
+          "description": "Các bài tập vật lý trị liệu phù hợp với tình trạng sức khỏe",
+          "status": "ACTIVE"
+        },
+        {
+          "serviceTaskId": "795138ed-9a2b-47d0-a7c4-7e25f5787cd7",
+          "taskName": "Massage phục hồi chức năng",
+          "description": "Massage chuyên sâu để phục hồi chức năng vận động",
+          "status": "ACTIVE"
+        },
+        {
+          "serviceTaskId": "095a7c54-ed5e-4043-b844-24bf5620f033",
+          "taskName": "Theo dõi tiến trình sức khỏe",
+          "description": "Theo dõi và ghi chép tiến trình sức khỏe hàng ngày",
+          "status": "ACTIVE"
+        }
       ],
-      "priority_skills": [
-        "chăm sóc catheter",
-        "cho ăn qua ống",
-        "chăm sóc vết thương",
-        "phòng ngừa loét"
-      ]
-    },
-    "location": {
-      "lat": 10.73,
-      "lon": 106.71,
-      "address": "Quận 7, TP.HCM"
-    },
-    "time_slots": [
-      {
-        "day": "monday",
-        "start": "08:00",
-        "end": "18:00"
-      },
-      {
-        "day": "wednesday",
-        "start": "08:00",
-        "end": "18:00"
-      },
-      {
-        "day": "friday",
-        "start": "08:00",
-        "end": "18:00"
-      }
-    ],
-    "gender_preference": null
-  },
-  {
-    "id": "req_003",
-    "seeker_name": "Phạm Thị D",
-    "care_level": 1,
-    "elderly_age": 68,
-    "caregiver_age_range": [
-      25,
-      45
-    ],
-    "health_status": "good",
-    "required_years_experience": null,
-    "overall_rating_range": null,
-    "skills": {
-      "required_skills": [
-        "hỗ trợ vệ sinh",
-        "nấu ăn",
-        "đồng hành"
-      ],
-      "priority_skills": [
-        "hỗ trợ đi lại",
-        "vận động nhẹ nhàng",
-        "giám sát an toàn"
-      ]
-    },
-    "location": {
-      "lat": 10.738,
-      "lon": 106.721,
-      "address": "Quận 7, TP.HCM"
-    },
-    "time_slots": [
-      {
-        "day": "monday",
-        "start": "08:00",
-        "end": "12:00"
-      },
-      {
-        "day": "wednesday",
-        "start": "08:00",
-        "end": "12:00"
-      },
-      {
-        "day": "friday",
-        "start": "08:00",
-        "end": "12:00"
-      }
-    ],
-    "gender_preference": null
-  },
-  {
-    "id": "req_004",
-    "seeker_name": "Lê Văn E",
-    "care_level": 2,
-    "elderly_age": 72,
-    "health_status": "moderate",
-    "required_years_experience": 2,
-    "overall_rating_range": [
-      3.0,
-      4.5
-    ],
-    "skills": {
-      "required_skills": [
-        "đo huyết áp",
-        "cao huyết áp",
-        "nhắc nhở uống thuốc",
-        "theo dõi sức khỏe"
-      ],
-      "priority_skills": [
-        "nấu ăn",
-        "hỗ trợ vệ sinh",
-        "đồng hành"
-      ]
-    },
-    "location": {
-      "lat": 10.745,
-      "lon": 106.725,
-      "address": "Bình Thạnh, TP.HCM"
-    },
-    "time_slots": [
-      {
-        "day": "tuesday",
-        "start": "09:00",
-        "end": "15:00"
-      },
-      {
-        "day": "thursday",
-        "start": "09:00",
-        "end": "15:00"
-      },
-      {
-        "day": "saturday",
-        "start": "08:00",
-        "end": "12:00"
-      }
-    ],
-    "gender_preference": "female"
-  },
-  {
-    "id": "req_005",
-    "seeker_name": "Hoàng Thị F",
-    "care_level": 3,
-    "elderly_age": 80,
-    "caregiver_age_range": [
-      35,
-      60
-    ],
-    "health_status": "weak",
-    "required_years_experience": 3,
-    "overall_rating_range": [
-      3.5,
-      5.0
-    ],
-    "skills": {
-      "required_skills": [
-        "alzheimer",
-        "sa sút trí tuệ",
-        "giám sát an toàn",
-        "đồng hành"
-      ],
-      "priority_skills": [
-        "hỗ trợ tâm lý",
-        "hỗ trợ vệ sinh",
-        "nấu ăn",
-        "nhắc nhở uống thuốc"
-      ]
-    },
-    "location": {
-      "lat": 10.72,
-      "lon": 106.7,
-      "address": "Quận 7, TP.HCM"
-    },
-    "time_slots": [
-      {
-        "day": "monday",
-        "start": "08:00",
-        "end": "17:00"
-      },
-      {
-        "day": "wednesday",
-        "start": "08:00",
-        "end": "17:00"
-      },
-      {
-        "day": "friday",
-        "start": "08:00",
-        "end": "17:00"
-      }
-    ],
-    "gender_preference": "female"
+      "totalCareServices": null
+    }
   }
 ]

@@ -9,7 +9,8 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from app.models.schemas import (
     MatchRequest, MatchResponse, MatchPayload, SimpleMatchResponse,
-    CaregiverRecommendation, ScoreBreakdown, MobileMatchRequest
+    CaregiverRecommendation, ScoreBreakdown, MobileMatchRequest, 
+    FailureAnalysis, FilterStatistics, PrimaryReason, Suggestion
 )
 from app.core.matcher import RuleBasedMatcher
 
@@ -94,7 +95,7 @@ async def match_caregivers(request: MatchRequest):
         if not care_request:
             raise HTTPException(
                 status_code=404, 
-                detail=f"Care request với ID '{request.request_id}' không tồn tại"
+                detail=f"Yêu cầu chăm sóc với ID '{request.request_id}' không tồn tại"
             )
         
         # Run matching algorithm
@@ -186,7 +187,7 @@ async def match_caregivers(request: MatchRequest):
         traceback.print_exc()
         raise HTTPException(
             status_code=500,
-            detail=f"Internal server error: {str(e)}"
+            detail=f"Lỗi hệ thống: {str(e)}"
         )
 
 
@@ -231,24 +232,50 @@ async def match_from_spring_boot(payload: MatchPayload):
         )
     
     # Run matching
-    results = matcher.match(care_request, candidates, top_n=top_n)
+    results, failure_analysis = matcher.match(care_request, candidates, top_n=top_n)
     
     # Format response đơn giản (Spring Boot sẽ tự enrich data)
     recommendations = []
     for i, result in enumerate(results, 1):
         cg = result['caregiver']
+        # Get caregiver ID - có thể là 'id' hoặc 'caregiverProfileId'
+        caregiver_id = cg.get('caregiverProfileId') or cg.get('id') or cg.get('caregiverProfileId')
         recommendations.append({
             'rank': i,
-            'caregiver_id': cg.get('id'),
+            'caregiver_id': caregiver_id,
+            'caregiverProfileId': caregiver_id,  # Thêm field này để đảm bảo compatibility
             'match_score': result['total_score'],
             'match_percentage': f"{int(result['total_score'] * 100)}%",
             'distance_km': result['distance_km'],
             'score_breakdown': result['breakdown']
         })
     
+    # Build response with failure_analysis if no matches
+    # Convert failure_analysis dict to FailureAnalysis object if exists
+    failure_analysis_obj = None
+    if failure_analysis:
+        # Convert filter_statistics
+        filter_stats = {}
+        for filter_name, stats in failure_analysis.get('filter_statistics', {}).items():
+            filter_stats[filter_name] = FilterStatistics(**stats)
+        
+        # Convert primary_reason
+        primary_reason_obj = PrimaryReason(**failure_analysis.get('primary_reason', {}))
+        
+        # Convert suggestions
+        suggestions_list = [Suggestion(**s) for s in failure_analysis.get('suggestions', [])]
+        
+        failure_analysis_obj = FailureAnalysis(
+            total_candidates=failure_analysis.get('total_candidates', 0),
+            filter_statistics=filter_stats,
+            primary_reason=primary_reason_obj,
+            suggestions=suggestions_list
+        )
+    
     return SimpleMatchResponse(
         total_matches=len(recommendations),
-        recommendations=recommendations
+        recommendations=recommendations,
+        failure_analysis=failure_analysis_obj
     )
 
 
@@ -295,22 +322,49 @@ async def match_caregivers_mobile(request: MobileMatchRequest):
     
     try:
         # Convert mobile request to care_request format
+        # Convert service_package to dict format
+        service_package_dict = None
+        if request.service_package:
+            service_package_dict = {
+                "servicePackageId": request.service_package.servicePackageId,
+                "packageName": request.service_package.packageName,
+                "description": request.service_package.description,
+                "durationHours": request.service_package.durationHours,
+                "packageType": request.service_package.packageType,
+                "price": request.service_package.price,
+                "note": request.service_package.note,
+                "qualification": None,
+                "status": request.service_package.status,
+                "serviceTasks": request.service_package.serviceTasks
+            }
+            # Convert qualification
+            if request.service_package.qualification:
+                service_package_dict["qualification"] = {
+                    "skills": request.service_package.qualification.skills,
+                    "certificate_groups": request.service_package.qualification.certificate_groups
+                }
+        
+        # Convert time_slots: có thể là object hoặc array
+        time_slots = request.time_slots
+        if isinstance(time_slots, dict):
+            # Nếu là object, giữ nguyên
+            time_slots = time_slots
+        elif isinstance(time_slots, list):
+            # Nếu là array, giữ nguyên
+            time_slots = time_slots
+        
         care_request = {
             "id": f"mobile_{int(time.time())}",  # Generate unique ID
             "seeker_name": request.seeker_name,
-            "care_level": request.care_level,
             "health_status": request.health_status,
             "elderly_age": request.elderly_age,
             "caregiver_age_range": request.caregiver_age_range,
             "gender_preference": request.gender_preference,
             "required_years_experience": request.required_years_experience,
             "overall_rating_range": request.overall_rating_range,
-            "personality": request.personality,
-            "attitude": request.attitude,
-            "skills": request.skills,
-            "time_slots": request.time_slots,
+            "time_slots": time_slots,
             "location": request.location,
-            "budget_per_hour": request.budget_per_hour,
+            "service_package": service_package_dict,
             "top_n": request.top_n or 10
         }
         
@@ -416,5 +470,5 @@ async def match_caregivers_mobile(request: MobileMatchRequest):
         traceback.print_exc()
         raise HTTPException(
             status_code=500,
-            detail=f"Internal server error: {str(e)}"
+            detail=f"Lỗi hệ thống: {str(e)}"
         )

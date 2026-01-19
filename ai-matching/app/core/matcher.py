@@ -5,8 +5,7 @@ Weighted scoring algorithm với hard filters và soft preferences
 
 from typing import List, Dict, Optional
 import numpy as np
-from app.utils import haversine_km, has_time_overlap
-from app.algorithms.semantic_matcher import semantic_matcher, normalize_request_skills, normalize_caregiver_skills
+from app.utils import haversine_km
 
 
 def convert_schedule_to_dict(schedule: List[Dict]) -> Dict:
@@ -38,37 +37,33 @@ class RuleBasedMatcher:
         3. Weighted sum: kết hợp điểm theo trọng số
         4. Ranking: sắp xếp theo điểm giảm dần
     
-    Hard Filters (11 filters):
-        1. Care Level: caregiver.max_care_level >= request.care_level
-        2. Degree: Level 2+ bắt buộc có bằng cấp
-        3. Distance: distance <= caregiver.service_radius_km
-        4. Time: 100% overlap với available slots
-        5. Gender: match gender preference (nếu có)
-        6. Caregiver Age: caregiver.age nằm trong request.caregiver_age_range (nếu có)
-        7. Health Status: request.health_status nằm trong caregiver.preferred_health_status
-        8. Elderly Age: request.elderly_age nằm trong caregiver.elderly_age_preference (nếu có)
-        9. Required Years Experience: caregiver.years_experience >= request.required_years_experience (nếu có)
-        10. Overall Rating Range: caregiver.overall_rating nằm trong request.overall_rating_range (nếu có)
-        11. Required Skills: 100% required_skills phải có trong caregiver skills
+    Hard Filters (8 filters):
+        1. Certificate Groups: Caregiver phải có ít nhất 1 chứng chỉ từ mỗi group trong service_package.qualification.certificate_groups
+        2. Distance: distance <= caregiver.service_radius_km
+        3. Time: 100% overlap với available slots
+        4. Gender: match gender preference (nếu có)
+        5. Caregiver Age: caregiver.age nằm trong request.caregiver_age_range (nếu có)
+        6. Health Status: request.health_status nằm trong caregiver.preferred_health_status
+        7. Elderly Age: request.elderly_age nằm trong caregiver.elderly_age_preference (nếu có)
+        8. Required Years Experience: caregiver.years_experience >= request.required_years_experience (nếu có)
+        9. Overall Rating Range: caregiver.overall_rating nằm trong request.overall_rating_range (nếu có)
     
-    Soft Scoring Features (6 features, weights sum = 1.0):
-        - Credential (30%): Bằng cấp, care level
-        - Skills (25%): Priority skills matching
-        - Distance (15%): Khoảng cách địa lý
-        - Rating (12%): Đánh giá từ khách hàng
-        - Experience (9%): Số năm kinh nghiệm
-        - Trust (9%): Trust score
+    Soft Scoring Features (5 features, weights sum = 1.0):
+        - Credential (35%): Bằng cấp, certificates
+        - Distance (20%): Khoảng cách địa lý
+        - Rating (18%): Đánh giá từ khách hàng
+        - Experience (14%): Số năm kinh nghiệm
+        - Trust (13%): Trust score
     """
     
     def __init__(self):
         # Weights for scoring features (sum = 1.0)
         self.weights = {
-            'credential': 0.30,   # Bằng cấp, care level
-            'skills': 0.25,       # Priority skills matching
-            'distance': 0.15,     # Gần = thuận tiện
-            'rating': 0.12,       # Chất lượng đã được verify
-            'experience': 0.09,   # Kinh nghiệm
-            'trust': 0.09         # Độ tin cậy
+            'credential': 0.35,   # Bằng cấp, certificates
+            'distance': 0.20,     # Gần = thuận tiện
+            'rating': 0.18,       # Chất lượng đã được verify
+            'experience': 0.14,   # Kinh nghiệm
+            'trust': 0.13         # Độ tin cậy
         }
     
     def match(
@@ -93,41 +88,63 @@ class RuleBasedMatcher:
         Returns:
             List of matched caregivers với scores, sorted by score desc
         """
-        # Normalize Vietnamese skills by removing diacritics for matching
-        care_request = normalize_request_skills(care_request)
-        
-        # Normalize caregivers skills by removing diacritics
-        caregivers_normalized = []
-        for cg in caregivers:
-            cg_normalized = normalize_caregiver_skills(cg.copy())
-            caregivers_normalized.append(cg_normalized)
-        
         # BƯỚC 1: Hard Filter với service_radius_km của từng caregiver
         pass_list = []
         fail_list = []
+        filter_failures = {}  # Track filter failures: {filter_name: count}
+        total_candidates = len(caregivers)
         
-        for cg in caregivers_normalized:
-            distance = haversine_km(
-                care_request['location']['lat'], care_request['location']['lon'],
-                cg.get('location', {}).get('lat', cg.get('lat')),
-                cg.get('location', {}).get('lon', cg.get('lon'))
-            )
+        # Validate request location
+        req_location = care_request.get('location')
+        if not req_location or req_location.get('lat') is None or req_location.get('lon') is None:
+            # Nếu request không có location hợp lệ, return empty results
+            return [], self._generate_failure_analysis(filter_failures, total_candidates, care_request)
+        
+        req_lat = req_location['lat']
+        req_lon = req_location['lon']
+        
+        for cg in caregivers:
+            # Validate caregiver location
+            cg_location = cg.get('location', {})
+            cg_lat = cg_location.get('lat') if isinstance(cg_location, dict) else None
+            cg_lon = cg_location.get('lon') if isinstance(cg_location, dict) else None
             
-            service_radius = cg.get('location', {}).get('service_radius_km', cg.get('service_radius_km', 0))
+            # Fallback to direct fields if location dict doesn't have lat/lon
+            if cg_lat is None:
+                cg_lat = cg.get('lat')
+            if cg_lon is None:
+                cg_lon = cg.get('lon')
+            
+            # Skip if caregiver doesn't have valid location
+            if cg_lat is None or cg_lon is None:
+                continue
+            
+            try:
+                distance = haversine_km(
+                    req_lat, req_lon,
+                    cg_lat, cg_lon
+                )
+            except (TypeError, ValueError) as e:
+                # Skip if distance calculation fails (invalid coordinates)
+                continue
+            
+            service_radius = cg_location.get('service_radius_km', 0) if isinstance(cg_location, dict) else cg.get('service_radius_km', 0)
             
             if distance <= service_radius:
                 pass_list.append(cg)
             else:
                 cg['distance'] = distance
                 fail_list.append(cg)
+                filter_failures['distance'] = filter_failures.get('distance', 0) + 1
         
         # BƯỚC 2: Sắp xếp fail_list theo distance (gần nhất trước)
         fail_list.sort(key=lambda x: x['distance'])
         
         # BƯỚC 3: Thử pass_list trước
         results = []
+        
         for cg in pass_list:
-            score_result = self._score_candidate(care_request, cg)
+            score_result, failed_filter = self._score_candidate(care_request, cg)
             
             if score_result is not None:
                 results.append({
@@ -136,11 +153,15 @@ class RuleBasedMatcher:
                     'breakdown': score_result['breakdown'],
                     'distance_km': score_result['distance_km']
                 })
+            else:
+                # Track which filter failed
+                if failed_filter:
+                    filter_failures[failed_filter] = filter_failures.get(failed_filter, 0) + 1
         
         if results:
             # Sort by total_score descending
             results.sort(key=lambda x: x['total_score'], reverse=True)
-            return results[:top_n]
+            return results[:top_n], None  # No failure analysis if we have results
         
         # BƯỚC 4: Fallback - Lấy nhiều lần, mỗi lần 10 người từ fail_list
         fallback_results = []
@@ -178,44 +199,73 @@ class RuleBasedMatcher:
         if fallback_results:
             # Sort by total_score descending
             fallback_results.sort(key=lambda x: x['total_score'], reverse=True)
-            return fallback_results[:top_n]
+            return fallback_results[:top_n], None  # No failure analysis if we have fallback results
         
-        # Nếu không tìm thấy caregiver nào
-        return []
+        # Nếu không tìm thấy caregiver nào - generate failure analysis
+        failure_analysis = self._generate_failure_analysis(filter_failures, total_candidates, care_request)
+        return [], failure_analysis
     
-    def calculate_max_care_level_dynamic(self, cg: Dict) -> int:
+    def _check_time_availability(self, req_time_slots: List[Dict], free_schedule: Dict) -> bool:
         """
-        Tính max_care_level động dựa trên credentials hiện tại
+        Check nếu time slots yêu cầu có available trong free_schedule của caregiver.
         
         Logic:
-            - Chỉ tính credential đã verified
-            - Check expiry date cho certificates
-            - Lấy max level từ applicable_levels
+            - Nếu available_all_time = true → luôn available
+            - Nếu available_all_time = false → check booked_slots
+            - Check NGÀY: Phải cùng ngày
+            - Check TIME OVERLAP: Nếu có bất kỳ thời gian nào trong booked_slots overlap với time_slots yêu cầu → FAIL
+        
+        Args:
+            req_time_slots: List of time slots [{"day": "2026-01-18", "start": "08:00", "end": "12:00"}, ...]
+            free_schedule: Free schedule dict {"available_all_time": bool, "booked_slots": [...]}
+        
+        Returns:
+            True nếu tất cả time slots available (không có overlap)
         """
-        credentials = cg.get('credentials', [])
-        max_level = 0
+        # Nếu available all time → luôn available
+        if free_schedule.get('available_all_time', False):
+            return True
         
-        for cred in credentials:
-            # Chỉ tính credential đã verify
-            if cred.get('status') != 'verified':
-                continue
-                
-            # Check expiry date cho certificates
-            if cred.get('type') == 'certificate' and cred.get('expiry_date'):
-                from datetime import datetime
-                try:
-                    expiry = datetime.fromisoformat(cred['expiry_date'].replace('Z', '+00:00'))
-                    if expiry < datetime.now(expiry.tzinfo):
-                        continue  # Skip expired certificates
-                except ValueError:
-                    continue  # Skip invalid date format
+        # Lấy booked_slots
+        booked_slots = free_schedule.get('booked_slots', [])
+        
+        # Helper function: Convert time string to minutes
+        def time_to_minutes(time_str: str) -> int:
+            """Convert "HH:MM" to minutes since midnight"""
+            hours, minutes = map(int, time_str.split(':'))
+            return hours * 60 + minutes
+        
+        # Check từng time slot yêu cầu
+        for req_slot in req_time_slots:
+            req_day = req_slot.get('day')  # Format: "2026-01-18"
+            req_start = req_slot.get('start')  # Format: "08:00"
+            req_end = req_slot.get('end')  # Format: "12:00"
             
-            # Lấy applicable_levels
-            applicable_levels = cred.get('applicable_levels', [])
-            if applicable_levels:
-                max_level = max(max_level, max(applicable_levels))
+            if not req_day or not req_start or not req_end:
+                return False
+            
+            # Convert request time to minutes
+            req_start_min = time_to_minutes(req_start)
+            req_end_min = time_to_minutes(req_end)
+            
+            # Check overlap với booked_slots
+            for booked_slot in booked_slots:
+                booked_date = booked_slot.get('date')  # Format: "2026-01-18"
+                booked_start = booked_slot.get('start_time')  # Format: "11:00"
+                booked_end = booked_slot.get('end_time')  # Format: "13:00"
+                
+                # Check nếu cùng ngày
+                if booked_date == req_day:
+                    # Convert booked time to minutes
+                    booked_start_min = time_to_minutes(booked_start)
+                    booked_end_min = time_to_minutes(booked_end)
+                    
+                    # Check overlap: request slot overlap với booked slot
+                    # Overlap nếu: req_start < booked_end AND req_end > booked_start
+                    if req_start_min < booked_end_min and req_end_min > booked_start_min:
+                        return False  # Có overlap → không available
         
-        return max_level
+        return True  # Tất cả slots đều available (không có overlap)
     
     def calculate_credential_quality_score(self, cg: Dict, required_level: int) -> float:
         """
@@ -260,197 +310,235 @@ class RuleBasedMatcher:
         self, 
         req: Dict, 
         cg: Dict
-    ) -> Optional[Dict]:
+    ) -> tuple[Optional[Dict], Optional[str]]:
         """
         Score a single caregiver against a care request.
         
         Args:
-            req: Care request dict
-            cg: Caregiver dict
+            req: Care request dict (theo format mới từ requests.json)
+            cg: Caregiver dict (theo format mới từ caregivers.json)
         
         Returns:
-            Dict với total_score, breakdown, distance_km
-            None nếu không đủ điều kiện (hard filters)
+            Tuple (result_dict, failed_filter):
+            - result_dict: Dict với total_score, breakdown, distance_km nếu pass
+            - failed_filter: Tên filter bị fail (None nếu pass tất cả)
         """
         
         # ========== HARD FILTERS (bắt buộc) ==========
         
-        # Extract nested data
-        professional_info = cg.get('professional_info', cg)  # Fallback to root level
-        personal_info = cg.get('personal_info', cg)
-        location_info = cg.get('location', cg)
-        availability_info = cg.get('availability', {})
+        # Extract data từ caregiver theo cấu trúc mới
+        location_info = cg.get('location', {})
+        profile_data = cg.get('profileData', {})
+        preferences = profile_data.get('preferences', {})
+        free_schedule = profile_data.get('free_schedule', {})
+        ratings_reviews = profile_data.get('ratings_reviews', {})
         
-        # Tính max_care_level động thay vì dùng giá trị cố định
-        max_care_level = self.calculate_max_care_level_dynamic(cg)
-        years_experience = professional_info.get('years_experience', cg.get('years_experience'))
-        gender = personal_info.get('gender', cg.get('gender'))
-        cg_lat = location_info.get('lat', cg.get('lat'))
-        cg_lon = location_info.get('lon', cg.get('lon'))
-        schedule = availability_info.get('schedule', cg.get('availability', {}))
+        # Extract các giá trị cần thiết
+        years_experience = profile_data.get('years_experience', 0)
+        gender = cg.get('gender', None)
+        caregiver_age = cg.get('age', None)
+        cg_lat = location_info.get('latitude', location_info.get('lat'))
+        cg_lon = location_info.get('longitude', location_info.get('lon'))
+        service_radius = location_info.get('service_radius_km', 0)
+        qualifications = cg.get('qualifications', [])
         
-        # Convert schedule array to dict if needed
-        if isinstance(schedule, list):
-            schedule = convert_schedule_to_dict(schedule)
+        # ========== FILTER 1: Certificate Groups ==========
+        # Logic: Service Package yêu cầu certificate_groups
+        # Mỗi group là một mảng UUIDs (OR trong group)
+        # Caregiver phải có ít nhất 1 chứng chỉ từ MỖI group (AND giữa các groups)
+        service_package = req.get('service_package', {})
+        qualification_req = service_package.get('qualification', {})
+        certificate_groups = qualification_req.get('certificate_groups', [])
         
-        # Filter 1: Care level match
-        if max_care_level < req['care_level']:
-            return None
+        # Nếu service package có yêu cầu certificate_groups
+        if certificate_groups:
+            # Helper: Check qualification còn hạn và đã được APPROVED
+            def is_valid_qualification(qual):
+                # Phải được APPROVED
+                if qual.get('status') != 'APPROVED':
+                    return False
+                # Check expiry date nếu có
+                expiry_date = qual.get('expiryDate', qual.get('expiry_date'))
+                if expiry_date:
+                    from datetime import datetime, date
+                    try:
+                        # Parse date string (format: "2027-02-10")
+                        if isinstance(expiry_date, str):
+                            expiry = datetime.strptime(expiry_date, '%Y-%m-%d').date()
+                        else:
+                            expiry = expiry_date
+                        if expiry < date.today():
+                            return False  # Hết hạn
+                    except (ValueError, TypeError):
+                        return False  # Invalid date format
+                return True
+            
+            # Lấy danh sách qualificationTypeIds hợp lệ của caregiver
+            valid_qualification_type_ids = set()
+            for qual in qualifications:
+                if is_valid_qualification(qual):
+                    qual_type_id = qual.get('qualificationTypeId')
+                    if qual_type_id:
+                        valid_qualification_type_ids.add(qual_type_id)
+            
+            # Check từng group: Caregiver phải có ít nhất 1 chứng chỉ từ MỖI group
+            for group in certificate_groups:
+                if not group:  # Skip empty groups
+                    continue
+                
+                # Check nếu caregiver có ít nhất 1 chứng chỉ trong group này
+                has_qual_from_group = False
+                for required_type_id in group:
+                    if required_type_id in valid_qualification_type_ids:
+                        has_qual_from_group = True
+                        break
+                
+                # Nếu không có chứng chỉ nào từ group này → FAIL
+                if not has_qual_from_group:
+                    return None, "certificate_groups"
         
-        # Filter 2: Degree requirement cho level 2+
-        # Level 2-3 BẮT BUỘC phải có bằng cấp
-        credentials = cg.get('credentials', [])
-        
-        # Helper: Check credential còn hạn
-        def is_valid_credential(cred):
-            if cred.get('status') != 'verified':
-                return False
-            # Certificate phải check expiry_date
-            if cred.get('type') == 'certificate' and cred.get('expiry_date'):
-                from datetime import datetime
-                expiry = datetime.fromisoformat(cred['expiry_date'].replace('Z', '+00:00'))
-                if expiry < datetime.now(expiry.tzinfo):
-                    return False  # Hết hạn
-            return True
-        
-        valid_credentials = [c for c in credentials if is_valid_credential(c)]
-        has_degree = any(c.get('type') == 'degree' for c in valid_credentials)
-        
-        if req['care_level'] >= 2 and not has_degree:
-            return None
-        
-        # Filter 3: Distance - Logic đúng: caregiver quyết định bán kính phục vụ
+        # ========== FILTER 2: Distance ==========
+        # Logic: Caregiver quyết định bán kính phục vụ (service_radius_km)
+        # Request chỉ được match nếu nằm trong bán kính của caregiver
         distance = haversine_km(
             req['location']['lat'], req['location']['lon'],
             cg_lat, cg_lon
         )
-        service_radius = location_info.get('service_radius_km', cg.get('service_radius_km', 0))
         
-        # Caregiver chỉ nhận được request nếu trong bán kính phục vụ của họ
         if distance > service_radius:
-            return None
+            return None, "distance"
         
-        # Filter 4: Time availability
-        # Tất cả time slots yêu cầu phải nằm trong availability của caregiver
-        if not has_time_overlap(req['time_slots'], schedule):
-            return None
+        # ========== FILTER 3: Time Availability ==========
+        # Logic: Check NGÀY và TIME OVERLAP
+        # - Phải cùng ngày
+        # - Nếu có bất kỳ thời gian nào trong booked_slots overlap với time_slots yêu cầu → FAIL
+        # Format: time_slots có thể là object {"day": "2026-01-18", "start": "08:00", "end": "12:00"}
+        # hoặc array [{"day": "2026-01-18", "start": "08:00", "end": "12:00"}, ...]
+        req_time_slots = req.get('time_slots', {})
         
-        # Filter 5: Gender preference (nếu có)
-        if req.get('gender_preference') and req['gender_preference'] != gender:
-            return None
+        # Convert single object to array format
+        if isinstance(req_time_slots, dict) and 'day' in req_time_slots:
+            req_time_slots = [req_time_slots]
         
-        # Filter 6: Caregiver age range preference (optional)
-        # Request có thể yêu cầu độ tuổi của caregiver (ví dụ: 25-50 tuổi)
+        # Check time availability (check ngày và overlap time)
+        if not self._check_time_availability(req_time_slots, free_schedule):
+            return None, "time_availability"
+        
+        # ========== FILTER 4: Gender Preference ==========
+        # Logic: Nếu request có gender_preference, caregiver phải match
+        gender_preference = req.get('gender_preference')
+        if gender_preference and gender:
+            # Normalize: "FEMALE" vs "female", "MALE" vs "male"
+            if gender_preference.upper() != gender.upper():
+                return None, "gender_preference"
+        
+        # ========== FILTER 5: Caregiver Age Range ==========
+        # Logic: Nếu request có caregiver_age_range, caregiver.age phải nằm trong range
         caregiver_age_range = req.get('caregiver_age_range', None)
-        caregiver_age = personal_info.get('age', cg.get('age', None))
-        
-        if caregiver_age_range and caregiver_age:
+        if caregiver_age_range and caregiver_age is not None:
             min_age, max_age = caregiver_age_range
             if caregiver_age < min_age or caregiver_age > max_age:
-                return None
+                return None, "caregiver_age_range"
         
-        # Filter 7: Health status preference
-        # Caregiver chỉ nhận nếu health_status của người già nằm trong preferred_health_status
-        preferences = cg.get('preferences', {})
-        preferred_health_status = preferences.get('preferred_health_status', [])
+        # ========== FILTER 6: Health Status Preference ==========
+        # Logic: Hierarchical - Caregiver có thể nhận health status tốt hơn hoặc bằng mức họ chấp nhận
+        # - "weak" → nhận "weak", "moderate", "good"
+        # - "moderate" → nhận "moderate", "good"
+        # - "good" → chỉ nhận "good"
+        preferred_health_status = preferences.get('preferred_health_status', None)
         elderly_health_status = req.get('health_status', None)
         
         if preferred_health_status and elderly_health_status:
-            if elderly_health_status not in preferred_health_status:
-                return None
+            # preferred_health_status có thể là string hoặc array
+            if isinstance(preferred_health_status, str):
+                preferred_health_status = [preferred_health_status]
+            
+            # Normalize
+            preferred_normalized = [s.lower() for s in preferred_health_status]
+            elderly_health_status_normalized = elderly_health_status.lower()
+            
+            # Health status hierarchy (tốt hơn = số cao hơn)
+            health_hierarchy = {
+                'weak': 1,
+                'moderate': 2,
+                'good': 3
+            }
+            
+            elderly_level = health_hierarchy.get(elderly_health_status_normalized, 0)
+            if elderly_level == 0:
+                return None, "health_status_preference"  # Unknown status
+            
+            # Check từng preferred status
+            accepted = False
+            for preferred in preferred_normalized:
+                preferred_level = health_hierarchy.get(preferred, 0)
+                if preferred_level == 0:
+                    continue
+                
+                # Caregiver chấp nhận nếu elderly_status >= preferred_status
+                # (tốt hơn hoặc bằng mức họ chấp nhận)
+                # - "weak" (1) → nhận "weak" (1), "moderate" (2), "good" (3)
+                # - "moderate" (2) → nhận "moderate" (2), "good" (3)
+                # - "good" (3) → chỉ nhận "good" (3)
+                if elderly_level >= preferred_level:
+                    accepted = True
+                    break
+            
+            if not accepted:
+                return None, "health_status_preference"
         
-        # Filter 8: Elderly age preference
-        # Caregiver chỉ nhận nếu elderly_age của người già nằm trong elderly_age_preference
+        # ========== FILTER 7: Elderly Age Preference ==========
+        # Logic: Tuổi người già phải nằm trong elderly_age_preference của caregiver
         elderly_age_preference = preferences.get('elderly_age_preference', None)
         elderly_age = req.get('elderly_age', None)
         
-        if elderly_age_preference and elderly_age:
-            min_age, max_age = elderly_age_preference
-            if elderly_age < min_age or elderly_age > max_age:
-                return None
+        if elderly_age_preference and elderly_age is not None:
+            min_age = elderly_age_preference.get('min_age')
+            max_age = elderly_age_preference.get('max_age')
+            if min_age is not None and max_age is not None:
+                if elderly_age < min_age or elderly_age > max_age:
+                    return None, "elderly_age_preference"
         
-        # Filter 9: Required Years Experience (Hard Filter)
-        # Caregiver PHẢI có đủ số năm kinh nghiệm yêu cầu
+        # ========== FILTER 8: Required Years Experience ==========
+        # Logic: Caregiver phải có đủ số năm kinh nghiệm yêu cầu
         required_years_experience = req.get('required_years_experience', None)
-        
         if required_years_experience is not None:
             if years_experience < required_years_experience:
-                return None  # Không đủ kinh nghiệm
+                return None, "required_years_experience"
         
-        # Filter 10: Overall Rating Range (Hard Filter)
-        # Caregiver PHẢI có đánh giá nằm trong khoảng yêu cầu
+        # ========== FILTER 9: Overall Rating Range ==========
+        # Logic: Overall rating của caregiver phải nằm trong khoảng yêu cầu
         required_rating_range = req.get('overall_rating_range', None)
-        
         if required_rating_range is not None:
-            # Lấy overall_rating của caregiver
-            ratings_reviews = cg.get('ratings_reviews', cg)
-            caregiver_rating = ratings_reviews.get('overall_rating', cg.get('rating', 0.0))
-            
+            caregiver_rating = ratings_reviews.get('overall_rating', 0.0)
             min_rating, max_rating = required_rating_range
             if caregiver_rating < min_rating or caregiver_rating > max_rating:
-                return None  # Đánh giá không nằm trong khoảng yêu cầu
-        
-        # Filter 11: Required Skills (Hard Filter)
-        # Caregiver PHẢI có 100% required_skills
-        req_skills = req.get('skills', {})
-        required_skills = req_skills.get('required_skills', [])
-        
-        if required_skills:
-            # Get caregiver's skill names (extract from skill objects)
-            cg_skills = cg.get('skills', [])
-            cg_skill_names = set()
-            for skill in cg_skills:
-                if isinstance(skill, dict):
-                    cg_skill_names.add(skill.get('name', ''))
-                else:
-                    cg_skill_names.add(skill)
-            
-            # Check if ALL required skills are present using semantic matching (PhoBERT)
-            missing_skills = []
-            for req_skill in required_skills:
-                best_match_score = 0.0
-                for cg_skill in cg_skill_names:
-                    similarity = semantic_matcher.calculate_similarity(req_skill, cg_skill)
-                    best_match_score = max(best_match_score, similarity)
-                
-                # Threshold for PhoBERT v2 semantic matching (0.8 = 80% similarity for strict matching)
-                if best_match_score < 0.8:
-                    missing_skills.append(req_skill)
-            
-            if missing_skills:
-                return None  # Không đủ required skills
+                return None, "overall_rating_range"
         
         # ========== SOFT SCORING (normalize về 0-1) ==========
         
-        # 1. Credential score (bằng cấp + level)
+        # 1. Credential score (bằng cấp + certificates)
         credential_score = self._calculate_credential_score(req, cg)
         
-        # 2. Skills score (priority skills matching)
-        skills_score = self._calculate_skills_score(req, cg)
-        
-        # 3. Distance score - Logic mượt: exponential decay
+        # 2. Distance score - Logic mượt: exponential decay
         import math
         # Công thức: score = e^(-distance/scale)
         # Scale = 8: distance 8km → score ≈ 0.37, distance 16km → score ≈ 0.14
         distance_score = math.exp(-distance / 8.0)
         
-        # 4. Time score - Đã được xử lý ở hard filter
-        # Không cần tính điểm vì đã pass hard filter = có sẵn 100% time slots
-        
-        # 5. Rating score
+        # 3. Rating score
         rating_score = self._calculate_rating_score(cg)
         
-        # 6. Experience score - Improved: min 0.1 cho caregiver mới
+        # 4. Experience score - Improved: min 0.1 cho caregiver mới
         experience_score = min(1.0, max(0.1, years_experience / 10.0))
         
-        # 7. Trust score (simplified: dựa trên rating + experience + reviews)
+        # 5. Trust score (simplified: dựa trên rating + experience + reviews)
         trust_score = self._calculate_trust_score(cg)
         
         # ========== WEIGHTED SUM ==========
         
         total_score = (
             self.weights['credential'] * credential_score +
-            self.weights['skills'] * skills_score +
             self.weights['distance'] * distance_score +
             self.weights['rating'] * rating_score +
             self.weights['experience'] * experience_score +
@@ -462,7 +550,6 @@ class RuleBasedMatcher:
             'distance_km': round(distance, 2),
             'breakdown': {
                 'credential': round(credential_score, 3),
-                'skills': round(skills_score, 3),
                 'distance': round(distance_score, 3),
                 'rating': round(rating_score, 3),
                 'experience': round(experience_score, 3),
@@ -470,134 +557,47 @@ class RuleBasedMatcher:
             }
         }
     
-    def _calculate_skills_score(self, req: Dict, cg: Dict) -> float:
-        """
-        Tính điểm skills dựa trên priority_skills matching.
-        
-        Logic:
-            - Required skills đã được check ở hard filter (100% match)
-            - Priority skills: tính % match
-            - Bonus nếu skill có credential mapping (chất lượng cao hơn)
-        
-        Formula:
-            base_score = matched_priority_skills / total_priority_skills
-            bonus = (skills_with_credentials / matched_priority_skills) * 0.2
-            final_score = min(1.0, base_score + bonus)
-        """
-        req_skills = req.get('skills', {})
-        priority_skills = req_skills.get('priority_skills', [])
-        
-        # Nếu không có priority skills, trả về 1.0 (không ảnh hưởng)
-        if not priority_skills:
-            return 1.0
-        
-        # Get caregiver's skills dùng map để khi tìm ra skill giống thì mình k cần phải truy xuất lại lấy thông tin cridential để cộng điểm
-        cg_skills = cg.get('skills', [])
-        cg_skill_map = {}  # skill_name -> skill_obj
-        for skill in cg_skills:
-            if isinstance(skill, dict):
-                skill_name = skill.get('name', '')
-                cg_skill_map[skill_name] = skill
-            else:
-                cg_skill_map[skill] = {'name': skill}
-        
-        # Count matched priority skills
-        matched_count = 0
-        skills_with_credentials = 0
-        
-        for priority_skill in priority_skills:
-            # Use semantic matching (PhoBERT) for priority skills
-            best_match_score = 0.0
-            best_match_skill = None
-            
-            for cg_skill_name in cg_skill_map.keys():
-                similarity = semantic_matcher.calculate_similarity(priority_skill, cg_skill_name)
-                if similarity > best_match_score:
-                    best_match_score = similarity
-                    best_match_skill = cg_skill_name
-            
-            # Threshold for PhoBERT v2 semantic matching (0.8 = 80% similarity for strict matching)
-            if best_match_score >= 0.8:
-                    matched_count += 1
-                    # Check if skill has credential mapping (higher quality)
-                    skill_obj = cg_skill_map[best_match_skill]
-                    if isinstance(skill_obj, dict) and skill_obj.get('credential_id'):
-                        skills_with_credentials += 1
-        
-        # Base score: % match
-        base_score = matched_count / len(priority_skills) if priority_skills else 1.0
-        
-        # Bonus for skills with credentials (max 0.2 bonus)
-        bonus = 0.0
-        if matched_count > 0:
-            credential_ratio = skills_with_credentials / matched_count
-            bonus = credential_ratio * 0.2
-        
-        # Final score
-        return min(1.0, base_score + bonus)
-    
     def _calculate_credential_score(self, req: Dict, cg: Dict) -> float:
         """
-        Tính điểm credential dựa trên degree và certificates.
+        Tính điểm credential dựa trên số lượng qualifications (chứng chỉ) hợp lệ.
         
         Logic:
-            - Degree: Level 1 = 1 điểm, Level 2 = 2 điểm, Level 3 = 3 điểm
-            - Certificate: Mỗi certificate đạt yêu cầu = 0.5 điểm (max 14 certs = 7 điểm)
-            - Max total: 3 + 7 = 10 điểm
-            - Normalize về 0-1: score / 10.0
+            - Mỗi qualification APPROVED và chưa hết hạn = 0.2 điểm
+            - Max: 5 qualifications = 1.0 điểm
+            - Normalize về 0-1: score = len(valid_qualifications) * 0.2
         """
-        credentials = cg.get('credentials', [])
-        required_level = req['care_level']
-        score = 0.0
-        MAX_CREDENTIAL_SCORE = 10.0  # Max: degree 3 + 14 certs
+        qualifications = cg.get('qualifications', [])
+        POINTS_PER_QUALIFICATION = 0.2  # Mỗi qualification = 0.2 điểm
+        MAX_QUALIFICATIONS = 5  # Max 5 qualifications = 1.0 điểm
         
-        # Lọc credentials hợp lệ
-        def is_valid_credential(cred):
-            if cred.get('status') != 'verified':
+        # Lọc qualifications hợp lệ
+        def is_valid_qualification(qual):
+            # Phải được APPROVED
+            if qual.get('status') != 'APPROVED':
                 return False
-            if cred.get('type') == 'certificate' and cred.get('expiry_date'):
-                from datetime import datetime
+            # Check expiry date nếu có
+            expiry_date = qual.get('expiryDate', qual.get('expiry_date'))
+            if expiry_date:
+                from datetime import datetime, date
                 try:
-                    expiry = datetime.fromisoformat(cred['expiry_date'].replace('Z', '+00:00'))
-                    if expiry < datetime.now(expiry.tzinfo):
-                        return False
-                except ValueError:
-                    return False
+                    if isinstance(expiry_date, str):
+                        expiry = datetime.strptime(expiry_date, '%Y-%m-%d').date()
+                    else:
+                        expiry = expiry_date
+                    if expiry < date.today():
+                        return False  # Hết hạn
+                except (ValueError, TypeError):
+                    return False  # Invalid date format
             return True
         
-        valid_credentials = [c for c in credentials if is_valid_credential(c)]
+        valid_qualifications = [q for q in qualifications if is_valid_qualification(q)]
         
-        # 1. Degree bonus: Level 1 = 1 điểm, Level 2 = 2 điểm, Level 3 = 3 điểm
-        degrees = [c for c in valid_credentials if c.get('type') == 'degree']
-        if degrees:
-            # Lấy degree có level cao nhất
-            max_degree_level = 0
-            for degree in degrees:
-                applicable_levels = degree.get('applicable_levels', [])
-                if applicable_levels:
-                    max_degree_level = max(max_degree_level, max(applicable_levels))
-            
-            # Degree bonus theo level (1-3 điểm)
-            degree_bonus = max_degree_level
-            score += degree_bonus
+        # Mỗi qualification hợp lệ = 0.2 điểm, max 5 qualifications
+        num_valid = min(len(valid_qualifications), MAX_QUALIFICATIONS)
+        score = num_valid * POINTS_PER_QUALIFICATION
         
-        # 2. Certificate bonus: Mỗi certificate đạt yêu cầu = 0.5 điểm
-        certificates = [c for c in valid_credentials if c.get('type') == 'certificate']
-        
-        cert_count = 0
-        for cert in certificates:
-            applicable_levels = cert.get('applicable_levels', [])
-            if applicable_levels:
-                # Chỉ cần có ít nhất 1 level đạt yêu cầu là được cộng điểm
-                if any(level >= required_level for level in applicable_levels):
-                    score += 0.5  # Mỗi certificate đạt yêu cầu = +0.5 điểm
-                    cert_count += 1
-                    # Giới hạn max 14 certificates (7 điểm)
-                    if cert_count >= 14:
-                        break
-        
-        # Normalize về 0-1
-        return min(1.0, score / MAX_CREDENTIAL_SCORE)
+        # Normalize về 0-1 (đã normalize sẵn)
+        return min(1.0, score)
     
     def _calculate_rating_score(self, cg: Dict) -> float:
         """
@@ -644,42 +644,49 @@ class RuleBasedMatcher:
     
     def _calculate_trust_score(self, cg: Dict) -> float:
         """
-        Tính trust score dựa trên booking history và verification
+        Tính trust score dựa trên task completion, cancel/decline rate, bookings và verification
         
         Factors:
-            - Completion rate (40%): Tỷ lệ hoàn thành booking
-            - Seeker cancel rate (30%): Tỷ lệ hủy bởi seeker (càng thấp càng tốt)
-            - Total bookings (20%): Số lượng booking (kinh nghiệm thực tế)
-            - Verification (10%): Xác minh danh tính
+            - Task completion rate (40%): Tỷ lệ hoàn thành task (taskCompletionRate)
+            - Cancel/Decline rate (30%): Tỷ lệ hủy và từ chối của caregiver (totalCancelOrDeclineBookingRate, càng thấp càng tốt)
+            - Total completed bookings (20%): Số lượng booking đã hoàn thành (totalCompletedBookings)
+            - Verification (10%): Xác minh danh tính (isVerified)
         """
-        booking_history = cg.get('booking_history', {})
-        verification = cg.get('verification', {})
+        # 1. Task completion rate component (40%)
+        # Lấy từ taskCompletionRate ở root level của caregiver (đã là %)
+        task_completion_rate = cg.get('taskCompletionRate', 0.0)
+        # Normalize về 0-1 (nếu đã là % thì chia 100)
+        if task_completion_rate > 1.0:
+            task_completion_rate = task_completion_rate / 100.0
+        completion_component = min(1.0, max(0.0, task_completion_rate))
         
-        # 1. Completion rate component (40%)
-        completion_rate = booking_history.get('completion_rate', 0.0)
-        completion_component = completion_rate
+        # 2. Cancel/Decline rate component (30%) - càng thấp càng tốt
+        # Lấy từ totalCancelOrDeclineBookingRate ở root level (đã là %)
+        cancel_decline_rate = cg.get('totalCancelOrDeclineBookingRate', 0.0)
+        # Normalize về 0-1 (nếu đã là % thì chia 100)
+        if cancel_decline_rate > 1.0:
+            cancel_decline_rate = cancel_decline_rate / 100.0
+        # Invert: 0% cancel = 1.0, 100% cancel = 0.0
+        cancel_component = max(0.0, 1.0 - cancel_decline_rate)
         
-        # 2. Seeker cancel rate component (30%) - càng thấp càng tốt
-        seeker_cancel_rate = booking_history.get('seeker_cancel_rate', 0.0)
-        # Invert: 0% cancel = 1.0, 15% cancel = 0.0
-        cancel_component = max(0.0, 1.0 - (seeker_cancel_rate * 6.67))
-        
-        # 3. Total bookings component (20%)
-        total_bookings = booking_history.get('total_bookings', 0)
-        if total_bookings >= 100:
+        # 3. Total completed bookings component (20%)
+        # Lấy từ totalCompletedBookings ở root level
+        total_completed_bookings = cg.get('totalCompletedBookings', 0)
+        if total_completed_bookings >= 100:
             bookings_component = 1.0
-        elif total_bookings >= 50:
+        elif total_completed_bookings >= 50:
             bookings_component = 0.8
-        elif total_bookings >= 20:
+        elif total_completed_bookings >= 20:
             bookings_component = 0.6
-        elif total_bookings >= 10:
+        elif total_completed_bookings >= 10:
             bookings_component = 0.4
         else:
             bookings_component = 0.2
         
         # 4. Verification component (10%)
-        identity_verified = verification.get('identity_verified', False)
-        verification_component = 1.0 if identity_verified else 0.5
+        # Lấy từ isVerified ở root level
+        identity_verified = cg.get('isVerified', False)
+        verification_component = 1.0 if identity_verified else 0.0
         
         # Weighted combination
         trust = (
@@ -697,166 +704,196 @@ class RuleBasedMatcher:
         cg: Dict
     ) -> Optional[Dict]:
         """
-        Score a fallback caregiver (bỏ qua Filter 3 - Distance).
+        Score a fallback caregiver (bỏ qua Filter 2 - Distance).
         
         Args:
-            req: Care request dict
-            cg: Caregiver dict
+            req: Care request dict (theo format mới từ requests.json)
+            cg: Caregiver dict (theo format mới từ caregivers.json)
         
         Returns:
             Dict với total_score, breakdown, distance_km
-            None nếu không đủ điều kiện (hard filters 1,2,4-11)
+            None nếu không đủ điều kiện (hard filters 1, 3-9, bỏ qua Filter 2)
         """
         
-        # ========== HARD FILTERS (bỏ qua Filter 3 - Distance) ==========
+        # ========== HARD FILTERS (bỏ qua Filter 2 - Distance) ==========
         
-        # Extract nested data
-        professional_info = cg.get('professional_info', cg)  # Fallback to root level
-        personal_info = cg.get('personal_info', cg)
-        location_info = cg.get('location', cg)
-        availability_info = cg.get('availability', {})
+        # Extract data từ caregiver theo cấu trúc mới
+        location_info = cg.get('location', {})
+        profile_data = cg.get('profileData', {})
+        preferences = profile_data.get('preferences', {})
+        free_schedule = profile_data.get('free_schedule', {})
+        ratings_reviews = profile_data.get('ratings_reviews', {})
         
-        # Tính max_care_level động thay vì dùng giá trị cố định
-        max_care_level = self.calculate_max_care_level_dynamic(cg)
-        years_experience = professional_info.get('years_experience', cg.get('years_experience'))
-        gender = personal_info.get('gender', cg.get('gender'))
-        cg_lat = location_info.get('lat', cg.get('lat'))
-        cg_lon = location_info.get('lon', cg.get('lon'))
-        schedule = availability_info.get('schedule', cg.get('availability', {}))
+        # Extract các giá trị cần thiết
+        years_experience = profile_data.get('years_experience', 0)
+        gender = cg.get('gender', None)
+        caregiver_age = cg.get('age', None)
+        cg_lat = location_info.get('latitude', location_info.get('lat'))
+        cg_lon = location_info.get('longitude', location_info.get('lon'))
+        service_radius = location_info.get('service_radius_km', 0)
+        qualifications = cg.get('qualifications', [])
         
-        # Convert schedule array to dict if needed
-        if isinstance(schedule, list):
-            schedule = convert_schedule_to_dict(schedule)
-        
-        # Filter 1: Care level match - BỎ QUA (đã pass ở round 1)
-        # Filter 2: Degree requirement - BỎ QUA (đã pass ở round 1)
-        # Filter 3: Distance - BỎ QUA (đã fail ở round 1)
+        # Tính distance (để dùng cho scoring, không filter)
         distance = haversine_km(
             req['location']['lat'], req['location']['lon'],
             cg_lat, cg_lon
         )
         
-        # Filter 4: Time availability
-        # Tất cả time slots yêu cầu phải nằm trong availability của caregiver
-        if not has_time_overlap(req['time_slots'], schedule):
+        # ========== FILTER 1: Certificate Groups ==========
+        # (Giống như _score_candidate)
+        service_package = req.get('service_package', {})
+        qualification_req = service_package.get('qualification', {})
+        certificate_groups = qualification_req.get('certificate_groups', [])
+        
+        if certificate_groups:
+            def is_valid_qualification(qual):
+                if qual.get('status') != 'APPROVED':
+                    return False
+                expiry_date = qual.get('expiryDate', qual.get('expiry_date'))
+                if expiry_date:
+                    from datetime import datetime, date
+                    try:
+                        if isinstance(expiry_date, str):
+                            expiry = datetime.strptime(expiry_date, '%Y-%m-%d').date()
+                        else:
+                            expiry = expiry_date
+                        if expiry < date.today():
+                            return False
+                    except (ValueError, TypeError):
+                        return False
+                return True
+            
+            valid_qualification_type_ids = set()
+            for qual in qualifications:
+                if is_valid_qualification(qual):
+                    qual_type_id = qual.get('qualificationTypeId')
+                    if qual_type_id:
+                        valid_qualification_type_ids.add(qual_type_id)
+            
+            for group in certificate_groups:
+                if not group:
+                    continue
+                
+                has_qual_from_group = False
+                for required_type_id in group:
+                    if required_type_id in valid_qualification_type_ids:
+                        has_qual_from_group = True
+                        break
+                
+                if not has_qual_from_group:
+                    return None
+        
+        # ========== FILTER 2: Distance - BỎ QUA (fallback) ==========
+        # Không check distance trong fallback mode
+        
+        # ========== FILTER 3: Time Availability ==========
+        req_time_slots = req.get('time_slots', {})
+        if isinstance(req_time_slots, dict) and 'day' in req_time_slots:
+            req_time_slots = [req_time_slots]
+        
+        if not self._check_time_availability(req_time_slots, free_schedule):
             return None
         
-        # Filter 5: Gender preference (nếu có)
-        if req.get('gender_preference') and req['gender_preference'] != gender:
-            return None
+        # ========== FILTER 4: Gender Preference ==========
+        gender_preference = req.get('gender_preference')
+        if gender_preference and gender:
+            if gender_preference.upper() != gender.upper():
+                return None
         
-        # Filter 6: Caregiver age range preference (optional)
-        # Request có thể yêu cầu độ tuổi của caregiver (ví dụ: 25-50 tuổi)
+        # ========== FILTER 5: Caregiver Age Range ==========
         caregiver_age_range = req.get('caregiver_age_range', None)
-        caregiver_age = personal_info.get('age', cg.get('age', None))
-        
-        if caregiver_age_range and caregiver_age:
+        if caregiver_age_range and caregiver_age is not None:
             min_age, max_age = caregiver_age_range
             if caregiver_age < min_age or caregiver_age > max_age:
                 return None
         
-        # Filter 7: Health status preference
-        # Caregiver chỉ nhận nếu health_status của người già nằm trong preferred_health_status
-        preferences = cg.get('preferences', {})
-        preferred_health_status = preferences.get('preferred_health_status', [])
+        # ========== FILTER 6: Health Status Preference ==========
+        # Logic: Hierarchical - Caregiver có thể nhận health status tốt hơn hoặc bằng mức họ chấp nhận
+        preferred_health_status = preferences.get('preferred_health_status', None)
         elderly_health_status = req.get('health_status', None)
         
         if preferred_health_status and elderly_health_status:
-            if elderly_health_status not in preferred_health_status:
+            if isinstance(preferred_health_status, str):
+                preferred_health_status = [preferred_health_status]
+            
+            preferred_normalized = [s.lower() for s in preferred_health_status]
+            elderly_health_status_normalized = elderly_health_status.lower()
+            
+            # Health status hierarchy (tốt hơn = số cao hơn)
+            health_hierarchy = {
+                'weak': 1,
+                'moderate': 2,
+                'good': 3
+            }
+            
+            elderly_level = health_hierarchy.get(elderly_health_status_normalized, 0)
+            if elderly_level == 0:
+                return None  # Unknown status
+            
+            # Check từng preferred status
+            accepted = False
+            for preferred in preferred_normalized:
+                preferred_level = health_hierarchy.get(preferred, 0)
+                if preferred_level == 0:
+                    continue
+                
+                # Caregiver chấp nhận nếu elderly_status >= preferred_status
+                if elderly_level >= preferred_level:
+                    accepted = True
+                    break
+            
+            if not accepted:
                 return None
         
-        # Filter 8: Elderly age preference
-        # Caregiver chỉ nhận nếu elderly_age của người già nằm trong elderly_age_preference
+        # ========== FILTER 7: Elderly Age Preference ==========
         elderly_age_preference = preferences.get('elderly_age_preference', None)
         elderly_age = req.get('elderly_age', None)
         
-        if elderly_age_preference and elderly_age:
-            min_age, max_age = elderly_age_preference
-            if elderly_age < min_age or elderly_age > max_age:
-                return None
+        if elderly_age_preference and elderly_age is not None:
+            min_age = elderly_age_preference.get('min_age')
+            max_age = elderly_age_preference.get('max_age')
+            if min_age is not None and max_age is not None:
+                if elderly_age < min_age or elderly_age > max_age:
+                    return None
         
-        # Filter 9: Required Years Experience (Hard Filter)
-        # Caregiver PHẢI có đủ số năm kinh nghiệm yêu cầu
+        # ========== FILTER 8: Required Years Experience ==========
         required_years_experience = req.get('required_years_experience', None)
-        
         if required_years_experience is not None:
             if years_experience < required_years_experience:
-                return None  # Không đủ kinh nghiệm
+                return None
         
-        # Filter 10: Overall Rating Range (Hard Filter)
-        # Caregiver PHẢI có đánh giá nằm trong khoảng yêu cầu
+        # ========== FILTER 9: Overall Rating Range ==========
         required_rating_range = req.get('overall_rating_range', None)
-        
         if required_rating_range is not None:
-            # Lấy overall_rating của caregiver
-            ratings_reviews = cg.get('ratings_reviews', cg)
-            caregiver_rating = ratings_reviews.get('overall_rating', cg.get('rating', 0.0))
-            
+            caregiver_rating = ratings_reviews.get('overall_rating', 0.0)
             min_rating, max_rating = required_rating_range
             if caregiver_rating < min_rating or caregiver_rating > max_rating:
-                return None  # Đánh giá không nằm trong khoảng yêu cầu
-        
-        # Filter 11: Required Skills (Hard Filter)
-        # Caregiver PHẢI có 100% required_skills
-        req_skills = req.get('skills', {})
-        required_skills = req_skills.get('required_skills', [])
-        
-        if required_skills:
-            # Get caregiver's skill names (extract from skill objects)
-            cg_skills = cg.get('skills', [])
-            cg_skill_names = set()
-            for skill in cg_skills:
-                if isinstance(skill, dict):
-                    cg_skill_names.add(skill.get('name', ''))
-                else:
-                    cg_skill_names.add(skill)
-            
-            # Check if ALL required skills are present using semantic matching (PhoBERT)
-            missing_skills = []
-            for req_skill in required_skills:
-                best_match_score = 0.0
-                for cg_skill in cg_skill_names:
-                    similarity = semantic_matcher.calculate_similarity(req_skill, cg_skill)
-                    best_match_score = max(best_match_score, similarity)
-                
-                # Threshold for PhoBERT v2 semantic matching (0.8 = 80% similarity for strict matching)
-                if best_match_score < 0.8:
-                    missing_skills.append(req_skill)
-            
-            if missing_skills:
-                return None  # Không đủ required skills
+                return None
         
         # ========== SOFT SCORING (normalize về 0-1) ==========
         
-        # 1. Credential score (bằng cấp + level)
+        # 1. Credential score (bằng cấp + certificates)
         credential_score = self._calculate_credential_score(req, cg)
         
-        # 2. Skills score (priority skills matching)
-        skills_score = self._calculate_skills_score(req, cg)
-        
-        # 3. Distance score - Logic mượt: exponential decay
+        # 2. Distance score - Logic mượt: exponential decay
         import math
         # Công thức: score = e^(-distance/scale)
         # Scale = 8: distance 8km → score ≈ 0.37, distance 16km → score ≈ 0.14
         distance_score = math.exp(-distance / 8.0)
         
-        # 4. Time score - Đã được xử lý ở hard filter
-        # Không cần tính điểm vì đã pass hard filter = có sẵn 100% time slots
-        
-        # 5. Rating score
+        # 3. Rating score
         rating_score = self._calculate_rating_score(cg)
         
-        # 6. Experience score - Improved: min 0.1 cho caregiver mới
+        # 4. Experience score - Improved: min 0.1 cho caregiver mới
         experience_score = min(1.0, max(0.1, years_experience / 10.0))
         
-        # 7. Trust score (simplified: dựa trên rating + experience + reviews)
+        # 5. Trust score (simplified: dựa trên rating + experience + reviews)
         trust_score = self._calculate_trust_score(cg)
         
         # ========== WEIGHTED SUM ==========
         
         total_score = (
             self.weights['credential'] * credential_score +
-            self.weights['skills'] * skills_score +
             self.weights['distance'] * distance_score +
             self.weights['rating'] * rating_score +
             self.weights['experience'] * experience_score +
@@ -868,79 +905,111 @@ class RuleBasedMatcher:
             'distance_km': round(distance, 2),
             'breakdown': {
                 'credential': round(credential_score, 3),
-                'skills': round(skills_score, 3),
                 'distance': round(distance_score, 3),
                 'rating': round(rating_score, 3),
                 'experience': round(experience_score, 3),
                 'trust': round(trust_score, 3)
             }
         }
-
-
-# Vietnamese to English Skills Mapping
-VIETNAMESE_TO_ENGLISH_SKILLS = {
-    # Medical skills
-    "tiêm insulin": "injection",
-    "tiêm thuốc": "injection", 
-    "tiêm": "injection",
-    "chăm sóc vết thương": "wound_care",
-    "chăm sóc vết thương hở": "wound_care",
-    "quản lý thuốc": "medication_management",
-    "quản lý thuốc men": "medication_management",
-    "đo dấu hiệu sinh tồn": "vital_signs_monitoring",
-    "đo mạch": "vital_signs_monitoring",
-    "chăm sóc catheter": "catheter_care",
-    "cho ăn qua ống": "tube_feeding",
-    "hỗ trợ oxy": "oxygen_therapy",
-    "đo đường huyết": "blood_sugar_monitoring",
-    "kiểm tra đường huyết": "blood_sugar_monitoring",
-    "vật lý trị liệu": "physical_therapy",
-    "chăm sóc khí quản": "tracheostomy_care",
-    "chăm sóc máy thở": "ventilator_care",
-    "truyền dịch": "iv_therapy",
-    "truyền nước": "iv_therapy",
     
-    # Basic care skills
-    "đo huyết áp": "blood_pressure_monitoring",
-    "kiểm tra huyết áp": "blood_pressure_monitoring",
-    "hỗ trợ vệ sinh": "personal_hygiene",
-    "vệ sinh cá nhân": "personal_hygiene",
-    "tắm rửa": "bathing_assistance",
-    "tắm": "bathing_assistance",
-    "chuẩn bị bữa ăn dinh dưỡng": "meal_preparation",
-    "nấu ăn": "meal_preparation",
-    "chuẩn bị thức ăn": "meal_preparation",
-    "hỗ trợ đi lại": "mobility_assistance",
-    "hỗ trợ di chuyển": "mobility_assistance",
-    "thay quần áo": "dressing_assistance",
-    "hỗ trợ ăn uống": "feeding_assistance",
-    "cho ăn": "feeding_assistance",
-    "vận động nhẹ nhàng": "gentle_exercise",
-    "tập thể dục nhẹ": "gentle_exercise",
-    "đồng hành": "companionship",
-    "trò chuyện": "companionship",
-    "giám sát an toàn": "safety_monitoring",
-    "theo dõi an toàn": "safety_monitoring",
-    "nhắc nhở uống thuốc": "medication_reminders",
-    "nhắc thuốc": "medication_reminders",
-    "chăm sóc da": "skin_care",
-    "phòng ngừa loét": "pressure_sore_prevention",
-    "theo dõi sức khỏe": "health_monitoring",
-    "kiểm tra sức khỏe": "health_monitoring",
-    
-    # Special conditions
-    "đái tháo đường": "diabetes_care",
-    "tiểu đường": "diabetes_care",
-    "sa sút trí tuệ": "dementia_care",
-    "alzheimer": "alzheimer_care",
-    "parkinson": "parkinson_care",
-    "đột quỵ phục hồi": "stroke_recovery",
-    "phục hồi sau đột quỵ": "stroke_recovery",
-    "cao huyết áp": "hypertension_management",
-    "tăng huyết áp": "hypertension_management",
-    "ung thư": "cancer_care",
-    "chăm sóc cuối đời": "hospice_care",
-    "hỗ trợ tâm lý": "mental_health_support",
-    "tự kỷ": "autism_care",
-    "chăm sóc tự kỷ": "autism_care",
-}
+    def _generate_failure_analysis(
+        self,
+        filter_failures: Dict[str, int],
+        total_candidates: int,
+        care_request: Dict
+    ) -> Dict:
+        """
+        Generate failure analysis với statistics và suggestions.
+        
+        Args:
+            filter_failures: Dict {filter_name: count}
+            total_candidates: Tổng số caregivers được check
+            care_request: Care request để generate suggestions
+        
+        Returns:
+            Dict với failure analysis structure
+        """
+        if total_candidates == 0:
+            return {
+                "total_candidates": 0,
+                "filter_statistics": {},
+                "primary_reason": {
+                    "filter": "no_candidates",
+                    "message": "Không có người chăm sóc nào trong hệ thống",
+                    "failed_count": 0,
+                    "failed_percentage": 0
+                },
+                "suggestions": []
+            }
+        
+        # Filter messages và suggestions
+        filter_messages = {
+            "certificate_groups": "Không tìm thấy người chăm sóc phù hợp cho gói dịch vụ bạn chọn. Vui lòng đổi qua 1 gói dịch vụ khác",
+            "distance": "Không tìm thấy người chăm sóc nào ở gần bạn. Vui lòng mở rộng phạm vi tìm kiếm",
+            "time_availability": "Không tìm thấy người chăm sóc nào có thời gian trống trong khung giờ bạn chọn. Vui lòng thử khung giờ khác",
+            "gender_preference": "Không tìm thấy người chăm sóc nào phù hợp với yêu cầu giới tính. Vui lòng thay đổi yêu cầu này",
+            "caregiver_age_range": "Không tìm thấy người chăm sóc nào trong độ tuổi bạn yêu cầu. Vui lòng điều chỉnh khoảng tuổi",
+            "health_status_preference": "Không tìm thấy người chăm sóc nào chấp nhận tình trạng sức khỏe này. Vui lòng thử tìm kiếm với tình trạng khác",
+            "elderly_age_preference": "Không tìm thấy người chăm sóc nào phù hợp với độ tuổi người cao tuổi. Vui lòng điều chỉnh yêu cầu",
+            "required_years_experience": "Không tìm thấy người chăm sóc nào có đủ kinh nghiệm. Vui lòng giảm yêu cầu số năm kinh nghiệm",
+            "overall_rating_range": "Không tìm thấy người chăm sóc nào có đánh giá trong khoảng bạn yêu cầu. Vui lòng điều chỉnh khoảng đánh giá"
+        }
+        
+        filter_suggestions = {
+            "certificate_groups": "Thử chọn gói dịch vụ khác",
+            "distance": "Thử thay đổi địa điểm trong hồ sơ của người già",
+            "time_availability": "Thử chọn khung giờ khác hoặc ngày khác",
+            "gender_preference": "Thay đổi yêu cầu về giới tính để có nhiều lựa chọn hơn trong hồ sơ người già",
+            "caregiver_age_range": "Mở rộng khoảng tuổi của người chăm sóc trong hồ sơ người già",
+            "health_status_preference": "Thử thay đổi với tình trạng sức khỏe khác trong hồ sơ người già",
+            "elderly_age_preference": "Điều chỉnh về độ tuổi người cao tuổi trong hồ sơ người già",
+            "required_years_experience": "Giảm số năm kinh nghiệm yêu cầu trong hồ sơ người già",
+            "overall_rating_range": "Mở rộng khoảng đánh giá yêu cầu trong hồ sơ người già"
+        }
+        
+        # Calculate statistics
+        filter_statistics = {}
+        for filter_name, failed_count in filter_failures.items():
+            percentage = (failed_count / total_candidates) * 100 if total_candidates > 0 else 0
+            filter_statistics[filter_name] = {
+                "failed": failed_count,
+                "percentage": round(percentage, 2)
+            }
+        
+        # Find primary reason (filter with highest failure count)
+        primary_reason = None
+        if filter_failures:
+            primary_filter = max(filter_failures.items(), key=lambda x: x[1])
+            primary_reason = {
+                "filter": primary_filter[0],
+                "message": filter_messages.get(primary_filter[0], "Không tìm thấy người chăm sóc phù hợp"),
+                "failed_count": primary_filter[1],
+                "failed_percentage": round((primary_filter[1] / total_candidates) * 100, 2) if total_candidates > 0 else 0
+            }
+        else:
+            # Nếu không có filter failures nhưng vẫn không có results
+            # Có thể là do không có caregivers nào pass distance filter
+            primary_reason = {
+                "filter": "unknown",
+                "message": "Không tìm thấy người chăm sóc phù hợp với yêu cầu của bạn",
+                "failed_count": total_candidates,
+                "failed_percentage": 100.0
+            }
+        
+        # Generate suggestions (top 3 filters by failure count)
+        suggestions = []
+        sorted_filters = sorted(filter_failures.items(), key=lambda x: x[1], reverse=True)[:3]
+        for filter_name, _ in sorted_filters:
+            suggestion = filter_suggestions.get(filter_name)
+            if suggestion:
+                suggestions.append({
+                    "filter": filter_name,
+                    "suggestion": suggestion
+                })
+        
+        return {
+            "total_candidates": total_candidates,
+            "filter_statistics": filter_statistics,
+            "primary_reason": primary_reason,
+            "suggestions": suggestions
+        }
