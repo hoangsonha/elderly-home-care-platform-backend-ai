@@ -545,7 +545,7 @@ class RuleBasedMatcher:
             self.weights['trust'] * trust_score
         )
         
-        return {
+        return ({
             'total_score': round(total_score, 3),
             'distance_km': round(distance, 2),
             'breakdown': {
@@ -555,7 +555,7 @@ class RuleBasedMatcher:
                 'experience': round(experience_score, 3),
                 'trust': round(trust_score, 3)
             }
-        }
+        }, None)  # Return tuple: (result_dict, failed_filter) - None means no filter failed
     
     def _calculate_credential_score(self, req: Dict, cg: Dict) -> float:
         """

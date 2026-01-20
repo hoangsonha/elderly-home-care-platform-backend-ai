@@ -22,6 +22,9 @@ public enum EnumNotificationType {
     NEW_RATING,
     NEW_FEEDBACK,
     
+    // Chat Related
+    CHAT_MESSAGE,
+    
     // System
     SYSTEM_ANNOUNCEMENT,
     ACCOUNT_VERIFIED

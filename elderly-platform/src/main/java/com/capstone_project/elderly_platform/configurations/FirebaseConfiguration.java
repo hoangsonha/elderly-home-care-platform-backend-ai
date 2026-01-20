@@ -8,6 +8,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,7 +41,7 @@ public class FirebaseConfiguration {
      * 2. FIREBASE_CREDENTIALS_PATH environment variable (path to key file)
      * 3. File in classpath (for local development)
      */
-    @Bean
+    @Bean("firebaseCredentials")
     public GoogleCredentials firebaseCredentials() throws IOException {
         log.info("Loading Firebase credentials...");
 
@@ -93,7 +94,7 @@ public class FirebaseConfiguration {
      * Initialize Firebase App with credentials
      */
     @Bean
-    public FirebaseApp firebaseApp(GoogleCredentials credentials) throws IOException {
+    public FirebaseApp firebaseApp(@Qualifier("firebaseCredentials") GoogleCredentials credentials) throws IOException {
         log.info("Initializing FirebaseApp...");
 
         // Check if app already exists
@@ -131,7 +132,7 @@ public class FirebaseConfiguration {
      * Firebase Storage Bean for uploading/downloading files
      */
     @Bean
-    public Storage firebaseStorage(GoogleCredentials credentials) {
+    public Storage firebaseStorage(@Qualifier("firebaseCredentials") GoogleCredentials credentials) {
         log.info("Creating Firebase Storage bean...");
         Storage storage = StorageOptions.newBuilder()
                 .setCredentials(credentials)

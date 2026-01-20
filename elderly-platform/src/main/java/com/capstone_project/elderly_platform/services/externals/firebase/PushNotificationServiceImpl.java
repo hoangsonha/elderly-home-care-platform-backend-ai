@@ -133,6 +133,9 @@ public class PushNotificationServiceImpl implements PushNotificationService {
             data.put("notificationType", type.name());
             if (relatedEntityType != null) {
                 data.put("relatedEntityType", relatedEntityType);
+            }
+            // Only add relatedEntityId if it's not null
+            if (relatedEntityId != null) {
                 data.put("relatedEntityId", relatedEntityId.toString());
             }
             

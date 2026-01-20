@@ -47,7 +47,7 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET:}
-  expiration: ${JWT_EXPIRATION:8640000}
+  expiration: ${JWT_EXPIRATION:864000000}
   refresh:
     secret: ${JWT_REFRESH_SECRET:}
     expiration: ${JWT_REFRESH_EXPIRATION:864000000}
@@ -64,7 +64,7 @@ swagger:
   dev:
     url: http://localhost:8080/
   pro:
-#    url: https://elderlycareplatform.azurewebsites.net/
+    #    url: https://elderlycareplatform.azurewebsites.net/
     url: http://157.245.155.77:8080/
 
 application:
@@ -72,9 +72,9 @@ application:
     current-page: 1
     page-size: 5
   service-package:
-    allowed-duration-hours: 4,8  # Các giá trị duration hours được phép (phân cách bằng dấu phẩy)
+    allowed-duration-hours: 4,8 # Các giá trị duration hours được phép (phân cách bằng dấu phẩy)
   caregiver:
-    max-hours-per-week: 48  # Số giờ tối đa caregiver có thể làm việc trong 1 tuần
+    max-hours-per-week: 48 # Số giờ tối đa caregiver có thể làm việc trong 1 tuần
 
 job:
   delete-old-free-schedules:
@@ -106,15 +106,22 @@ payos:
 
 # Firebase
 firebase:
-  # Firebase Admin SDK credentials (Unified - dùng chung cho FCM & Storage)
+  # Firebase Admin SDK credentials (Unified - dùng chung cho FCM & Storage - Project Cũ)
   credentials:
     path: ${FIREBASE_CREDENTIALS_PATH:keys/key_firebase.json}
   app:
     name: ${FIREBASE_APP_NAME:elderly-platform-app}
-  
-  # Firebase Storage
+
+  # Firebase Storage (Project Cũ)
   bucket:
     name: swp391-f046d.appspot.com
   get:
     url: https://firebasestorage.googleapis.com/v0/b/swp391-f046d.appspot.com/o/%s?alt=media
     folder: exe201_project
+
+  # Firebase Chat (Firestore) - Project Mới
+  chat:
+    credentials:
+      path: ${FIREBASE_CHAT_CREDENTIALS_PATH:keys/key_firebase_chat.json}
+    app:
+      name: ${FIREBASE_CHAT_APP_NAME:chat-firebase-app}

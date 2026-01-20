@@ -25,6 +25,7 @@ public class CaregiverProfileResponseDTO {
     String birthDate;
     Integer age;
     String gender;
+    String accountId; // Account ID (UUID) - dùng cho chat API
     String avatarUrl;
     
     @JsonRawValue

@@ -3,18 +3,31 @@ package com.capstone_project.elderly_platform.services.externals.firebase;
 import com.google.firebase.messaging.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * FCM Service Implementation
+ * Dùng FirebaseMessaging từ project mới (chatFirebaseMessaging)
+ * Để match với tokens từ mobile app (project mới)
+ */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class FCMServiceImpl implements FCMService {
     
     private final FirebaseMessaging firebaseMessaging;
+    
+    /**
+     * Constructor injection với @Qualifier để dùng FirebaseMessaging từ project mới
+     */
+    public FCMServiceImpl(@Qualifier("chatFirebaseMessaging") FirebaseMessaging firebaseMessaging) {
+        this.firebaseMessaging = firebaseMessaging;
+        log.info("FCMServiceImpl initialized with FirebaseMessaging from project mới (chatFirebaseMessaging)");
+    }
     
     @Override
     public void sendToToken(
