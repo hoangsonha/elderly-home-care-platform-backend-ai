@@ -56,6 +56,8 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:-}
       # Firebase credentials - ưu tiên FIREBASE_KEY_BASE64, fallback về file
       FIREBASE_KEY_BASE64: ${FIREBASE_KEY_BASE64:-}
+      # Firebase Chat credentials (Firestore) - ưu tiên FIREBASE_CHAT_KEY_BASE64
+      FIREBASE_CHAT_KEY_BASE64: ${FIREBASE_CHAT_KEY_BASE64:-}
       # Email
       SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       # JWT
@@ -74,6 +76,8 @@ services:
     volumes:
       # Mount file key nếu không dùng FIREBASE_KEY_BASE64 (fallback)
       - ./elderly-platform/src/main/resources/keys/key_firebase.json:/app/keys/key_firebase.json:ro
+      # Mount file key cho Firebase Chat nếu không dùng FIREBASE_CHAT_KEY_BASE64 (fallback)
+      - ./elderly-platform/src/main/resources/keys/key_firebase_chat.json:/app/keys/key_firebase_chat.json:ro
     depends_on:
       db:
         condition: service_healthy
