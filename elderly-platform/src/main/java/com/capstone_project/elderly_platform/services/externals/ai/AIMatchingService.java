@@ -200,6 +200,8 @@ public class AIMatchingService {
         // 5. Lấy tất cả caregivers từ DB
         List<com.capstone_project.elderly_platform.pojos.CaregiverProfile> allCaregivers = 
                 caregiverProfileRepository.findByDeletedFalse();
+        
+        log.info("Total caregivers from DB (not deleted): {}", allCaregivers.size());
 
         // 6. Convert ElderlyProfile → requests.json format
         Map<String, Object> careRequest = aiMatchingConversionService.convertElderlyToRequestFormat(
@@ -209,14 +211,15 @@ public class AIMatchingService {
                 startTime,
                 endTime);
 
-        // 7. Convert CaregiverProfile list → caregivers.json format (filter by availability)
+        // 7. Convert CaregiverProfile list → caregivers.json format (filter by deleted and status only)
+        // Note: Availability filtering is handled by AI matching service
         List<Map<String, Object>> caregivers = aiMatchingConversionService.convertCaregiversToFormat(
                 allCaregivers,
                 request.getWorkDate(),
                 startTime,
                 endTime);
 
-        log.info("Converted {} caregivers for matching (filtered by availability)", caregivers.size());
+        log.info("Sending {} caregivers to AI matching service", caregivers.size());
 
         // 8. Gửi cả caregivers list + request sang AI matching service
         return matchCaregiversWithList(

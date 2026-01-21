@@ -5,7 +5,10 @@ Weighted scoring algorithm với hard filters và soft preferences
 
 from typing import List, Dict, Optional
 import numpy as np
+import logging
 from app.utils import haversine_km
+
+logger = logging.getLogger(__name__)
 
 
 def convert_schedule_to_dict(schedule: List[Dict]) -> Dict:
@@ -91,7 +94,9 @@ class RuleBasedMatcher:
         # BƯỚC 1: Hard Filter với service_radius_km của từng caregiver
         pass_list = []
         fail_list = []
+        skipped_list = []  # Track caregivers bị skip (không có location hợp lệ)
         filter_failures = {}  # Track filter failures: {filter_name: count}
+        filter_details = {}  # Track filter details: {filter_name: {'failed': [names], 'passed': [names]}}
         total_candidates = len(caregivers)
         
         # Validate request location
@@ -117,6 +122,8 @@ class RuleBasedMatcher:
             
             # Skip if caregiver doesn't have valid location
             if cg_lat is None or cg_lon is None:
+                cg_name = cg.get('fullName') or cg.get('name') or cg.get('id', 'Unknown')
+                skipped_list.append(cg_name)
                 continue
             
             try:
@@ -126,25 +133,42 @@ class RuleBasedMatcher:
                 )
             except (TypeError, ValueError) as e:
                 # Skip if distance calculation fails (invalid coordinates)
+                cg_name = cg.get('fullName') or cg.get('name') or cg.get('id', 'Unknown')
+                skipped_list.append(cg_name)
                 continue
             
             service_radius = (cg_location.get('service_radius_km') if isinstance(cg_location, dict) else cg.get('service_radius_km')) or 0
             
+            # Get caregiver name for logging
+            cg_name = cg.get('fullName') or cg.get('name') or cg.get('id', 'Unknown')
+            
             if distance <= service_radius:
                 pass_list.append(cg)
+                # Track passed for filter 2 (distance)
+                if 'distance' not in filter_details:
+                    filter_details['distance'] = {'failed': [], 'passed': []}
+                filter_details['distance']['passed'].append(cg_name)
             else:
                 cg['distance'] = distance
                 fail_list.append(cg)
                 filter_failures['distance'] = filter_failures.get('distance', 0) + 1
+                # Track failed for filter 2 (distance)
+                if 'distance' not in filter_details:
+                    filter_details['distance'] = {'failed': [], 'passed': []}
+                filter_details['distance']['failed'].append(cg_name)
         
         # BƯỚC 2: Sắp xếp fail_list theo distance (gần nhất trước)
         fail_list.sort(key=lambda x: x['distance'])
         
         # BƯỚC 3: Thử pass_list trước
         results = []
+        print(f"\n[MATCHING] Bước 1 (Distance Filter): Pass: {len(pass_list)}, Fail: {len(fail_list)}, Skipped: {len(skipped_list)}")
         
         for cg in pass_list:
-            score_result, failed_filter = self._score_candidate(care_request, cg)
+            # Get caregiver name for logging
+            cg_name = cg.get('fullName') or cg.get('name') or cg.get('id', 'Unknown')
+            
+            score_result, failed_filter = self._score_candidate(care_request, cg, filter_details, cg_name)
             
             if score_result is not None:
                 results.append({
@@ -158,9 +182,13 @@ class RuleBasedMatcher:
                 if failed_filter:
                     filter_failures[failed_filter] = filter_failures.get(failed_filter, 0) + 1
         
+        print(f"[MATCHING] Bước 2 (Hard Filters): Pass tất cả filters: {len(results)} caregivers")
+        
         if results:
             # Sort by total_score descending
             results.sort(key=lambda x: x['total_score'], reverse=True)
+            # Log filter results before returning
+            self._log_filter_results(filter_details, total_candidates, skipped_list)
             return results[:top_n], None  # No failure analysis if we have results
         
         # BƯỚC 4: Fallback - Lấy nhiều lần, mỗi lần 10 người từ fail_list
@@ -199,7 +227,12 @@ class RuleBasedMatcher:
         if fallback_results:
             # Sort by total_score descending
             fallback_results.sort(key=lambda x: x['total_score'], reverse=True)
+            # Log filter results before returning
+            self._log_filter_results(filter_details, total_candidates, skipped_list)
             return fallback_results[:top_n], None  # No failure analysis if we have fallback results
+        
+        # Log filter results
+        self._log_filter_results(filter_details, total_candidates, skipped_list)
         
         # Nếu không tìm thấy caregiver nào - generate failure analysis
         failure_analysis = self._generate_failure_analysis(filter_failures, total_candidates, care_request)
@@ -306,10 +339,23 @@ class RuleBasedMatcher:
         # Normalize về 0-1 (giả sử max 5 credentials)
         return min(1.0, quality_score / 5.0)
     
+    def _track_filter_result(self, filter_name: str, passed: bool, filter_details: Dict, cg_name: str):
+        """Helper để track filter result cho logging"""
+        if filter_details is None or cg_name is None:
+            return
+        if filter_name not in filter_details:
+            filter_details[filter_name] = {'failed': [], 'passed': []}
+        if passed:
+            filter_details[filter_name]['passed'].append(cg_name)
+        else:
+            filter_details[filter_name]['failed'].append(cg_name)
+    
     def _score_candidate(
         self, 
         req: Dict, 
-        cg: Dict
+        cg: Dict,
+        filter_details: Dict = None,
+        cg_name: str = None
     ) -> tuple[Optional[Dict], Optional[str]]:
         """
         Score a single caregiver against a care request.
@@ -382,6 +428,7 @@ class RuleBasedMatcher:
                         valid_qualification_type_ids.add(qual_type_id)
             
             # Check từng group: Caregiver phải có ít nhất 1 chứng chỉ từ MỖI group
+            all_groups_passed = True
             for group in certificate_groups:
                 if not group:  # Skip empty groups
                     continue
@@ -395,7 +442,14 @@ class RuleBasedMatcher:
                 
                 # Nếu không có chứng chỉ nào từ group này → FAIL
                 if not has_qual_from_group:
-                    return None, "certificate_groups"
+                    all_groups_passed = False
+                    break
+            
+            if not all_groups_passed:
+                self._track_filter_result("certificate_groups", False, filter_details, cg_name)
+                return None, "certificate_groups"
+            else:
+                self._track_filter_result("certificate_groups", True, filter_details, cg_name)
         
         # ========== FILTER 2: Distance ==========
         # Logic: Caregiver quyết định bán kính phục vụ (service_radius_km)
@@ -406,7 +460,10 @@ class RuleBasedMatcher:
         )
         
         if distance > service_radius:
+            self._track_filter_result("distance", False, filter_details, cg_name)
             return None, "distance"
+        else:
+            self._track_filter_result("distance", True, filter_details, cg_name)
         
         # ========== FILTER 3: Time Availability ==========
         # Logic: Check NGÀY và TIME OVERLAP
@@ -422,7 +479,10 @@ class RuleBasedMatcher:
         
         # Check time availability (check ngày và overlap time)
         if not self._check_time_availability(req_time_slots, free_schedule):
+            self._track_filter_result("time_availability", False, filter_details, cg_name)
             return None, "time_availability"
+        else:
+            self._track_filter_result("time_availability", True, filter_details, cg_name)
         
         # ========== FILTER 4: Gender Preference ==========
         # Logic: Nếu request có gender_preference, caregiver phải match
@@ -430,7 +490,10 @@ class RuleBasedMatcher:
         if gender_preference and gender:
             # Normalize: "FEMALE" vs "female", "MALE" vs "male"
             if gender_preference.upper() != gender.upper():
+                self._track_filter_result("gender_preference", False, filter_details, cg_name)
                 return None, "gender_preference"
+            else:
+                self._track_filter_result("gender_preference", True, filter_details, cg_name)
         
         # ========== FILTER 5: Caregiver Age Range ==========
         # Logic: Nếu request có caregiver_age_range, caregiver.age phải nằm trong range
@@ -439,7 +502,10 @@ class RuleBasedMatcher:
         if caregiver_age_range and isinstance(caregiver_age_range, list) and len(caregiver_age_range) >= 2 and caregiver_age is not None:
             min_age, max_age = caregiver_age_range[0], caregiver_age_range[1]
             if caregiver_age < min_age or caregiver_age > max_age:
+                self._track_filter_result("caregiver_age_range", False, filter_details, cg_name)
                 return None, "caregiver_age_range"
+            else:
+                self._track_filter_result("caregiver_age_range", True, filter_details, cg_name)
         
         # ========== FILTER 6: Health Status Preference ==========
         # Logic: Hierarchical - Caregiver có thể nhận health status tốt hơn hoặc bằng mức họ chấp nhận
@@ -467,6 +533,7 @@ class RuleBasedMatcher:
             
             elderly_level = health_hierarchy.get(elderly_health_status_normalized, 0)
             if elderly_level == 0:
+                self._track_filter_result("health_status_preference", False, filter_details, cg_name)
                 return None, "health_status_preference"  # Unknown status
             
             # Check từng preferred status
@@ -486,7 +553,10 @@ class RuleBasedMatcher:
                     break
             
             if not accepted:
+                self._track_filter_result("health_status_preference", False, filter_details, cg_name)
                 return None, "health_status_preference"
+            else:
+                self._track_filter_result("health_status_preference", True, filter_details, cg_name)
         
         # ========== FILTER 7: Elderly Age Preference ==========
         # Logic: Tuổi người già phải nằm trong elderly_age_preference của caregiver
@@ -501,14 +571,20 @@ class RuleBasedMatcher:
             # Chỉ áp dụng filter nếu có đầy đủ min_age và max_age
             if min_age is not None and max_age is not None:
                 if elderly_age < min_age or elderly_age > max_age:
+                    self._track_filter_result("elderly_age_preference", False, filter_details, cg_name)
                     return None, "elderly_age_preference"
+                else:
+                    self._track_filter_result("elderly_age_preference", True, filter_details, cg_name)
         
         # ========== FILTER 8: Required Years Experience ==========
         # Logic: Caregiver phải có đủ số năm kinh nghiệm yêu cầu
         required_years_experience = req.get('required_years_experience', None)
         if required_years_experience is not None:
             if years_experience < required_years_experience:
+                self._track_filter_result("required_years_experience", False, filter_details, cg_name)
                 return None, "required_years_experience"
+            else:
+                self._track_filter_result("required_years_experience", True, filter_details, cg_name)
         
         # ========== FILTER 9: Overall Rating Range ==========
         # Logic: Overall rating của caregiver phải nằm trong khoảng yêu cầu
@@ -518,7 +594,10 @@ class RuleBasedMatcher:
             caregiver_rating = ratings_reviews.get('overall_rating', 0.0)
             min_rating, max_rating = required_rating_range[0], required_rating_range[1]
             if caregiver_rating < min_rating or caregiver_rating > max_rating:
+                self._track_filter_result("overall_rating_range", False, filter_details, cg_name)
                 return None, "overall_rating_range"
+            else:
+                self._track_filter_result("overall_rating_range", True, filter_details, cg_name)
         
         # ========== SOFT SCORING (normalize về 0-1) ==========
         
@@ -921,6 +1000,61 @@ class RuleBasedMatcher:
                 'trust': round(trust_score, 3)
             }
         }
+    
+    def _log_filter_results(self, filter_details: Dict, total_candidates: int = 0, skipped_list: List = None):
+        """Log filter results với fullName của caregivers"""
+        skipped_list = skipped_list or []
+        
+        print("=== FILTER RESULTS ===")
+        print(f"Tổng số caregivers: {total_candidates}")
+        if skipped_list:
+            print(f"Bị skip (không có location hợp lệ): {', '.join(skipped_list)}")
+        
+        if not filter_details:
+            msg = "Không có filter nào được áp dụng"
+            print(msg)
+            print("=== END FILTER RESULTS ===")
+            return
+        
+        # Map filter names to numbers - sort by number để đảm bảo thứ tự
+        filter_map = {
+            "certificate_groups": "01",
+            "distance": "02",
+            "time_availability": "03",
+            "gender_preference": "04",
+            "caregiver_age_range": "05",
+            "health_status_preference": "06",
+            "elderly_age_preference": "07",
+            "required_years_experience": "08",
+            "overall_rating_range": "09"
+        }
+        
+        # Sort by filter number (01, 02, 03...)
+        sorted_filters = sorted(filter_map.items(), key=lambda x: x[1])
+        
+        for filter_name, filter_num in sorted_filters:
+            if filter_name in filter_details:
+                details = filter_details[filter_name]
+                failed = details.get('failed', [])
+                passed = details.get('passed', [])
+                
+                if not failed and not passed:
+                    msg = f"Filter {filter_num} ({filter_name}): Không có ai được check"
+                elif not failed:
+                    # Tất cả đều pass - chỉ hiển thị message đơn giản
+                    msg = f"Filter {filter_num} ({filter_name}): Tất cả đều pass"
+                elif not passed:
+                    # Tất cả đều fail
+                    msg = f"Filter {filter_num} ({filter_name}): Tất cả đều fail. Not_pass: {', '.join(failed)}"
+                else:
+                    # Có cả pass và fail
+                    msg = f"Filter {filter_num} ({filter_name}): Pass: {', '.join(passed)} | Not_pass: {', '.join(failed)}"
+            else:
+                msg = f"Filter {filter_num} ({filter_name}): Không được áp dụng"
+            
+            print(msg)
+        
+        print("=== END FILTER RESULTS ===")
     
     def _generate_failure_analysis(
         self,

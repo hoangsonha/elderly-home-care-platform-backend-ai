@@ -249,33 +249,50 @@ public class AIMatchingConversionService {
 
     /**
      * Convert list of CaregiverProfile to caregivers.json format
-     * Filter by availability for the given time slot
+     * Only filter by deleted and status (APPROVED)
+     * Note: Availability filtering is handled by AI matching service
      */
     public List<Map<String, Object>> convertCaregiversToFormat(
             List<CaregiverProfile> caregivers,
             LocalDate workDate,
             LocalTime startTime,
             LocalTime endTime) {
-        return caregivers.stream()
+        int totalCaregivers = caregivers.size();
+        
+        // Use AtomicInteger for counters that are modified in lambda
+        java.util.concurrent.atomic.AtomicInteger filteredByStatus = new java.util.concurrent.atomic.AtomicInteger(0);
+        java.util.concurrent.atomic.AtomicInteger filteredByDeleted = new java.util.concurrent.atomic.AtomicInteger(0);
+        
+        List<Map<String, Object>> result = caregivers.stream()
                 .filter(cg -> {
-                    // Filter by availability
-                    if (cg.getProfileData() != null && !cg.getProfileData().isEmpty()) {
-                        boolean isAvailable = caregiverScheduleUtils.isAvailable(
-                                cg.getProfileData(),
-                                workDate,
-                                startTime,
-                                endTime);
-                        if (!isAvailable) {
-                            log.debug("Caregiver {} is not available for {} {} - {}", 
-                                    cg.getCaregiverProfileId(), workDate, startTime, endTime);
-                            return false;
-                        }
+                    // Check deleted first
+                    if (cg.isDeleted()) {
+                        filteredByDeleted.incrementAndGet();
+                        return false;
                     }
-                    // Only include APPROVED caregivers
-                    return cg.getStatus() == EnumVerificationStatusType.APPROVED && !cg.isDeleted();
+                    
+                    // Check status - only include APPROVED caregivers
+                    if (cg.getStatus() != EnumVerificationStatusType.APPROVED) {
+                        filteredByStatus.incrementAndGet();
+                        log.debug("Caregiver {} filtered by status: {}", 
+                                cg.getCaregiverProfileId(), cg.getStatus());
+                        return false;
+                    }
+                    
+                    // Note: Availability filtering is done by AI matching service
+                    return true;
                 })
                 .map(this::convertCaregiverToMap)
                 .collect(Collectors.toList());
+        
+        log.info("=== CAREGIVER FILTERING ===");
+        log.info("Total caregivers from DB: {}", totalCaregivers);
+        log.info("Filtered by deleted: {}", filteredByDeleted.get());
+        log.info("Filtered by status (not APPROVED): {}", filteredByStatus.get());
+        log.info("Remaining after filtering: {} (availability will be checked by AI service)", result.size());
+        log.info("=== END CAREGIVER FILTERING ===");
+        
+        return result;
     }
 
     /**

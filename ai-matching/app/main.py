@@ -3,10 +3,18 @@ Elder Care Connect - AI Matching Service
 FastAPI Application - Phase 1: Rule-based Matching
 """
 
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import match
 from app.models.schemas import HealthResponse
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 # Create FastAPI app
 app = FastAPI(
