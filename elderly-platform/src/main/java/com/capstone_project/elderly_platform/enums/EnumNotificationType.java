@@ -7,26 +7,25 @@ public enum EnumNotificationType {
     CARE_SERVICE_REJECTED,
     CARE_SERVICE_COMPLETED,
     CARE_SERVICE_CANCELLED,
-    
+
     // Work Schedule Related
     NEW_WORK_SCHEDULE,
     WORK_SCHEDULE_UPDATED,
     WORK_SCHEDULE_REMINDER,
-    
+
     // Payment Related
     PAYMENT_REQUIRED,
     PAYMENT_RECEIVED,
     PAYMENT_COMPLETED,
-    
+
     // Rating & Feedback
     NEW_RATING,
     NEW_FEEDBACK,
-    
+
     // Chat Related
     CHAT_MESSAGE,
-    
+
     // System
     SYSTEM_ANNOUNCEMENT,
     ACCOUNT_VERIFIED
 }
-

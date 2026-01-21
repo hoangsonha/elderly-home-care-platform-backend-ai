@@ -113,18 +113,34 @@ public class AIMatchingConversionService {
                     }
                     if (careReq.containsKey("rating")) {
                         Object ratingObj = careReq.get("rating");
-                        if (ratingObj instanceof Map) {
-                            Map<String, Object> ratingMap = (Map<String, Object>) ratingObj;
-                            List<Double> ratingRange = new ArrayList<>();
-                            if (ratingMap.containsKey("min")) {
-                                ratingRange.add(((Number) ratingMap.get("min")).doubleValue());
+                        List<Integer> ratingRange = new ArrayList<>();
+                        
+                        if (ratingObj instanceof List) {
+                            // New format: List<Integer> [minRating, maxRating]
+                            List<?> ratingList = (List<?>) ratingObj;
+                            if (ratingList.size() >= 2) {
+                                ratingRange.add(((Number) ratingList.get(0)).intValue());
+                                ratingRange.add(((Number) ratingList.get(1)).intValue());
+                            } else if (ratingList.size() == 1) {
+                                ratingRange.add(((Number) ratingList.get(0)).intValue());
+                                ratingRange.add(5);
                             } else {
-                                ratingRange.add(0.0);
+                                ratingRange.add(0);
+                                ratingRange.add(5);
+                            }
+                            request.put("overall_rating_range", ratingRange);
+                        } else if (ratingObj instanceof Map) {
+                            // Backward compatibility: Map with min/max
+                            Map<String, Object> ratingMap = (Map<String, Object>) ratingObj;
+                            if (ratingMap.containsKey("min")) {
+                                ratingRange.add(((Number) ratingMap.get("min")).intValue());
+                            } else {
+                                ratingRange.add(0);
                             }
                             if (ratingMap.containsKey("max")) {
-                                ratingRange.add(((Number) ratingMap.get("max")).doubleValue());
+                                ratingRange.add(((Number) ratingMap.get("max")).intValue());
                             } else {
-                                ratingRange.add(5.0);
+                                ratingRange.add(5);
                             }
                             request.put("overall_rating_range", ratingRange);
                         }

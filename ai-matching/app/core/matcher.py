@@ -128,7 +128,7 @@ class RuleBasedMatcher:
                 # Skip if distance calculation fails (invalid coordinates)
                 continue
             
-            service_radius = cg_location.get('service_radius_km', 0) if isinstance(cg_location, dict) else cg.get('service_radius_km', 0)
+            service_radius = (cg_location.get('service_radius_km') if isinstance(cg_location, dict) else cg.get('service_radius_km')) or 0
             
             if distance <= service_radius:
                 pass_list.append(cg)
@@ -339,7 +339,7 @@ class RuleBasedMatcher:
         caregiver_age = cg.get('age', None)
         cg_lat = location_info.get('latitude', location_info.get('lat'))
         cg_lon = location_info.get('longitude', location_info.get('lon'))
-        service_radius = location_info.get('service_radius_km', 0)
+        service_radius = location_info.get('service_radius_km') or 0
         qualifications = cg.get('qualifications', [])
         
         # ========== FILTER 1: Certificate Groups ==========
@@ -730,7 +730,7 @@ class RuleBasedMatcher:
         caregiver_age = cg.get('age', None)
         cg_lat = location_info.get('latitude', location_info.get('lat'))
         cg_lon = location_info.get('longitude', location_info.get('lon'))
-        service_radius = location_info.get('service_radius_km', 0)
+        service_radius = location_info.get('service_radius_km') or 0
         qualifications = cg.get('qualifications', [])
         
         # Tính distance (để dùng cho scoring, không filter)

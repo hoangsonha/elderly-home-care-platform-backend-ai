@@ -294,9 +294,6 @@ public class DatabaseInit implements CommandLineRunner {
                         freeSchedule1.put("available_all_time", true);
                         caregiver1ProfileDataMap.put("free_schedule", freeSchedule1);
                         
-                        // Max hours per week
-                        caregiver1ProfileDataMap.put("max_hours_per_week", 40);
-                        
                         // Preferences
                         Map<String, Object> preferences1 = new HashMap<>();
                         preferences1.put("preferred_health_status", "MODERATE");
@@ -369,9 +366,6 @@ public class DatabaseInit implements CommandLineRunner {
                         bookedSlots2.add(bookedSlot1);
                         freeSchedule2.put("booked_slots", bookedSlots2);
                         caregiver2ProfileDataMap.put("free_schedule", freeSchedule2);
-                        
-                        // Max hours per week
-                        caregiver2ProfileDataMap.put("max_hours_per_week", 48);
                         
                         // Preferences
                         Map<String, Object> preferences2 = new HashMap<>();

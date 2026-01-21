@@ -11,7 +11,6 @@ import lombok.Setter;
 import lombok.experimental.FieldDefaults;
 
 import java.util.List;
-import java.util.UUID;
 
 @Getter
 @Setter
@@ -77,7 +76,8 @@ public class CreateElderlyProfileRequest {
 
         Integer experience;
 
-        Double rating;
+        @JsonProperty("rating")
+        List<Integer> rating; // [minRating, maxRating] ví dụ: [3, 5]
     }
 
     @Getter

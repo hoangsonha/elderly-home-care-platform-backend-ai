@@ -52,11 +52,6 @@ public class UpdateCaregiverProfileRequest {
     @JsonProperty("free_schedule")
     FreeScheduleRequest freeSchedule;
 
-    @Min(value = 1, message = "Max hours per week must be at least 1")
-    @Max(value = 48, message = "Max hours per week cannot exceed 48")
-    @JsonProperty("max_hours_per_week")
-    Integer maxHoursPerWeek;
-
     @Valid
     PreferencesRequest preferences;
 
