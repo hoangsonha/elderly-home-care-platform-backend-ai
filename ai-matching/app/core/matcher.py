@@ -434,9 +434,10 @@ class RuleBasedMatcher:
         
         # ========== FILTER 5: Caregiver Age Range ==========
         # Logic: Nếu request có caregiver_age_range, caregiver.age phải nằm trong range
+        # Chỉ áp dụng filter nếu caregiver_age_range là list hợp lệ (có ít nhất 2 phần tử)
         caregiver_age_range = req.get('caregiver_age_range', None)
-        if caregiver_age_range and caregiver_age is not None:
-            min_age, max_age = caregiver_age_range
+        if caregiver_age_range and isinstance(caregiver_age_range, list) and len(caregiver_age_range) >= 2 and caregiver_age is not None:
+            min_age, max_age = caregiver_age_range[0], caregiver_age_range[1]
             if caregiver_age < min_age or caregiver_age > max_age:
                 return None, "caregiver_age_range"
         
@@ -489,12 +490,15 @@ class RuleBasedMatcher:
         
         # ========== FILTER 7: Elderly Age Preference ==========
         # Logic: Tuổi người già phải nằm trong elderly_age_preference của caregiver
+        # Chỉ áp dụng filter nếu caregiver có elderly_age_preference hợp lệ (có cả min_age và max_age)
         elderly_age_preference = preferences.get('elderly_age_preference', None)
         elderly_age = req.get('elderly_age', None)
         
-        if elderly_age_preference and elderly_age is not None:
+        # Chỉ check nếu có elderly_age_preference và nó là dict hợp lệ (có cả min_age và max_age)
+        if elderly_age_preference and isinstance(elderly_age_preference, dict) and elderly_age is not None:
             min_age = elderly_age_preference.get('min_age')
             max_age = elderly_age_preference.get('max_age')
+            # Chỉ áp dụng filter nếu có đầy đủ min_age và max_age
             if min_age is not None and max_age is not None:
                 if elderly_age < min_age or elderly_age > max_age:
                     return None, "elderly_age_preference"
@@ -508,10 +512,11 @@ class RuleBasedMatcher:
         
         # ========== FILTER 9: Overall Rating Range ==========
         # Logic: Overall rating của caregiver phải nằm trong khoảng yêu cầu
+        # Chỉ áp dụng filter nếu required_rating_range là list hợp lệ (có ít nhất 2 phần tử)
         required_rating_range = req.get('overall_rating_range', None)
-        if required_rating_range is not None:
+        if required_rating_range is not None and isinstance(required_rating_range, list) and len(required_rating_range) >= 2:
             caregiver_rating = ratings_reviews.get('overall_rating', 0.0)
-            min_rating, max_rating = required_rating_range
+            min_rating, max_rating = required_rating_range[0], required_rating_range[1]
             if caregiver_rating < min_rating or caregiver_rating > max_rating:
                 return None, "overall_rating_range"
         
@@ -801,9 +806,10 @@ class RuleBasedMatcher:
                 return None
         
         # ========== FILTER 5: Caregiver Age Range ==========
+        # Chỉ áp dụng filter nếu caregiver_age_range là list hợp lệ (có ít nhất 2 phần tử)
         caregiver_age_range = req.get('caregiver_age_range', None)
-        if caregiver_age_range and caregiver_age is not None:
-            min_age, max_age = caregiver_age_range
+        if caregiver_age_range and isinstance(caregiver_age_range, list) and len(caregiver_age_range) >= 2 and caregiver_age is not None:
+            min_age, max_age = caregiver_age_range[0], caregiver_age_range[1]
             if caregiver_age < min_age or caregiver_age > max_age:
                 return None
         
@@ -846,12 +852,15 @@ class RuleBasedMatcher:
                 return None
         
         # ========== FILTER 7: Elderly Age Preference ==========
+        # Chỉ áp dụng filter nếu caregiver có elderly_age_preference hợp lệ (có cả min_age và max_age)
         elderly_age_preference = preferences.get('elderly_age_preference', None)
         elderly_age = req.get('elderly_age', None)
         
-        if elderly_age_preference and elderly_age is not None:
+        # Chỉ check nếu có elderly_age_preference và nó là dict hợp lệ (có cả min_age và max_age)
+        if elderly_age_preference and isinstance(elderly_age_preference, dict) and elderly_age is not None:
             min_age = elderly_age_preference.get('min_age')
             max_age = elderly_age_preference.get('max_age')
+            # Chỉ áp dụng filter nếu có đầy đủ min_age và max_age
             if min_age is not None and max_age is not None:
                 if elderly_age < min_age or elderly_age > max_age:
                     return None
@@ -863,10 +872,11 @@ class RuleBasedMatcher:
                 return None
         
         # ========== FILTER 9: Overall Rating Range ==========
+        # Chỉ áp dụng filter nếu required_rating_range là list hợp lệ (có ít nhất 2 phần tử)
         required_rating_range = req.get('overall_rating_range', None)
-        if required_rating_range is not None:
+        if required_rating_range is not None and isinstance(required_rating_range, list) and len(required_rating_range) >= 2:
             caregiver_rating = ratings_reviews.get('overall_rating', 0.0)
-            min_rating, max_rating = required_rating_range
+            min_rating, max_rating = required_rating_range[0], required_rating_range[1]
             if caregiver_rating < min_rating or caregiver_rating > max_rating:
                 return None
         
