@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.controllers;
 
+import com.capstone_project.elderly_platform.dtos.request.AddQualificationRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverQualificationsRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.UUID;
 
 @RequestMapping("/api/v1/caregivers")
 @RestController
@@ -152,6 +154,64 @@ public class CaregiverController {
             log.error("Error updating caregiver qualifications", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Fail", "Failed to update caregiver qualifications: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Add qualification", description = "Add a new qualification (chứng chỉ) to the current caregiver profile. "
+            +
+            "Use multipart/form-data. Note: In Swagger UI, for the 'data' part, you must manually set Content-Type to 'application/json'. "
+            +
+            "This will add a new qualification without affecting existing ones.")
+    @PreAuthorize("hasRole('CAREGIVER')")
+    @PostMapping(value = "/qualifications", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ObjectResponse> addQualification(
+            @Parameter(description = "JSON data containing qualification information. IMPORTANT: Set Content-Type to 'application/json' in Swagger UI", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE)) @RequestPart("data") @Valid AddQualificationRequest request,
+            @Parameter(description = "Credential file (required)", content = @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM_VALUE)) @RequestPart(value = "credentialFile", required = true) MultipartFile credentialFile) {
+        try {
+            if (credentialFile == null || credentialFile.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body(new ObjectResponse("Fail", "Credential file is required", null));
+            }
+
+            CaregiverProfileResponseDTO updatedProfile = profileService.addQualification(request, credentialFile);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(new ObjectResponse("Success", "Qualification added successfully", updatedProfile));
+        } catch (ElementNotFoundException e) {
+            log.error("Error adding qualification", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (BadRequestException e) {
+            log.error("Error adding qualification", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error adding qualification", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Fail", "Failed to add qualification: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Delete qualification", description = "Delete (soft delete) a qualification by its ID. Only the owner of the qualification can delete it. Only accessible by CAREGIVER role.")
+    @PreAuthorize("hasRole('CAREGIVER')")
+    @DeleteMapping("/qualifications/{id}")
+    public ResponseEntity<ObjectResponse> deleteQualification(
+            @Parameter(description = "Qualification ID to delete") @PathVariable("id") UUID id) {
+        try {
+            profileService.deleteQualification(id);
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Qualification deleted successfully", null));
+        } catch (ElementNotFoundException e) {
+            log.error("Error deleting qualification", e);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (BadRequestException e) {
+            log.error("Error deleting qualification", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Fail", e.getMessage(), null));
+        } catch (Exception e) {
+            log.error("Error deleting qualification", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Fail", "Failed to delete qualification: " + e.getMessage(), null));
         }
     }
 

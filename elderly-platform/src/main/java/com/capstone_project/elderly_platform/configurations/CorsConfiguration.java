@@ -18,7 +18,10 @@ public class CorsConfiguration {
                 "http://localhost",
                 "http://localhost:*",
                 "http://34.134.211.231:*",
-                "https://34.134.211.231:*"));
+                "https://34.134.211.231:*",
+                "https://capstoneproject-tau.vercel.app",
+                "http://capstoneproject-tau.vercel.app"
+        ));
         corsConfiguration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         corsConfiguration.setAllowedHeaders(List.of("*"));
         corsConfiguration.setExposedHeaders(List.of("Content-Disposition"));

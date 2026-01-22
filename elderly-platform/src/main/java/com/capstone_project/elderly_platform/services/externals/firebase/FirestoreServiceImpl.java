@@ -180,7 +180,34 @@ public class FirestoreServiceImpl implements FirestoreService {
     @Override
     public void markAsRead(String messageId, UUID userId) {
         try {
+            // Get the message document first to get chatId, timestamp, and receiverId
             DocumentReference messageRef = firestore.collection(MESSAGES_COLLECTION).document(messageId);
+            ApiFuture<DocumentSnapshot> messageFuture = messageRef.get();
+            DocumentSnapshot messageDoc = messageFuture.get();
+            
+            if (!messageDoc.exists()) {
+                throw new RuntimeException("Message not found: " + messageId);
+            }
+            
+            Map<String, Object> messageData = messageDoc.getData();
+            if (messageData == null) {
+                throw new RuntimeException("Message data is null: " + messageId);
+            }
+            
+            String chatId = (String) messageData.get("chatId");
+            String receiverId = (String) messageData.get("receiverId");
+            Timestamp messageTimestamp = (Timestamp) messageData.get("timestamp");
+            
+            if (chatId == null || receiverId == null) {
+                throw new RuntimeException("Message missing required fields (chatId or receiverId): " + messageId);
+            }
+            
+            // Verify that the userId matches the receiverId
+            if (!receiverId.equals(userId.toString())) {
+                throw new RuntimeException("User is not the receiver of this message");
+            }
+            
+            // Mark the current message as read
             Map<String, Object> updates = new HashMap<>();
             updates.put("read", true);
             updates.put("readAt", FieldValue.serverTimestamp());
@@ -189,6 +216,38 @@ public class FirestoreServiceImpl implements FirestoreService {
             future.get();
             
             log.info("Message marked as read: messageId={}, userId={}", messageId, userId);
+            
+            // Find and mark all older unread messages in the same chat as read
+            if (messageTimestamp != null) {
+                Query olderMessagesQuery = firestore.collection(MESSAGES_COLLECTION)
+                        .whereEqualTo("chatId", chatId)
+                        .whereEqualTo("receiverId", receiverId)
+                        .whereEqualTo("read", false)
+                        .whereLessThan("timestamp", messageTimestamp);
+                
+                ApiFuture<QuerySnapshot> olderMessagesFuture = olderMessagesQuery.get();
+                QuerySnapshot olderMessagesSnapshot = olderMessagesFuture.get();
+                
+                if (!olderMessagesSnapshot.isEmpty()) {
+                    // Use batch write to update all older messages at once
+                    WriteBatch batch = firestore.batch();
+                    int count = 0;
+                    
+                    for (QueryDocumentSnapshot doc : olderMessagesSnapshot.getDocuments()) {
+                        Map<String, Object> olderUpdates = new HashMap<>();
+                        olderUpdates.put("read", true);
+                        olderUpdates.put("readAt", FieldValue.serverTimestamp());
+                        batch.update(doc.getReference(), olderUpdates);
+                        count++;
+                    }
+                    
+                    // Commit the batch
+                    ApiFuture<List<WriteResult>> batchFuture = batch.commit();
+                    batchFuture.get();
+                    
+                    log.info("Automatically marked {} older messages as read in chatId={}", count, chatId);
+                }
+            }
             
         } catch (Exception e) {
             log.error("Error marking message as read: {}", e.getMessage(), e);

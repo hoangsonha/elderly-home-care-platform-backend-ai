@@ -75,6 +75,7 @@ public class CaregiverProfileDetailResponseDTO {
         String declinedAt;
         String reviewedBy;
         String notes;
+        Boolean deleted; // true nếu chứng chỉ đã bị soft delete
     }
 }
 

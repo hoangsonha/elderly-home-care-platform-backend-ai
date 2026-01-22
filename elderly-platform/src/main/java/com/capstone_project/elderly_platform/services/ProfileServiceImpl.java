@@ -1,10 +1,12 @@
 package com.capstone_project.elderly_platform.services;
 
+import com.capstone_project.elderly_platform.dtos.request.AddQualificationRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CreateElderlyProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCareSeekerProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverQualificationsRequest;
+import com.capstone_project.elderly_platform.dtos.request.UpdateElderlyProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.CaregiverProfileVerificationRequest;
 import com.capstone_project.elderly_platform.dtos.request.QualificationVerificationRequest;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
@@ -125,6 +127,19 @@ public class ProfileServiceImpl implements ProfileService {
 
         log.info("Found {} elderly profiles for care seeker {}", elderlyProfiles.size(), currentAccountId);
         return elderlyProfiles;
+    }
+    
+    @Override
+    public ElderlyProfileResponseDTO getElderlyProfileById(UUID elderlyProfileId) {
+        log.info("Getting elderly profile by ID: {}", elderlyProfileId);
+        ElderlyProfile elderlyProfile = elderlyProfileRepository
+                .findByElderlyProfileIdAndDeletedIsFalse(elderlyProfileId);
+        
+        if (elderlyProfile == null) {
+            throw new ElementNotFoundException("Elderly profile not found with ID: " + elderlyProfileId);
+        }
+        
+        return elderlyProfileMapper.toDTO(elderlyProfile);
     }
 
     @Override
@@ -321,6 +336,258 @@ public class ProfileServiceImpl implements ProfileService {
         // Save to database
         ElderlyProfile savedProfile = elderlyProfileRepository.save(elderlyProfile);
         log.info("Elderly profile created successfully with ID: {}", savedProfile.getElderlyProfileId());
+
+        // Convert to DTO and return
+        return elderlyProfileMapper.toDTO(savedProfile);
+    }
+
+    @Override
+    @Transactional
+    public ElderlyProfileResponseDTO updateElderlyProfile(UUID elderlyProfileId, UpdateElderlyProfileRequest request,
+            MultipartFile avatarFile) {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Updating elderly profile {} for care seeker with account ID: {}", elderlyProfileId, currentAccountId);
+
+        // Get care seeker profile
+        CareSeekerProfile careSeekerProfile = careSeekerProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+
+        if (careSeekerProfile == null) {
+            throw new ElementNotFoundException("Care seeker profile not found for current user");
+        }
+
+        // Get elderly profile and verify ownership
+        ElderlyProfile elderlyProfile = elderlyProfileRepository
+                .findByElderlyProfileIdAndDeletedIsFalse(elderlyProfileId);
+
+        if (elderlyProfile == null) {
+            throw new ElementNotFoundException("Elderly profile not found with ID: " + elderlyProfileId);
+        }
+
+        // Verify that the elderly profile belongs to the current care seeker
+        if (!elderlyProfile.getCareSeekerProfile().getCareSeekerProfileId()
+                .equals(careSeekerProfile.getCareSeekerProfileId())) {
+            throw new BadRequestException("You can only update your own elderly profiles");
+        }
+
+        // 1. Update basic fields
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            elderlyProfile.setFullName(request.getName());
+        }
+
+        if (request.getBirthYear() != null) {
+            elderlyProfile.setBirthDate(LocalDate.of(request.getBirthYear(), 1, 1));
+        }
+
+        if (request.getGender() != null) {
+            try {
+                elderlyProfile.setGender(EnumGenderType.valueOf(request.getGender().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid gender: " + request.getGender());
+            }
+        }
+
+        // 2. Upload avatar if provided
+        if (avatarFile != null && !avatarFile.isEmpty()) {
+            try {
+                String avatarUrl = firebaseStorageService.uploadSingleImages(avatarFile);
+                log.info("Avatar uploaded successfully: {}", avatarUrl);
+                elderlyProfile.setAvatarUrl(avatarUrl);
+            } catch (Exception e) {
+                log.error("Failed to upload avatar: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to upload avatar: " + e.getMessage());
+            }
+        }
+
+        // 3. Update location JSON (merge with existing)
+        if (request.getLocation() != null) {
+            try {
+                Map<String, Object> locationMap = new HashMap<>();
+                
+                // Parse existing location if exists
+                if (elderlyProfile.getLocation() != null && !elderlyProfile.getLocation().isEmpty()) {
+                    locationMap = objectMapper.readValue(elderlyProfile.getLocation(),
+                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                }
+                
+                // Update with new values
+                if (request.getLocation().getAddress() != null) {
+                    locationMap.put("address", request.getLocation().getAddress());
+                }
+                if (request.getLocation().getLatitude() != null) {
+                    locationMap.put("latitude", request.getLocation().getLatitude());
+                }
+                if (request.getLocation().getLongitude() != null) {
+                    locationMap.put("longitude", request.getLocation().getLongitude());
+                }
+                
+                elderlyProfile.setLocation(objectMapper.writeValueAsString(locationMap));
+            } catch (Exception e) {
+                log.error("Failed to update location: {}", e.getMessage(), e);
+                throw new BadRequestException("Invalid location data");
+            }
+        }
+
+        // 4. Update profileData JSON (merge with existing)
+        String currentProfileData = elderlyProfile.getProfileData();
+        try {
+            Map<String, Object> profileDataMap = new HashMap<>();
+            
+            // Parse existing profileData if exists
+            if (currentProfileData != null && !currentProfileData.isEmpty()) {
+                profileDataMap = objectMapper.readValue(currentProfileData,
+                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+            }
+            
+            // Update weight
+            if (request.getWeight() != null) {
+                profileDataMap.put("weight", request.getWeight());
+            }
+            
+            // Update height
+            if (request.getHeight() != null) {
+                profileDataMap.put("height", request.getHeight());
+            }
+            
+            // Update medical conditions
+            if (request.getMedicalConditions() != null) {
+                Map<String, Object> medicalConditionsMap = new HashMap<>();
+                
+                // Preserve existing medical conditions if any
+                if (profileDataMap.containsKey("medical_conditions")) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> existing = (Map<String, Object>) profileDataMap.get("medical_conditions");
+                    medicalConditionsMap.putAll(existing);
+                }
+                
+                // Update with new values
+                if (request.getMedicalConditions().getUnderlyingDiseases() != null) {
+                    medicalConditionsMap.put("underlying_diseases", request.getMedicalConditions().getUnderlyingDiseases());
+                }
+                if (request.getMedicalConditions().getSpecialConditions() != null) {
+                    medicalConditionsMap.put("special_conditions", request.getMedicalConditions().getSpecialConditions());
+                }
+                if (request.getMedicalConditions().getAllergies() != null) {
+                    medicalConditionsMap.put("allergies", request.getMedicalConditions().getAllergies());
+                }
+                if (request.getMedicalConditions().getMedications() != null) {
+                    medicalConditionsMap.put("medications", request.getMedicalConditions().getMedications());
+                }
+                
+                if (!medicalConditionsMap.isEmpty()) {
+                    profileDataMap.put("medical_conditions", medicalConditionsMap);
+                }
+            }
+            
+            // Update independence level
+            if (request.getIndependenceLevel() != null && !request.getIndependenceLevel().isEmpty()) {
+                @SuppressWarnings("unchecked")
+                Map<String, String> independenceLevelMap = profileDataMap.containsKey("independence_level") 
+                    ? (Map<String, String>) profileDataMap.get("independence_level")
+                    : new HashMap<>();
+                
+                for (UpdateElderlyProfileRequest.IndependenceActivity activity : request.getIndependenceLevel()) {
+                    independenceLevelMap.put(activity.getActivity(), activity.getLevel());
+                }
+                profileDataMap.put("independence_level", independenceLevelMap);
+            }
+            
+            // Update hobbies
+            if (request.getHobbies() != null) {
+                profileDataMap.put("hobbies", request.getHobbies());
+            }
+            
+            // Update favorite activities
+            if (request.getFavoriteActivities() != null) {
+                profileDataMap.put("favorite_activities", request.getFavoriteActivities());
+            }
+            
+            // Update favorite food
+            if (request.getFavoriteFood() != null) {
+                profileDataMap.put("favorite_food", request.getFavoriteFood());
+            }
+            
+            // Update emergency contacts
+            if (request.getEmergencyContacts() != null && !request.getEmergencyContacts().isEmpty()) {
+                List<Map<String, Object>> emergencyContactsList = request.getEmergencyContacts().stream()
+                        .map(contact -> {
+                            Map<String, Object> contactMap = new HashMap<>();
+                            contactMap.put("name", contact.getName());
+                            contactMap.put("relationship", contact.getRelationship());
+                            contactMap.put("phone", contact.getPhone());
+                            return contactMap;
+                        })
+                        .collect(Collectors.toList());
+                profileDataMap.put("emergency_contacts", emergencyContactsList);
+            }
+            
+            // Save updated profileData
+            if (!profileDataMap.isEmpty()) {
+                elderlyProfile.setProfileData(objectMapper.writeValueAsString(profileDataMap));
+            }
+        } catch (Exception e) {
+            log.error("Failed to update profileData: {}", e.getMessage(), e);
+            throw new BadRequestException("Failed to process profile data");
+        }
+
+        // 5. Update careRequirement JSON (merge with existing)
+        String currentCareRequirement = elderlyProfile.getCareRequirement();
+        if (request.getCareNeeds() != null) {
+            try {
+                Map<String, Object> careRequirementMap = new HashMap<>();
+                
+                // Parse existing careRequirement if exists
+                if (currentCareRequirement != null && !currentCareRequirement.isEmpty()) {
+                    careRequirementMap = objectMapper.readValue(currentCareRequirement,
+                            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
+                }
+                
+                // Update with new values
+                if (request.getCareNeeds().getAge() != null && !request.getCareNeeds().getAge().isEmpty()) {
+                    careRequirementMap.put("age", request.getCareNeeds().getAge());
+                }
+                if (request.getCareNeeds().getGender() != null) {
+                    careRequirementMap.put("gender", request.getCareNeeds().getGender());
+                }
+                if (request.getCareNeeds().getExperience() != null) {
+                    careRequirementMap.put("experience", request.getCareNeeds().getExperience());
+                }
+                if (request.getCareNeeds().getRating() != null) {
+                    careRequirementMap.put("rating", request.getCareNeeds().getRating());
+                }
+                
+                if (!careRequirementMap.isEmpty()) {
+                    elderlyProfile.setCareRequirement(objectMapper.writeValueAsString(careRequirementMap));
+                }
+            } catch (Exception e) {
+                log.error("Failed to update careRequirement: {}", e.getMessage(), e);
+                throw new BadRequestException("Failed to process care requirement data");
+            }
+        }
+
+        // 6. Update health status
+        if (request.getHealthStatus() != null && !request.getHealthStatus().isEmpty()) {
+            try {
+                elderlyProfile.setHealthStatus(EnumHealthStatusType.valueOf(request.getHealthStatus().toUpperCase()));
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException(
+                        "Invalid health status: " + request.getHealthStatus() + ". Valid values: GOOD, WEAK, MODERATE");
+            }
+        }
+
+        // 7. Update health note
+        if (request.getHealthNote() != null) {
+            elderlyProfile.setHealthNote(request.getHealthNote());
+        }
+
+        // 8. Update note
+        if (request.getNote() != null) {
+            elderlyProfile.setNote(request.getNote());
+        }
+
+        // Save to database
+        ElderlyProfile savedProfile = elderlyProfileRepository.save(elderlyProfile);
+        log.info("Elderly profile updated successfully with ID: {}", savedProfile.getElderlyProfileId());
 
         // Convert to DTO and return
         return elderlyProfileMapper.toDTO(savedProfile);
@@ -1151,6 +1418,111 @@ public class ProfileServiceImpl implements ProfileService {
     }
 
     @Override
+    @Transactional
+    public CaregiverProfileResponseDTO addQualification(AddQualificationRequest request, MultipartFile credentialFile) {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Adding qualification for caregiver with account ID: {}", currentAccountId);
+
+        // Get caregiver profile
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found for current user");
+        }
+
+        // Validate credential file
+        if (credentialFile == null || credentialFile.isEmpty()) {
+            throw new BadRequestException("Credential file is required");
+        }
+
+        // Validate qualification type
+        QualificationType qualificationType = qualificationTypeRepository
+                .findByQualificationTypeIdAndDeletedIsFalse(request.getQualificationTypeId());
+        if (qualificationType == null) {
+            throw new BadRequestException("Qualification type not found: " + request.getQualificationTypeId());
+        }
+
+        // Upload certificate file
+        String certificateUrl = null;
+        try {
+            certificateUrl = firebaseStorageService.uploadFile(credentialFile);
+            log.info("Credential file uploaded successfully: {}", certificateUrl);
+        } catch (Exception e) {
+            log.error("Failed to upload credential file: {}", e.getMessage(), e);
+            throw new BadRequestException("Failed to upload credential file: " + e.getMessage());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // Create Qualification
+        Qualification qualification = Qualification.builder()
+                .caregiverProfile(caregiverProfile)
+                .qualificationType(qualificationType)
+                .certificateNumber(request.getCertificateNumber())
+                .issuingOrganization(request.getIssuingOrganization())
+                .issueDate(request.getIssueDate())
+                .expiryDate(request.getExpiryDate())
+                .certificateUrl(certificateUrl)
+                .isVerified(false) // Default false
+                .status(EnumVerificationStatusType.PENDING) // Default PENDING
+                .notes(request.getNotes())
+                .build();
+
+        // Set is_needed_review_certificate = true when new credential is added
+        caregiverProfile.setIsNeededReviewCertificate(true);
+
+        qualification.setCreatedAt(now);
+        qualification.setUpdatedAt(now);
+        qualification.setDeleted(false);
+
+        qualificationRepository.save(qualification);
+
+        // Save caregiver profile
+        CaregiverProfile savedProfile = caregiverProfileRepository.save(caregiverProfile);
+        log.info("Qualification added successfully for caregiver profile ID: {}", savedProfile.getCaregiverProfileId());
+
+        return caregiverProfileMapper.toDTO(savedProfile);
+    }
+
+    @Override
+    @Transactional
+    public void deleteQualification(UUID qualificationId) {
+        UUID currentAccountId = SecurityUtils.getCurrentUserId();
+        log.info("Deleting qualification {} for caregiver with account ID: {}", qualificationId, currentAccountId);
+
+        // Get caregiver profile
+        CaregiverProfile caregiverProfile = caregiverProfileRepository
+                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+
+        if (caregiverProfile == null) {
+            throw new ElementNotFoundException("Caregiver profile not found for current user");
+        }
+
+        // Find qualification
+        Qualification qualification = qualificationRepository
+                .findByQualificationIdAndDeletedIsFalse(qualificationId);
+
+        if (qualification == null) {
+            throw new ElementNotFoundException("Qualification not found with ID: " + qualificationId);
+        }
+
+        // Verify ownership - qualification must belong to current caregiver
+        if (!qualification.getCaregiverProfile().getCaregiverProfileId()
+                .equals(caregiverProfile.getCaregiverProfileId())) {
+            throw new BadRequestException("You can only delete your own qualifications");
+        }
+
+        // Soft delete
+        LocalDateTime now = LocalDateTime.now();
+        qualification.setDeleted(true);
+        qualification.setUpdatedAt(now);
+        qualificationRepository.save(qualification);
+
+        log.info("Qualification {} soft deleted successfully", qualificationId);
+    }
+
+    @Override
     public List<CaregiverVerificationResponseDTO> getPendingVerificationCaregivers() {
         log.info("Getting all caregivers pending verification");
 
@@ -1454,9 +1826,9 @@ public class ProfileServiceImpl implements ProfileService {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         log.info("Getting caregiver profile for account ID: {}", currentAccountId);
 
-        // Fetch caregiver profile with account and qualifications
+        // Fetch caregiver profile with account and all qualifications (including deleted ones)
         CaregiverProfile caregiverProfile = caregiverProfileRepository
-                .findByAccountIdWithAccountAndQualifications(currentAccountId);
+                .findByAccountIdWithAccountAndAllQualifications(currentAccountId);
 
         if (caregiverProfile == null) {
             throw new ElementNotFoundException("Caregiver profile not found for current user");
@@ -1508,11 +1880,10 @@ public class ProfileServiceImpl implements ProfileService {
             nonLocked = account.getNonLocked();
         }
 
-        // Map Qualifications
+        // Map Qualifications (include all, even deleted ones)
         List<CaregiverProfileDetailResponseDTO.QualificationDetailDTO> qualifications = new ArrayList<>();
         if (profile.getQualifications() != null) {
             qualifications = profile.getQualifications().stream()
-                    .filter(q -> !q.isDeleted())
                     .map(this::mapQualificationToDetailDTO)
                     .collect(Collectors.toList());
         }
@@ -1662,6 +2033,7 @@ public class ProfileServiceImpl implements ProfileService {
                         : null)
                 .reviewedBy(qualification.getReviewedBy() != null ? qualification.getReviewedBy().toString() : null)
                 .notes(qualification.getNotes())
+                .deleted(qualification.isDeleted())
                 .build();
     }
 
