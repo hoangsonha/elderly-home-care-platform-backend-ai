@@ -3,6 +3,7 @@ server:
   servlet:
     context-path: /
   address: 0.0.0.0
+  forward-headers-strategy: framework
 
 spring:
   profiles:
