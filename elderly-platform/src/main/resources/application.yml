@@ -65,8 +65,8 @@ swagger:
   dev:
     url: http://localhost:8080/
   pro:
-    #    url: https://elderlycareplatform.azurewebsites.net/
-    url: http://157.245.155.77:8080/
+    #    url: https://elderlycareplatform.azurewebsites.net/   - http://157.245.155.77:8080/
+    url: https://157.245.155.77.nip.io/
 
 application:
   default:
