@@ -22,6 +22,12 @@ public class CaregiverProfileResponseDTO {
     
     String bio;
     Boolean isVerified;
+    String status; // PENDING, APPROVED, REJECTED, EXPIRED
+    String rejectionReason;
+    Boolean isNeededReviewCertificate;
+    String acceptedAt;
+    String declinedAt;
+    String reviewedBy;
     String birthDate;
     Integer age;
     String gender;

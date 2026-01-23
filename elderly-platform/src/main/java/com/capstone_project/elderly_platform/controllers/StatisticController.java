@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.controllers;
 
 import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverIncomeResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerPersonalStatisticsResponse;
@@ -130,6 +131,22 @@ public class StatisticController {
             log.error("Error getting feedback dashboard statistics", e);
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ObjectResponse("Failed", "Failed to get feedback dashboard statistics: " + e.getMessage(), null));
+        }
+    }
+
+    @Operation(summary = "Get caregiver income", 
+               description = "Get income data for current caregiver including total earnings, income by month, and payout details from completed care services. Only accessible by CAREGIVER role")
+    @PreAuthorize("hasRole('CAREGIVER')")
+    @GetMapping("/caregiver/income")
+    public ResponseEntity<ObjectResponse> getCaregiverIncome() {
+        try {
+            CaregiverIncomeResponseDTO income = statisticService.getCaregiverIncome();
+            return ResponseEntity.status(HttpStatus.OK)
+                    .body(new ObjectResponse("Success", "Caregiver income retrieved successfully", income));
+        } catch (Exception e) {
+            log.error("Error getting caregiver income", e);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ObjectResponse("Failed", "Failed to get caregiver income: " + e.getMessage(), null));
         }
     }
 }

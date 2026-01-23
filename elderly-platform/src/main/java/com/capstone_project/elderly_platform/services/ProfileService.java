@@ -21,9 +21,9 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ProfileService {
-    List<CaregiverProfileResponseDTO> getAllCaregivers();
+    List<CaregiverProfileDetailResponseDTO> getAllCaregivers();
     
-    CaregiverProfileResponseDTO getCaregiverById(UUID caregiverProfileId);
+    CaregiverProfileDetailResponseDTO getCaregiverById(UUID caregiverProfileId);
 
     List<ElderlyProfileResponseDTO> getElderlyProfilesByCurrentCareSeeker();
     
@@ -39,16 +39,16 @@ public interface ProfileService {
     CareSeekerProfileResponseDTO updateCareSeekerProfile(UpdateCareSeekerProfileRequest request,
             MultipartFile avatarFile);
 
-    CaregiverProfileResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request, MultipartFile avatarFile,
+    CaregiverProfileDetailResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request, MultipartFile avatarFile,
             List<MultipartFile> credentialFiles, MultipartFile citizenIdFrontImage, MultipartFile citizenIdBackImage);
 
-    CaregiverProfileResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request, MultipartFile avatarFile,
+    CaregiverProfileDetailResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request, MultipartFile avatarFile,
             List<MultipartFile> credentialFiles, MultipartFile citizenIdFrontImage, MultipartFile citizenIdBackImage);
 
-    CaregiverProfileResponseDTO updateCaregiverQualifications(UpdateCaregiverQualificationsRequest request,
+    CaregiverProfileDetailResponseDTO updateCaregiverQualifications(UpdateCaregiverQualificationsRequest request,
             List<MultipartFile> credentialFiles);
     
-    CaregiverProfileResponseDTO addQualification(AddQualificationRequest request, MultipartFile credentialFile);
+    CaregiverProfileDetailResponseDTO addQualification(AddQualificationRequest request, MultipartFile credentialFile);
     
     void deleteQualification(UUID qualificationId);
 

@@ -1,7 +1,7 @@
 package com.capstone_project.elderly_platform.controllers;
 
 import com.capstone_project.elderly_platform.dtos.request.externals.MatchCaregiverByElderlyRequest;
-import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.dtos.response.QualificationTypeResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO;
@@ -104,7 +104,7 @@ public class PublicController {
     @GetMapping("/caregivers")
     public ResponseEntity<ObjectResponse> getAllCaregivers() {
         try {
-            List<CaregiverProfileResponseDTO> caregivers = profileService.getAllCaregivers();
+            List<CaregiverProfileDetailResponseDTO> caregivers = profileService.getAllCaregivers();
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Caregivers retrieved successfully", caregivers));
         } catch (Exception e) {
@@ -118,7 +118,7 @@ public class PublicController {
     @GetMapping("/caregivers/{id}")
     public ResponseEntity<ObjectResponse> getCaregiverById(@PathVariable("id") UUID id) {
         try {
-            CaregiverProfileResponseDTO caregiver = profileService.getCaregiverById(id);
+            CaregiverProfileDetailResponseDTO caregiver = profileService.getCaregiverById(id);
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Caregiver retrieved successfully", caregiver));
         } catch (ElementNotFoundException e) {

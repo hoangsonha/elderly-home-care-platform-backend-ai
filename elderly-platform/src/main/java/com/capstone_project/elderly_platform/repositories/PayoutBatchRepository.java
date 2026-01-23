@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -20,6 +21,11 @@ public interface PayoutBatchRepository extends JpaRepository<PayoutBatch, UUID> 
             @Param("caregiverProfileId") java.util.UUID caregiverProfileId,
             @Param("year") Integer year,
             @Param("month") Integer month);
+    
+    @Query("SELECT pb FROM PayoutBatch pb WHERE pb.caregiverProfile.caregiverProfileId = :caregiverProfileId " +
+            "AND pb.deleted = false ORDER BY pb.payoutYear DESC, pb.payoutMonth DESC")
+    List<PayoutBatch> findByCaregiverProfileOrderByYearMonthDesc(
+            @Param("caregiverProfileId") UUID caregiverProfileId);
 }
 
 

@@ -2,7 +2,7 @@ package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.request.UpdateFreeScheduleByDateRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateFreeScheduleRequest;
-import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
 import com.capstone_project.elderly_platform.mappers.CaregiverProfileMapper;
 import com.capstone_project.elderly_platform.pojos.CareService;
@@ -37,13 +37,13 @@ public class CaregiverScheduleServiceImpl implements CaregiverScheduleService {
 
     private final CaregiverProfileRepository caregiverProfileRepository;
     private final CareServiceRepository careServiceRepository;
-    private final CaregiverProfileMapper caregiverProfileMapper;
+    private final ProfileService profileService;
     private final CaregiverScheduleUtils scheduleUtils;
     private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
-    public CaregiverProfileResponseDTO updateFreeSchedule(UpdateFreeScheduleRequest request) {
+    public CaregiverProfileDetailResponseDTO updateFreeSchedule(UpdateFreeScheduleRequest request) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         
         CaregiverProfile caregiverProfile = caregiverProfileRepository
@@ -81,12 +81,13 @@ public class CaregiverScheduleServiceImpl implements CaregiverScheduleService {
         
         log.info("Updated free schedule for caregiver profile ID: {}", savedProfile.getCaregiverProfileId());
         
-        return caregiverProfileMapper.toDTO(savedProfile);
+        // Return detail DTO
+        return profileService.getCaregiverById(savedProfile.getCaregiverProfileId());
     }
 
     @Override
     @Transactional
-    public CaregiverProfileResponseDTO updateFreeScheduleByDate(UpdateFreeScheduleByDateRequest request) {
+    public CaregiverProfileDetailResponseDTO updateFreeScheduleByDate(UpdateFreeScheduleByDateRequest request) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         
         CaregiverProfile caregiverProfile = caregiverProfileRepository
@@ -233,7 +234,8 @@ public class CaregiverScheduleServiceImpl implements CaregiverScheduleService {
         log.info("Updated free schedule for date {} for caregiver profile ID: {}. Preserved {} booking slot(s), added {} manual slot(s), total slots = {}", 
                 targetDate, savedProfile.getCaregiverProfileId(), bookingSlotsForDate.size(), newManualSlots.size(), allFinalSlots.size());
         
-        return caregiverProfileMapper.toDTO(savedProfile);
+        // Return detail DTO
+        return profileService.getCaregiverById(savedProfile.getCaregiverProfileId());
     }
 
     @Override

@@ -2,7 +2,7 @@ package com.capstone_project.elderly_platform.controllers;
 
 import com.capstone_project.elderly_platform.dtos.request.UpdateFreeScheduleByDateRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateFreeScheduleRequest;
-import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
@@ -46,7 +46,7 @@ public class CaregiverScheduleController {
     @PutMapping("/free-schedule")
     public ResponseEntity<ObjectResponse> updateFreeSchedule(@Valid @RequestBody UpdateFreeScheduleRequest request) {
         try {
-            CaregiverProfileResponseDTO profile = caregiverScheduleService.updateFreeSchedule(request);
+            CaregiverProfileDetailResponseDTO profile = caregiverScheduleService.updateFreeSchedule(request);
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Cập nhật lịch rảnh thành công", profile));
         } catch (ElementNotFoundException e) {
@@ -77,7 +77,7 @@ public class CaregiverScheduleController {
     @PutMapping("/free-schedule/date")
     public ResponseEntity<ObjectResponse> updateFreeScheduleByDate(@Valid @RequestBody UpdateFreeScheduleByDateRequest request) {
         try {
-            CaregiverProfileResponseDTO profile = caregiverScheduleService.updateFreeScheduleByDate(request);
+            CaregiverProfileDetailResponseDTO profile = caregiverScheduleService.updateFreeScheduleByDate(request);
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Cập nhật lịch rảnh cho ngày " + request.getDate() + " thành công", profile));
         } catch (ElementNotFoundException e) {

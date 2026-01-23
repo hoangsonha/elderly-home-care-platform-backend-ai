@@ -47,6 +47,16 @@ public class CaregiverProfileMapper {
                 .location(profile.getLocation()) // Keep as JSON string
                 .bio(profile.getBio())
                 .isVerified(profile.getIsVerified())
+                .status(profile.getStatus() != null ? profile.getStatus().name() : null)
+                .rejectionReason(profile.getRejectionReason())
+                .isNeededReviewCertificate(profile.getIsNeededReviewCertificate())
+                .acceptedAt(profile.getAcceptedAt() != null
+                        ? profile.getAcceptedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .declinedAt(profile.getDeclinedAt() != null
+                        ? profile.getDeclinedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        : null)
+                .reviewedBy(profile.getReviewedBy() != null ? profile.getReviewedBy().toString() : null)
                 .birthDate(profile.getBirthDate() != null
                         ? profile.getBirthDate().format(DATE_FORMATTER)
                         : null)

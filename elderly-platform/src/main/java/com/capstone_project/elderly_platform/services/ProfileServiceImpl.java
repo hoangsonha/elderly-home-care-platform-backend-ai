@@ -85,26 +85,40 @@ public class ProfileServiceImpl implements ProfileService {
     private final ObjectMapper objectMapper;
 
     @Override
-    public List<CaregiverProfileResponseDTO> getAllCaregivers() {
+    public List<CaregiverProfileDetailResponseDTO> getAllCaregivers() {
         log.info("Getting all caregivers");
-        return caregiverProfileRepository.findByDeletedFalse()
-                .stream()
-                .map(caregiverProfileMapper::toDTO)
+        List<CaregiverProfile> profiles = caregiverProfileRepository.findByDeletedFalse();
+        return profiles.stream()
+                .map(profile -> {
+                    // Reload with all qualifications for detail response
+                    CaregiverProfile reloadedProfile = caregiverProfileRepository
+                            .findByAccountIdWithAccountAndAllQualifications(profile.getAccount().getAccountId());
+                    return reloadedProfile != null ? mapToCaregiverProfileDetailDTO(reloadedProfile) : null;
+                })
+                .filter(dto -> dto != null)
                 .collect(Collectors.toList());
     }
     
     @Override
-    public CaregiverProfileResponseDTO getCaregiverById(UUID caregiverProfileId) {
+    public CaregiverProfileDetailResponseDTO getCaregiverById(UUID caregiverProfileId) {
         log.info("Getting caregiver by ID: {}", caregiverProfileId);
-        // Use query that loads account and qualifications to ensure all data is available
-        CaregiverProfile caregiverProfile = caregiverProfileRepository
-                .findByCaregiverProfileIdWithAccountAndQualifications(caregiverProfileId);
+        // First get the profile to find accountId
+        CaregiverProfile profile = caregiverProfileRepository
+                .findByCaregiverProfileIdAndDeletedIsFalse(caregiverProfileId);
         
-        if (caregiverProfile == null) {
+        if (profile == null) {
             throw new ElementNotFoundException("Caregiver profile not found with ID: " + caregiverProfileId);
         }
         
-        return caregiverProfileMapper.toDTO(caregiverProfile);
+        // Reload with all qualifications for detail response
+        CaregiverProfile reloadedProfile = caregiverProfileRepository
+                .findByAccountIdWithAccountAndAllQualifications(profile.getAccount().getAccountId());
+        
+        if (reloadedProfile == null) {
+            throw new ElementNotFoundException("Failed to reload caregiver profile with ID: " + caregiverProfileId);
+        }
+        
+        return mapToCaregiverProfileDetailDTO(reloadedProfile);
     }
 
     @Override
@@ -753,7 +767,7 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     @Transactional
-    public CaregiverProfileResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request,
+    public CaregiverProfileDetailResponseDTO createCaregiverProfile(UpdateCaregiverProfileRequest request,
             MultipartFile avatarFile,
             List<MultipartFile> credentialFiles,
             MultipartFile citizenIdFrontImage,
@@ -1075,12 +1089,18 @@ public class ProfileServiceImpl implements ProfileService {
             }
         }
 
-        return caregiverProfileMapper.toDTO(savedProfile);
+        // Reload profile with all qualifications for detail response
+        CaregiverProfile reloadedProfile = caregiverProfileRepository
+                .findByAccountIdWithAccountAndAllQualifications(savedProfile.getAccount().getAccountId());
+        if (reloadedProfile == null) {
+            throw new ElementNotFoundException("Failed to reload caregiver profile after creation");
+        }
+        return mapToCaregiverProfileDetailDTO(reloadedProfile);
     }
 
     @Override
     @Transactional
-    public CaregiverProfileResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request,
+    public CaregiverProfileDetailResponseDTO updateCaregiverProfile(UpdateCaregiverProfileRequest request,
             MultipartFile avatarFile,
             List<MultipartFile> credentialFiles,
             MultipartFile citizenIdFrontImage,
@@ -1317,12 +1337,18 @@ public class ProfileServiceImpl implements ProfileService {
         CaregiverProfile savedProfile = caregiverProfileRepository.save(caregiverProfile);
         log.info("Caregiver profile updated successfully with ID: {}", savedProfile.getCaregiverProfileId());
 
-        return caregiverProfileMapper.toDTO(savedProfile);
+        // Reload profile with all qualifications for detail response
+        CaregiverProfile reloadedProfile = caregiverProfileRepository
+                .findByAccountIdWithAccountAndAllQualifications(savedProfile.getAccount().getAccountId());
+        if (reloadedProfile == null) {
+            throw new ElementNotFoundException("Failed to reload caregiver profile after update");
+        }
+        return mapToCaregiverProfileDetailDTO(reloadedProfile);
     }
 
     @Override
     @Transactional
-    public CaregiverProfileResponseDTO updateCaregiverQualifications(UpdateCaregiverQualificationsRequest request,
+    public CaregiverProfileDetailResponseDTO updateCaregiverQualifications(UpdateCaregiverQualificationsRequest request,
             List<MultipartFile> credentialFiles) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         log.info("Updating caregiver qualifications for account ID: {}", currentAccountId);
@@ -1414,12 +1440,18 @@ public class ProfileServiceImpl implements ProfileService {
         CaregiverProfile savedProfile = caregiverProfileRepository.save(caregiverProfile);
         log.info("Caregiver qualifications updated successfully with ID: {}", savedProfile.getCaregiverProfileId());
 
-        return caregiverProfileMapper.toDTO(savedProfile);
+        // Reload profile with all qualifications for detail response
+        CaregiverProfile reloadedProfile = caregiverProfileRepository
+                .findByAccountIdWithAccountAndAllQualifications(savedProfile.getAccount().getAccountId());
+        if (reloadedProfile == null) {
+            throw new ElementNotFoundException("Failed to reload caregiver profile after qualifications update");
+        }
+        return mapToCaregiverProfileDetailDTO(reloadedProfile);
     }
 
     @Override
     @Transactional
-    public CaregiverProfileResponseDTO addQualification(AddQualificationRequest request, MultipartFile credentialFile) {
+    public CaregiverProfileDetailResponseDTO addQualification(AddQualificationRequest request, MultipartFile credentialFile) {
         UUID currentAccountId = SecurityUtils.getCurrentUserId();
         log.info("Adding qualification for caregiver with account ID: {}", currentAccountId);
 
@@ -1482,7 +1514,13 @@ public class ProfileServiceImpl implements ProfileService {
         CaregiverProfile savedProfile = caregiverProfileRepository.save(caregiverProfile);
         log.info("Qualification added successfully for caregiver profile ID: {}", savedProfile.getCaregiverProfileId());
 
-        return caregiverProfileMapper.toDTO(savedProfile);
+        // Reload profile with all qualifications for detail response
+        CaregiverProfile reloadedProfile = caregiverProfileRepository
+                .findByAccountIdWithAccountAndAllQualifications(savedProfile.getAccount().getAccountId());
+        if (reloadedProfile == null) {
+            throw new ElementNotFoundException("Failed to reload caregiver profile after adding qualification");
+        }
+        return mapToCaregiverProfileDetailDTO(reloadedProfile);
     }
 
     @Override

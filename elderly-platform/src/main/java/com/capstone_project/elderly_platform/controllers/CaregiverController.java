@@ -3,7 +3,7 @@ package com.capstone_project.elderly_platform.controllers;
 import com.capstone_project.elderly_platform.dtos.request.AddQualificationRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverProfileRequest;
 import com.capstone_project.elderly_platform.dtos.request.UpdateCaregiverQualificationsRequest;
-import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.ObjectResponse;
 import com.capstone_project.elderly_platform.exceptions.BadRequestException;
 import com.capstone_project.elderly_platform.exceptions.ElementNotFoundException;
@@ -62,7 +62,7 @@ public class CaregiverController {
                 }
             }
 
-            CaregiverProfileResponseDTO createdProfile = profileService.createCaregiverProfile(request, avatarFile,
+            CaregiverProfileDetailResponseDTO createdProfile = profileService.createCaregiverProfile(request, avatarFile,
                     credentialFiles, citizenIdFrontImage, citizenIdBackImage);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ObjectResponse("Success", "Caregiver profile created successfully", createdProfile));
@@ -96,7 +96,7 @@ public class CaregiverController {
             @Parameter(description = "CCCD/CMND back image (optional)", content = @Content(mediaType = MediaType.IMAGE_JPEG_VALUE)) @RequestPart(value = "citizenIdBackImage", required = false) MultipartFile citizenIdBackImage) {
         try {
             // Note: credentialFiles parameter is ignored - use separate API for qualifications
-            CaregiverProfileResponseDTO updatedProfile = profileService.updateCaregiverProfile(request, avatarFile,
+            CaregiverProfileDetailResponseDTO updatedProfile = profileService.updateCaregiverProfile(request, avatarFile,
                     null, citizenIdFrontImage, citizenIdBackImage);
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Caregiver profile updated successfully", updatedProfile));
@@ -138,7 +138,7 @@ public class CaregiverController {
                 }
             }
 
-            CaregiverProfileResponseDTO updatedProfile = profileService.updateCaregiverQualifications(request,
+            CaregiverProfileDetailResponseDTO updatedProfile = profileService.updateCaregiverQualifications(request,
                     credentialFiles);
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Caregiver qualifications updated successfully", updatedProfile));
@@ -173,7 +173,7 @@ public class CaregiverController {
                         .body(new ObjectResponse("Fail", "Credential file is required", null));
             }
 
-            CaregiverProfileResponseDTO updatedProfile = profileService.addQualification(request, credentialFile);
+            CaregiverProfileDetailResponseDTO updatedProfile = profileService.addQualification(request, credentialFile);
             return ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ObjectResponse("Success", "Qualification added successfully", updatedProfile));
         } catch (ElementNotFoundException e) {

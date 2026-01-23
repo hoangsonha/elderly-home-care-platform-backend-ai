@@ -1,6 +1,7 @@
 package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverIncomeResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerPersonalStatisticsResponse;
@@ -18,6 +19,8 @@ public interface StatisticService {
     CaregiverPersonalStatisticsResponse getCaregiverPersonalStatistics();
     
     CareSeekerPersonalStatisticsResponse getCareSeekerPersonalStatistics();
+    
+    CaregiverIncomeResponseDTO getCaregiverIncome();
 }
 
 

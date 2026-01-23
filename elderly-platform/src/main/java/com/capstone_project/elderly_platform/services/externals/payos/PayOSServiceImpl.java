@@ -922,7 +922,7 @@ public class PayOSServiceImpl implements PayOSService {
     private static class CareServiceSnapshot {
         private com.capstone_project.elderly_platform.dtos.response.ElderlyProfileResponseDTO elderlyProfile;
         private com.capstone_project.elderly_platform.dtos.response.CareSeekerProfileResponseDTO careSeekerProfile;
-        private com.capstone_project.elderly_platform.dtos.response.CaregiverProfileResponseDTO caregiverProfile;
+        private com.capstone_project.elderly_platform.dtos.response.CaregiverProfileDetailResponseDTO caregiverProfile;
         private com.capstone_project.elderly_platform.dtos.response.ServicePackageResponseDTO servicePackage;
     }
 

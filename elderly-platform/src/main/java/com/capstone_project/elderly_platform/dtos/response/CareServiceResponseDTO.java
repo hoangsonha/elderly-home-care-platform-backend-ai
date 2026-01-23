@@ -26,7 +26,7 @@ public class CareServiceResponseDTO {
     String configVersion;
     CareSeekerProfileResponseDTO careSeekerProfile;
     ElderlyProfileResponseDTO elderlyProfile;
-    CaregiverProfileResponseDTO caregiverProfile;
+    CaregiverProfileDetailResponseDTO caregiverProfile;
     ServicePackageResponseDTO servicePackage;
     WorkScheduleResponseDTO workSchedule;
     CareServiceFeedbackDTO feedback; // Feedback for this care service (if exists)

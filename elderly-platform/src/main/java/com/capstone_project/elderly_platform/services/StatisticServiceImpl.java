@@ -1,9 +1,12 @@
 package com.capstone_project.elderly_platform.services;
 
 import com.capstone_project.elderly_platform.dtos.response.CareServiceStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.CaregiverIncomeResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverPersonalStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CaregiverStatisticsResponse;
 import com.capstone_project.elderly_platform.dtos.response.CareSeekerPersonalStatisticsResponse;
+import com.capstone_project.elderly_platform.dtos.response.IncomeByMonthResponseDTO;
+import com.capstone_project.elderly_platform.dtos.response.PayoutDetailResponseDTO;
 import com.capstone_project.elderly_platform.dtos.response.UserStatisticsResponse;
 import com.capstone_project.elderly_platform.enums.EnumCareServiceStatusType;
 import com.capstone_project.elderly_platform.enums.EnumRoleType;
@@ -14,6 +17,7 @@ import com.capstone_project.elderly_platform.pojos.CareService;
 import com.capstone_project.elderly_platform.pojos.CareSeekerProfile;
 import com.capstone_project.elderly_platform.pojos.CaregiverProfile;
 import com.capstone_project.elderly_platform.pojos.Payment;
+import com.capstone_project.elderly_platform.pojos.Payout;
 import com.capstone_project.elderly_platform.pojos.PayoutBatch;
 import com.capstone_project.elderly_platform.pojos.WorkSchedule;
 import com.capstone_project.elderly_platform.pojos.WorkTask;
@@ -23,6 +27,7 @@ import com.capstone_project.elderly_platform.repositories.CareSeekerProfileRepos
 import com.capstone_project.elderly_platform.repositories.CaregiverProfileRepository;
 import com.capstone_project.elderly_platform.repositories.PaymentRepository;
 import com.capstone_project.elderly_platform.repositories.PayoutBatchRepository;
+import com.capstone_project.elderly_platform.repositories.PayoutRepository;
 import com.capstone_project.elderly_platform.utils.AccountSpecification;
 import com.capstone_project.elderly_platform.utils.SecurityUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,9 +37,12 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -47,6 +55,7 @@ public class StatisticServiceImpl implements StatisticService {
         private final CareServiceRepository careServiceRepository;
         private final PaymentRepository paymentRepository;
         private final PayoutBatchRepository payoutBatchRepository;
+        private final PayoutRepository payoutRepository;
         private final ObjectMapper objectMapper;
 
         @Override
@@ -353,6 +362,176 @@ public class StatisticServiceImpl implements StatisticService {
                                 .totalSpendingThisMonth(totalSpendingThisMonth)
                                 .totalCompletedBookings(totalCompletedBookings)
                                 .totalInProgressServices(totalInProgressServices)
+                                .build();
+        }
+
+        @Override
+        public CaregiverIncomeResponseDTO getCaregiverIncome() {
+                UUID currentAccountId = SecurityUtils.getCurrentUserId();
+                log.info("Getting income data for caregiver with account ID: {}", currentAccountId);
+
+                // Get caregiver profile
+                CaregiverProfile caregiverProfile = caregiverProfileRepository
+                                .findByAccount_AccountIdAndDeletedIsFalse(currentAccountId);
+                if (caregiverProfile == null) {
+                        throw new ElementNotFoundException("Caregiver profile not found for current user");
+                }
+
+                // Get all payout batches for this caregiver (ordered by year, month DESC)
+                List<PayoutBatch> payoutBatches = payoutBatchRepository
+                                .findByCaregiverProfileOrderByYearMonthDesc(
+                                                caregiverProfile.getCaregiverProfileId());
+
+                // Get all payouts from completed care services
+                List<Payout> payouts = payoutRepository
+                                .findByCaregiverProfileAndCompletedCareServiceOrderByServiceDateDesc(
+                                                caregiverProfile.getCaregiverProfileId(),
+                                                EnumCareServiceStatusType.COMPLETED);
+
+                // Map payouts to PayoutDetailResponseDTO
+                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+                
+                // Group payouts by payoutBatchId for easy lookup
+                Map<UUID, List<PayoutDetailResponseDTO>> payoutsByBatchId = payouts.stream()
+                                .collect(Collectors.groupingBy(
+                                                p -> p.getPayoutBatch() != null 
+                                                        ? p.getPayoutBatch().getPayoutBatchId() 
+                                                        : UUID.randomUUID(), // Fallback, should not happen
+                                                Collectors.mapping(p -> {
+                                                        PayoutDetailResponseDTO.PayoutDetailResponseDTOBuilder builder = PayoutDetailResponseDTO
+                                                                        .builder()
+                                                                        .payoutId(p.getPayoutId() != null
+                                                                                        ? p.getPayoutId().toString()
+                                                                                        : null)
+                                                                        .payoutCode(p.getPayoutCode())
+                                                                        .caregiverEarnings(p.getCaregiverEarnings())
+                                                                        .totalAmount(p.getTotalAmount())
+                                                                        .systemRevenue(p.getSystemRevenue())
+                                                                        .systemFeePercentage(p.getSystemFeePercentage())
+                                                                        .serviceDate(p.getServiceDate() != null
+                                                                                        ? p.getServiceDate().format(dateFormatter)
+                                                                                        : null)
+                                                                        .status(p.getStatus() != null ? p.getStatus().toString() : null)
+                                                                        .includedAt(p.getIncludedAt() != null
+                                                                                        ? p.getIncludedAt().format(dateTimeFormatter)
+                                                                                        : null)
+                                                                        .paidAt(p.getPaidAt() != null
+                                                                                        ? p.getPaidAt().format(dateTimeFormatter)
+                                                                                        : null);
+
+                                                        // Add care service info if available
+                                                        if (p.getCareService() != null) {
+                                                                CareService cs = p.getCareService();
+                                                                builder.careServiceId(cs.getCareServiceId() != null
+                                                                                ? cs.getCareServiceId().toString()
+                                                                                : null)
+                                                                                .bookingCode(cs.getBookingCode())
+                                                                                .workDate(cs.getWorkDate() != null
+                                                                                                ? cs.getWorkDate().format(dateFormatter)
+                                                                                                : null);
+                                                        }
+
+                                                        // Add payout batch info if available
+                                                        if (p.getPayoutBatch() != null) {
+                                                                PayoutBatch pb = p.getPayoutBatch();
+                                                                builder.payoutBatchId(pb.getPayoutBatchId() != null
+                                                                                ? pb.getPayoutBatchId().toString()
+                                                                                : null)
+                                                                                .batchCode(pb.getBatchCode());
+                                                        }
+
+                                                        return builder.build();
+                                                }, Collectors.toList())));
+
+                // Map to IncomeByMonthResponseDTO with payout details for each month
+                List<IncomeByMonthResponseDTO> incomeByMonth = payoutBatches.stream()
+                                .map(pb -> {
+                                        UUID batchId = pb.getPayoutBatchId();
+                                        List<PayoutDetailResponseDTO> monthPayoutDetails = payoutsByBatchId.getOrDefault(
+                                                        batchId, new ArrayList<>());
+                                        
+                                        return IncomeByMonthResponseDTO.builder()
+                                                        .year(pb.getPayoutYear())
+                                                        .month(pb.getPayoutMonth())
+                                                        .totalEarnings(pb.getTotalCaregiverEarnings() != null
+                                                                        ? pb.getTotalCaregiverEarnings()
+                                                                        : 0.0)
+                                                        .totalBookings(pb.getTotalBookings() != null
+                                                                        ? pb.getTotalBookings()
+                                                                        : 0)
+                                                        .totalServiceAmount(pb.getTotalServiceAmount() != null
+                                                                        ? pb.getTotalServiceAmount()
+                                                                        : 0.0)
+                                                        .status(pb.getStatus() != null ? pb.getStatus().toString() : null)
+                                                        .batchCode(pb.getBatchCode())
+                                                        .payoutBatchId(batchId != null ? batchId.toString() : null)
+                                                        .payoutDetails(monthPayoutDetails)
+                                                        .build();
+                                })
+                                .collect(Collectors.toList());
+
+                // Calculate total earnings
+                Double totalEarnings = incomeByMonth.stream()
+                                .mapToDouble(IncomeByMonthResponseDTO::getTotalEarnings)
+                                .sum();
+
+                // Get all payout details for root level (all payouts)
+                List<PayoutDetailResponseDTO> allPayoutDetails = payouts.stream()
+                                .map(p -> {
+                                        PayoutDetailResponseDTO.PayoutDetailResponseDTOBuilder builder = PayoutDetailResponseDTO
+                                                        .builder()
+                                                        .payoutId(p.getPayoutId() != null
+                                                                        ? p.getPayoutId().toString()
+                                                                        : null)
+                                                        .payoutCode(p.getPayoutCode())
+                                                        .caregiverEarnings(p.getCaregiverEarnings())
+                                                        .totalAmount(p.getTotalAmount())
+                                                        .systemRevenue(p.getSystemRevenue())
+                                                        .systemFeePercentage(p.getSystemFeePercentage())
+                                                        .serviceDate(p.getServiceDate() != null
+                                                                        ? p.getServiceDate().format(dateFormatter)
+                                                                        : null)
+                                                        .status(p.getStatus() != null ? p.getStatus().toString() : null)
+                                                        .includedAt(p.getIncludedAt() != null
+                                                                        ? p.getIncludedAt().format(dateTimeFormatter)
+                                                                        : null)
+                                                        .paidAt(p.getPaidAt() != null
+                                                                        ? p.getPaidAt().format(dateTimeFormatter)
+                                                                        : null);
+
+                                        // Add care service info if available
+                                        if (p.getCareService() != null) {
+                                                CareService cs = p.getCareService();
+                                                builder.careServiceId(cs.getCareServiceId() != null
+                                                                ? cs.getCareServiceId().toString()
+                                                                : null)
+                                                                .bookingCode(cs.getBookingCode())
+                                                                .workDate(cs.getWorkDate() != null
+                                                                                ? cs.getWorkDate().format(dateFormatter)
+                                                                                : null);
+                                        }
+
+                                        // Add payout batch info if available
+                                        if (p.getPayoutBatch() != null) {
+                                                PayoutBatch pb = p.getPayoutBatch();
+                                                builder.payoutBatchId(pb.getPayoutBatchId() != null
+                                                                ? pb.getPayoutBatchId().toString()
+                                                                : null)
+                                                                .batchCode(pb.getBatchCode());
+                                        }
+
+                                        return builder.build();
+                                })
+                                .collect(Collectors.toList());
+
+                log.info("Income data retrieved - Total earnings: {}, Months: {}, Payouts: {}", totalEarnings,
+                                incomeByMonth.size(), allPayoutDetails.size());
+
+                return CaregiverIncomeResponseDTO.builder()
+                                .totalEarnings(totalEarnings)
+                                .incomeByMonth(incomeByMonth)
+                                .payoutDetails(allPayoutDetails)
                                 .build();
         }
 }
