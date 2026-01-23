@@ -28,10 +28,14 @@ public class CareSeekerProfileMapper {
             return null;
         }
 
-        // Get avatar from Account
+        // Get avatar and accountId from Account
         String avatarUrl = null;
+        String accountId = null;
         if (profile.getAccount() != null) {
             avatarUrl = profile.getAccount().getAvatarUrl();
+            accountId = profile.getAccount().getAccountId() != null
+                    ? profile.getAccount().getAccountId().toString()
+                    : null;
         }
 
         return CareSeekerProfileResponseDTO.builder()
@@ -48,6 +52,7 @@ public class CareSeekerProfileMapper {
                 .gender(profile.getGender() != null
                         ? profile.getGender().name()
                         : null)
+                .accountId(accountId)
                 .avatarUrl(avatarUrl)
                 .profileData(profile.getProfileData()) // Keep as JSON string
                 .build();
