@@ -1,5 +1,6 @@
 package com.capstone_project.elderly_platform.dtos.request;
 
+import com.capstone_project.elderly_platform.validators.ValidPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -20,7 +21,8 @@ public class AccountRegisterRequest {
     String email;
 
     @NotBlank(message = "Please enter password")
-    @Size(min = 6, max = 100, message = "Password must be between 6 and 100 characters")
+    @Size(max = 100, message = "Password must not exceed 100 characters")
+    @ValidPassword
     String password;
 
     @NotBlank(message = "Please select role")

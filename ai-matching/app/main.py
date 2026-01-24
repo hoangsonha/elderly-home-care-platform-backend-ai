@@ -30,10 +30,10 @@ app = FastAPI(
     - **Weighted Sum**: Kết hợp điểm với trọng số tối ưu
     
     ### Features
-    - 🎯 **Accurate Matching**: 8 features với trọng số được tinh chỉnh
-    - 🔍 **Explainable**: Breakdown chi tiết điểm số từng feature
-    - ⚡ **Fast**: <100ms response time
-    - 📊 **Scalable**: Ready cho Phase 2 (Semantic Matching)
+    - **Accurate Matching**: 8 features với trọng số được tinh chỉnh
+    - **Explainable**: Breakdown chi tiết điểm số từng feature
+    - **Fast**: <100ms response time
+    - **Scalable**: Ready cho Phase 2 (Semantic Matching)
     
     ### Tech Stack
     - FastAPI

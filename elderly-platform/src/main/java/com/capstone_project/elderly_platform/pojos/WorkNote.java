@@ -22,6 +22,14 @@ public class WorkNote extends BaseEntity {
     @Column(name = "work_note_id")
     UUID workNoteId;
 
+    @Column(name = "content", columnDefinition = "TEXT")
+    String content;
 
+    @ManyToOne
+    @JoinColumn(name = "work_schedule_id")
+    WorkSchedule workSchedule;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by_account_id", nullable = false)
+    Account createdBy;
 }
