@@ -44,17 +44,6 @@ public class ChatController {
             UUID senderId = getUserIdFromAuthentication(authentication);
             ChatMessageResponse response = chatService.sendMessage(senderId, request);
             
-            // Log response với avatar và name
-            log.info("Send Message Response - messageId: {}, chatId: {}, senderId: {}, senderName: {}, senderAvatar: {}, receiverId: {}, receiverName: {}, receiverAvatar: {}", 
-                    response.getMessageId(),
-                    response.getChatId(),
-                    response.getSenderId(),
-                    response.getSenderName(),
-                    response.getSenderAvatar(),
-                    response.getReceiverId(),
-                    response.getReceiverName(),
-                    response.getReceiverAvatar());
-            
             return ResponseEntity.status(HttpStatus.OK)
                     .body(new ObjectResponse("Success", "Message sent successfully", response));
         } catch (Exception e) {

@@ -10,9 +10,6 @@ import java.time.LocalTime;
 import java.util.*;
 import java.util.UUID;
 
-/**
- * Utility class for managing caregiver free schedule in profileData
- */
 @Slf4j
 @Component
 public class CaregiverScheduleUtils {
@@ -25,12 +22,6 @@ public class CaregiverScheduleUtils {
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Initialize free schedule to "available all time" if not exists
-     * 
-     * @param profileData Current profileData JSON string
-     * @return Updated profileData JSON string with free_schedule initialized
-     */
     public String initializeFreeScheduleIfNotExists(String profileData) {
         try {
             Map<String, Object> profileDataMap = parseProfileData(profileData);
@@ -66,31 +57,37 @@ public class CaregiverScheduleUtils {
     }
 
     /**
-     * Update free schedule to exclude booked time slot (with care service ID to mark as booking)
+     * Update free schedule to exclude booked time slot (with care service ID to
+     * mark as booking)
      * 
-     * @param profileData Current profileData JSON string
-     * @param workDate    Date of the booking
-     * @param startTime   Start time of the booking
-     * @param endTime     End time of the booking
-     * @param careServiceId Care service ID to mark this slot as a booking (null for manual slots)
+     * @param profileData   Current profileData JSON string
+     * @param workDate      Date of the booking
+     * @param startTime     Start time of the booking
+     * @param endTime       End time of the booking
+     * @param careServiceId Care service ID to mark this slot as a booking (null for
+     *                      manual slots)
      * @return Updated profileData JSON string with booked time excluded
      */
-    public String excludeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime, UUID careServiceId) {
+    public String excludeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime,
+            UUID careServiceId) {
         return excludeBookedTime(profileData, workDate, startTime, endTime, careServiceId, null);
     }
 
     /**
-     * Update free schedule to exclude booked time slot (with care service ID and booking code to mark as booking)
+     * Update free schedule to exclude booked time slot (with care service ID and
+     * booking code to mark as booking)
      * 
-     * @param profileData Current profileData JSON string
-     * @param workDate    Date of the booking
-     * @param startTime   Start time of the booking
-     * @param endTime     End time of the booking
-     * @param careServiceId Care service ID to mark this slot as a booking (null for manual slots)
-     * @param bookingCode Booking code of the care service (null for manual slots)
+     * @param profileData   Current profileData JSON string
+     * @param workDate      Date of the booking
+     * @param startTime     Start time of the booking
+     * @param endTime       End time of the booking
+     * @param careServiceId Care service ID to mark this slot as a booking (null for
+     *                      manual slots)
+     * @param bookingCode   Booking code of the care service (null for manual slots)
      * @return Updated profileData JSON string with booked time excluded
      */
-    public String excludeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime, UUID careServiceId, String bookingCode) {
+    public String excludeBookedTime(String profileData, LocalDate workDate, LocalTime startTime, LocalTime endTime,
+            UUID careServiceId, String bookingCode) {
         try {
             Map<String, Object> profileDataMap = parseProfileData(profileData);
 
@@ -120,7 +117,7 @@ public class CaregiverScheduleUtils {
             bookedSlot.put("date", workDate.toString());
             bookedSlot.put("start_time", startTime.toString());
             bookedSlot.put("end_time", endTime.toString());
-            
+
             // Mark as booking if careServiceId is provided
             if (careServiceId != null) {
                 bookedSlot.put("is_booking", true);
@@ -151,7 +148,8 @@ public class CaregiverScheduleUtils {
      * 
      * @param profileData Current profileData JSON string
      * @param date        Date to remove all booked slots
-     * @return Updated profileData JSON string with all booked slots for the date removed
+     * @return Updated profileData JSON string with all booked slots for the date
+     *         removed
      */
     public String removeBookedSlotsByDate(String profileData, LocalDate date) {
         try {
@@ -181,14 +179,14 @@ public class CaregiverScheduleUtils {
             // Remove ALL slots (both booking and manual) for the specified date
             String dateString = date.toString();
             int initialSize = bookedSlots.size();
-            
+
             bookedSlots.removeIf(slot -> {
                 String slotDate = (String) slot.get("date");
                 return dateString.equals(slotDate);
             });
 
             int removedCount = initialSize - bookedSlots.size();
-            
+
             if (removedCount > 0) {
                 freeScheduleMap.put("booked_slots", bookedSlots);
                 profileDataMap.put(FREE_SCHEDULE_KEY, freeScheduleMap);
@@ -248,9 +246,9 @@ public class CaregiverScheduleUtils {
                 String slotStartTime = (String) slot.get("start_time");
                 String slotEndTime = (String) slot.get("end_time");
 
-                return dateString.equals(slotDate) 
-                    && startTimeStr.equals(slotStartTime) 
-                    && endTimeStr.equals(slotEndTime);
+                return dateString.equals(slotDate)
+                        && startTimeStr.equals(slotStartTime)
+                        && endTimeStr.equals(slotEndTime);
             });
 
             freeScheduleMap.put("booked_slots", bookedSlots);

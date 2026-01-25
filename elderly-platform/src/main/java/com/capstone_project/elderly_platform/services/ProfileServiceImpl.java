@@ -86,16 +86,11 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public List<CaregiverProfileDetailResponseDTO> getAllCaregivers() {
-        log.info("Getting all caregivers");
-        List<CaregiverProfile> profiles = caregiverProfileRepository.findByDeletedFalse();
+        log.info("Getting all verified caregivers");
+        // Get all verified caregivers with account and qualifications loaded in one query
+        List<CaregiverProfile> profiles = caregiverProfileRepository.findByDeletedFalseAndIsVerifiedTrue();
         return profiles.stream()
-                .map(profile -> {
-                    // Reload with all qualifications for detail response
-                    CaregiverProfile reloadedProfile = caregiverProfileRepository
-                            .findByAccountIdWithAccountAndAllQualifications(profile.getAccount().getAccountId());
-                    return reloadedProfile != null ? mapToCaregiverProfileDetailDTO(reloadedProfile) : null;
-                })
-                .filter(dto -> dto != null)
+                .map(profile -> mapToCaregiverProfileDetailDTO(profile))
                 .collect(Collectors.toList());
     }
     

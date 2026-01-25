@@ -8,10 +8,6 @@ import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.springframework.stereotype.Component;
 
-/**
- * Quartz Job to delete old free schedules (yesterday's booked slots) for all caregivers
- * Runs daily at 0:00 AM
- */
 @Slf4j
 @Component
 @RequiredArgsConstructor

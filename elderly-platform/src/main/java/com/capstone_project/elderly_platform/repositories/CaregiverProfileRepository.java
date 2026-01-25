@@ -53,4 +53,11 @@ public interface CaregiverProfileRepository extends JpaRepository<CaregiverProfi
             "WHERE c.account.accountId = :accountId " +
             "AND c.deleted = false")
     CaregiverProfile findByAccountIdWithAccountAndAllQualifications(UUID accountId);
+    
+    @Query("SELECT DISTINCT c FROM CaregiverProfile c " +
+            "LEFT JOIN FETCH c.account " +
+            "LEFT JOIN FETCH c.qualifications " +
+            "WHERE c.deleted = false " +
+            "AND c.isVerified = true")
+    java.util.List<CaregiverProfile> findByDeletedFalseAndIsVerifiedTrue();
 }

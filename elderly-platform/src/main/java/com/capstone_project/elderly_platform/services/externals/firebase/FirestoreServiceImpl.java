@@ -48,9 +48,6 @@ public class FirestoreServiceImpl implements FirestoreService {
             }
             var receiver = receiverOpt.get();
             
-            log.info("Sender and receiver accounts found - senderEmail: {}, receiverEmail: {}", 
-                    sender.getEmail(), receiver.getEmail());
-            
             // Get or create chat ID
             log.info("Send Message - senderId: {} (toString: {}), receiverId: {} (toString: {})", 
                     senderId, senderId.toString(), request.getReceiverId(), request.getReceiverId().toString());

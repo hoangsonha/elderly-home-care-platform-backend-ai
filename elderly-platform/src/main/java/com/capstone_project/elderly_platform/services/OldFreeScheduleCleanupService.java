@@ -11,10 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * Service to clean up old free schedules (booked slots from previous days)
- * This helps reduce database storage by removing outdated schedule data
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -46,7 +42,7 @@ public class OldFreeScheduleCleanupService {
         for (CaregiverProfile profile : caregiverProfiles) {
             try {
                 String currentProfileData = profile.getProfileData();
-                
+
                 if (currentProfileData == null || currentProfileData.isEmpty()) {
                     continue; // Skip profiles without profileData
                 }
@@ -60,18 +56,18 @@ public class OldFreeScheduleCleanupService {
                     profile.setProfileData(updatedProfileData);
                     caregiverProfileRepository.save(profile);
                     updatedCount++;
-                    log.debug("Removed old booked slots for caregiver profile ID: {}", 
+                    log.debug("Removed old booked slots for caregiver profile ID: {}",
                             profile.getCaregiverProfileId());
                 }
             } catch (Exception e) {
                 errorCount++;
-                log.error("Error cleaning up free schedule for caregiver profile ID: {}", 
+                log.error("Error cleaning up free schedule for caregiver profile ID: {}",
                         profile.getCaregiverProfileId(), e);
                 // Continue processing other profiles even if one fails
             }
         }
 
-        log.info("Completed cleanup: {} profiles updated, {} errors, {} total profiles processed", 
+        log.info("Completed cleanup: {} profiles updated, {} errors, {} total profiles processed",
                 updatedCount, errorCount, caregiverProfiles.size());
     }
 }
